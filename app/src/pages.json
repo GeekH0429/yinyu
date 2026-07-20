@@ -1,0 +1,22 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^mp-html": "mp-html/dist/uni-app/components/mp-html/mp-html.vue"
+    }
+  },
+  "pages": [
+    { "path": "pages/index/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/read/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/treehole/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/write/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/mine/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/login/index", "style": { "navigationStyle": "custom" } }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "隐语",
+    "navigationBarBackgroundColor": "#FDFBF7",
+    "backgroundColor": "#FDFBF7"
+  }
+}

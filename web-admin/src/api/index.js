@@ -1,0 +1,54 @@
+import request from './request'
+
+export const api = {
+  auth: {
+    login: (username, password) =>
+      request.post('/auth/login', { username, password }),
+    register: (payload) => request.post('/auth/register', payload),
+    me: () => request.get('/me'),
+    changePassword: (old_password, new_password) =>
+      request.put('/auth/password', { old_password, new_password })
+  },
+
+  articles: {
+    list: (params) => request.get('/articles', { params }),
+    adminList: (params) => request.get('/admin/articles', { params }),
+    tags: () => request.get('/articles/tags'),
+    get: (id) => request.get(`/articles/${id}`),
+    create: (data) => request.post('/articles', data),
+    update: (id, data) => request.put(`/articles/${id}`, data),
+    remove: (id) => request.delete(`/articles/${id}`)
+  },
+
+  treeholes: {
+    create: (data) => request.post('/treeholes', data),
+    update: (id, data) => request.put(`/treeholes/${id}`, data),
+    changeCode: (id, code) => request.put(`/treeholes/${id}/code`, { code }),
+    remove: (id) => request.delete(`/treeholes/${id}`),
+    adminList: (params) => request.get('/admin/treeholes', { params }),
+    mine: (params) => request.get('/me/treeholes', { params })
+  },
+
+  me: {
+    get: () => request.get('/me'),
+    update: (data) => request.put('/me', data),
+    myArticles: (params) => request.get('/me/articles', { params })
+  },
+
+  admin: {
+    inviteCreate: (data) => request.post('/admin/invite-codes', data),
+    inviteList: (params) => request.get('/admin/invite-codes', { params }),
+    users: (params) => request.get('/admin/users', { params }),
+    patchUser: (id, data) => request.patch(`/admin/users/${id}`, data)
+  },
+
+  upload: (file) => {
+    const form = new FormData()
+    form.append('file', file)
+    return request.post('/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  }
+}
+
+export default api
