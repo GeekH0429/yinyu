@@ -80,8 +80,9 @@
 import { ref, reactive } from 'vue'
 import { api } from '../../api'
 import { resourceUrl } from '../../config'
+import { chooseImage, pickAudio } from '../../utils/pick'
 
-const statusBarHeight = ref(0)
+const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const type = ref('article')
 const submitting = ref(false)
 const uploading = ref(false)
@@ -96,82 +97,38 @@ const form = reactive({
 const tagsText = ref('')
 const customCode = ref('')
 
-;(() => {
-  const sys = uni.getSystemInfoSync()
-  statusBarHeight.value = sys.statusBarHeight || 0
-})()
-
-function chooseImage() {
-  return new Promise((resolve, reject) => {
-    uni.chooseImage({
-      count: 1,
-      success: (res) => resolve(res.tempFilePaths[0]),
-      fail: reject
-    })
-  })
-}
-
-function pickAudio() {
-  return new Promise((resolve, reject) => {
-    if (typeof uni.chooseMessageFile === 'function') {
-      uni.chooseMessageFile({
-        count: 1,
-        type: 'file',
-        success: (res) => resolve(res.tempFiles[0].path || res.tempFiles[0]),
-        fail: reject
-      })
-    } else if (typeof uni.chooseFile === 'function') {
-      uni.chooseFile({
-        count: 1,
-        success: (res) => {
-          if (res.tempFilePaths) resolve(res.tempFilePaths[0])
-          else resolve(res.tempFiles[0].path || res.tempFiles[0])
-        },
-        fail: reject
-      })
-    } else {
-      uni.showToast({ title: '当前环境暂不支持选择音频', icon: 'none' })
-      reject(new Error('no audio picker'))
-    }
-  })
+async function uploadPicked(path) {
+  uploading.value = true
+  try {
+    return (await api.upload(path)).url
+  } finally {
+    uploading.value = false
+  }
 }
 
 async function insertImage() {
   try {
-    const path = await chooseImage()
-    uploading.value = true
-    const data = await api.upload(path)
-    form.content_html += `<p><img src="${data.url}" style="max-width:100%;border-radius:12px"/></p>`
+    const url = await uploadPicked(await chooseImage())
+    form.content_html += `<p><img src="${url}" style="max-width:100%;border-radius:12px"/></p>`
   } catch {
     /* user cancel */
-  } finally {
-    uploading.value = false
   }
 }
 
 async function insertAudio() {
   try {
-    const path = await pickAudio()
-    uploading.value = true
-    const data = await api.upload(path)
-    form.content_html += `<p><audio controls src="${data.url}" style="max-width:100%"></audio></p>`
+    const url = await uploadPicked(await pickAudio())
+    form.content_html += `<p><audio controls src="${url}" style="max-width:100%"></audio></p>`
   } catch {
     /* user cancel / unsupported */
-  } finally {
-    uploading.value = false
   }
 }
 
 async function chooseCover() {
   try {
-    const path = await chooseImage()
-    uploading.value = true
-    const data = await api.upload(path)
-    form.cover_url = data.url
+    form.cover_url = await uploadPicked(await chooseImage())
   } catch {
     /* ignore */
-  } finally {
-    uploading.value = false
   }
 }
 

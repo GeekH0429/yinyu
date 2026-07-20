@@ -11,13 +11,14 @@ yinyu/
 │   ├── alembic/    # 数据库迁移
 │   ├── requirements.txt
 │   └── .env.example
-├── web-admin/      # Web 管理后台(Vue 3 + Vite + Element Plus + WangEditor)
-├── app/            # uni-app 客户端(阅读为主 + 轻量写作)+ README
+├── web-admin/      # Web 管理后台(Vue 3 + Vite + Element Plus + TipTap)
+├── app/            # uni-app 客户端(阅读为主 + 轻量写作,暖色治愈 UI)
 ├── nginx/          # 部署用 Nginx 配置
+├── CLAUDE.md       # 给 Claude Code 的工程指引
 └── README.md
 ```
 
-技术栈:PostgreSQL + Redis + FastAPI(异步 SQLAlchemy + asyncpg),本地文件存储 `/data/uploads/`,Nginx 直接代理静态文件。
+技术栈:PostgreSQL + Redis + FastAPI(异步 SQLAlchemy + asyncpg),本地文件存储 `/data/uploads/`,Nginx 直接代理静态文件。三个前端共用同一套后端 API:Web 后台(TipTap 富文本写作)、App(uni-app 阅读 + 轻量写作)。
 
 ## 三大模块
 
@@ -127,12 +128,30 @@ uvicorn app.main:app --reload --port 8000
 cd web-admin
 npm install
 npm run dev      # 开发:http://localhost:5173 (自动代理 /api、/uploads 到后端 8000)
-npm run build    # 生产构建到 dist/ (部署时拷到 Nginx 的 /data/web/yinyu-admin)
+npm run build    # 生产构建到 dist/ (部署时拷到 Nginx 的 /www/wwwroot/yinyu-admin)
 ```
 
 - 用超管账号或任意有邀请码注册的账号登录
-- 富文本编辑器(WangEditor)支持图片/视频上传(工具栏按钮)、音频上传(编辑器上方「插入音频」按钮)
+- 富文本编辑器(**TipTap**):工具栏支持图片 / 音频 / 视频上传(自定义 Audio/Video 节点 + Image 扩展),正文以 HTML 存库,App 端用 mp-html 渲染
 - 管理员可见额外菜单:树洞管理 / 用户管理 / 邀请码
+
+## App 客户端启动(uni-app)
+
+详见 [`app/README.md`](app/README.md)。要点:
+
+```bash
+cd app
+npm install
+# 改 src/config/index.js 的 SERVER_ORIGIN:
+#   H5 调试 -> http://127.0.0.1:8000
+#   真机/小程序 -> 电脑局域网 IP(如 http://192.168.x.x:8000),且手机同网段
+#   生产 -> https://你的域名
+npm run dev:h5     # H5:http://localhost:8080
+npm run build:h5   # 编译验证;微信小程序/App 用 HBuilderX 或 dev:mp-weixin / dev:app-android
+```
+
+- 页面:登录注册 / 图文 feed / 详情(mp-html)/ 树洞暗号解锁 / 轻量写作(图文/树洞 + 图音上传)/ 我的
+- 自定义 TabBar(暖色 SVG),JWT 自动 refresh,`utils/request.js` 按 yinyu FastAPI 直返重写
 
 ## 安全要点
 
@@ -186,8 +205,9 @@ mkdir -p /data/uploads && chown -R www:www /data/uploads
 ```
 (若想放在网站目录,改 `.env` 的 `UPLOAD_DIR=/www/wwwroot/yinyu/uploads` 并同步改 Nginx。)
 
-### 6. Web 管理后台
-本地 `cd web-admin && npm run build`,把 `dist/` 整体上传到服务器 `/www/wwwroot/yinyu-admin/`。
+### 6. 前端构建与上传
+- **Web 管理后台**:本地 `cd web-admin && npm run build`,把 `dist/` 上传到服务器 `/www/wwwroot/yinyu-admin/`。
+- **App**:微信小程序 / App 用 HBuilderX 打包后发布;若出 H5 版,`cd app && npm run build:h5`,把 `dist/build/h5/` 上传到站点目录(记得先把 `app/src/config/index.js` 的 `SERVER_ORIGIN` 改成线上域名)。
 
 ### 7. Nginx 配置
 宝塔 → 网站 → 添加站点(绑定域名)→ 设置 → 配置文件,参考 `nginx/yinyu.conf` 改写,关键三段:

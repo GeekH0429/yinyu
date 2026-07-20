@@ -80,15 +80,10 @@ import { formatDate } from '../../utils/format'
 import { getUser, refreshUser, logout, isLoggedIn } from '../../store/user'
 import TabBar from '../../components/TabBar.vue'
 
-const statusBarHeight = ref(0)
+const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const user = ref(getUser())
 const articles = ref([])
 const treeholes = ref([])
-
-;(() => {
-  const sys = uni.getSystemInfoSync()
-  statusBarHeight.value = sys.statusBarHeight || 0
-})()
 
 onShow(async () => {
   if (!isLoggedIn()) {

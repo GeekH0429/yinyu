@@ -46,7 +46,7 @@ async def list_published(
         select(Article, User)
         .join(User, User.id == Article.author_id)
         .where(*conds)
-        .order_by(Article.published_at.desc().nulls_last(), Article.id.desc())
+        .order_by(Article.published_at.desc(), Article.id.desc())
         .offset(offset_of(page, page_size))
         .limit(page_size)
     )

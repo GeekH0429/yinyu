@@ -1,7 +1,7 @@
 """图文阅读模型(多用户共创平台:任何登录用户均可发布)。"""
 from datetime import datetime
 
-from sqlalchemy import ARRAY, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import ARRAY, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -12,6 +12,15 @@ STATUS_PUBLISHED = "published"
 
 class Article(TimestampMixin, Base):
     __tablename__ = "articles"
+    __table_args__ = (
+        # 首页 feed 热路径:WHERE status='published' ORDER BY published_at DESC, id DESC
+        Index(
+            "ix_articles_feed",
+            "published_at",
+            "id",
+            postgresql_where=text("status = 'published'"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     author_id: Mapped[int] = mapped_column(

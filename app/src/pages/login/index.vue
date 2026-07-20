@@ -53,21 +53,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive } from 'vue'
 import { login } from '../../store/user'
 import { api } from '../../api'
 
-const statusBarHeight = ref(0)
+const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const mode = ref('login')
 const loading = ref(false)
 
 const form = reactive({ username: '', password: '' })
 const reg = reactive({ username: '', password: '', invite_code: '', nickname: '' })
-
-onMounted(() => {
-  const sys = uni.getSystemInfoSync()
-  statusBarHeight.value = sys.statusBarHeight || 0
-})
 
 async function onLogin() {
   if (!form.username || !form.password) {

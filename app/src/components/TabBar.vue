@@ -1,5 +1,5 @@
 <template>
-  <view class="tab-bar">
+  <view :class="['tab-bar', { dark: isDark }]">
     <view
       v-for="(item, i) in tabs"
       :key="i"
@@ -13,7 +13,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 
 const homeSvg = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><path d="M49.6 515.3a34.9 34.9 0 0 1-23.6-60.6L488.4 29.6a35 35 0 0 1 47.3.1L995.4 454.7a34.9 34.9 0 1 1-47.4 51.3L511.9 102.8 73.2 506.1a34.8 34.8 0 0 1-23.6 9.2z" fill="currentColor"/><path d="M827.3 1001.8H196.7c-44.9 0-81.5-36.5-81.5-81.5V541.9a34.9 34.9 0 1 1 69.8 0v378.5a11.6 11.6 0 0 0 11.6 11.6h630.6a11.6 11.6 0 0 0 11.6-11.6V541.9a34.9 34.9 0 1 1 69.8 0v378.5c0 44.9-36.5 81.4-81.5 81.4z" fill="currentColor"/></svg>`
@@ -27,6 +27,8 @@ const tabs = [
 ]
 
 const current = ref('pages/index/index')
+// 树洞页是暗黑系,TabBar 跟着转暗
+const isDark = computed(() => current.value === 'pages/treehole/index')
 
 function syncCurrent() {
   try {
@@ -88,5 +90,24 @@ function onTap(pagePath) {
 .tab-item.active .tab-text {
   color: #c4a882;
   font-weight: 600;
+}
+
+/* 暗黑(树洞页) */
+.tab-bar.dark {
+  background: #0d0d12;
+  border-top-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.4);
+}
+.tab-bar.dark .svg-icon {
+  color: #666680;
+}
+.tab-bar.dark .tab-text {
+  color: #666680;
+}
+.tab-bar.dark .tab-item.active .svg-icon {
+  color: #7b8cc4;
+}
+.tab-bar.dark .tab-item.active .tab-text {
+  color: #7b8cc4;
 }
 </style>

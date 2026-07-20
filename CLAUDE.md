@@ -92,6 +92,8 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 - PG 数组(ARRAY)按元素筛选用 `Column.any(value)`(生成 `value = ANY(col)`),**不要**用 `.contains([...])`(基础 ARRAY 未实现,会 500)。
 - pydantic-settings 的 `List[str]` 字段若想接受逗号分隔或 `*`,必须用 `Annotated[List[str], NoDecode]` + `@field_validator(mode="before")` 切分;否则会被当 JSON 解析报错。
 - `alembic.ini` 等 `.ini` **必须纯 ASCII**(Windows 中文系统 configparser 用 GBK 读,中文注释会炸)。
+- 首页 feed 依赖部分索引 `ix_articles_feed`(`WHERE status='published'` 上的 `(published_at, id)`)。`list_published` 的 `ORDER BY` 必须是 `published_at.desc(), id.desc()`,**不要加 `nulls_last()`**——否则规划器无法按索引顺序返回,会退化成 Sort(已用 EXPLAIN 验证:加 nulls_last→Sort,去掉→Index Only Scan Backward 无 Sort)。
+- 上传(`api/upload.py`)用 `aiofiles` **分块流式**写盘(`await file.read(1MB)` + `await f.write`)。**不要** `await file.read()` 整文件入内存 + 同步 `open().write()`——50MB 视频会阻塞事件循环、卡住其它请求。
 
 **前端(TipTap v3)**
 - 很多扩展是**命名导出**(无 default),例如 `@tiptap/extension-text-style` 只能 `import { TextStyle }`。`@tiptap/starter-kit` **已内置 underline + link**(不要再单独装/导入,会重复注册)。

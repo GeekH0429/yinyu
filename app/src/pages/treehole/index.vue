@@ -7,37 +7,114 @@
       <text class="header-sub">这里没有列表,只有你与暗号之间的秘密。</text>
     </view>
 
-    <!-- 解锁前 -->
-    <view class="card unlock-card" v-if="!revealed">
-      <view class="lock-icon">✿</view>
-      <text class="unlock-tip">输入 6 位数字暗号,打开那一篇</text>
+    <!-- 未解锁:暗号传送门 -->
+    <view class="portal-wrap" v-if="!revealed">
+      <view class="portal">
+        <view class="portal-glow"></view>
+        <text class="portal-desc">树洞无形&nbsp;&nbsp;&nbsp;回声共鸣</text>
 
-      <view class="code-row">
+        <view class="pin-group" @tap="focusInput">
+          <view
+            v-for="(d, i) in pinDigits"
+            :key="i"
+            :class="['pin-box', { filled: d !== '' }]"
+          >
+            <text v-if="d !== ''" class="pin-char">{{ d }}</text>
+          </view>
+        </view>
+
         <input
-          class="code-input"
+          class="hidden-input"
           v-model="code"
           type="number"
           :maxlength="6"
-          placeholder="······"
-          placeholder-class="ph"
-          confirm-type="done"
-          @confirm="onUnlock"
+          :focus="focused"
+          @input="onInput"
+          @focus="focused = true"
+          @blur="focused = false"
         />
-      </view>
 
-      <button class="unlock-btn" :loading="loading" :disabled="code.length !== 6" @tap="onUnlock">
-        打开树洞
-      </button>
+        <view class="portal-bottom">
+          <text v-if="loading" class="loading-text">正在解锁…</text>
+          <text v-else class="portal-hint">输入 6 位数字暗号,打开那一篇</text>
+        </view>
+      </view>
     </view>
 
-    <!-- 解锁后 -->
-    <view class="card revealed-card" v-else>
-      <text class="revealed-title" v-if="revealed.title">{{ revealed.title }}</text>
-      <text class="revealed-from">— 一封来自远方的悄悄话 —</text>
-      <mp-html class="rich" :content="revealed.content_html" selectable :domain="serverOrigin" />
-      <view class="revealed-meta">
-        <text>已被阅读 {{ revealed.view_count }} 次</text>
-        <text class="again" @tap="reset">解锁另一篇</text>
+    <!-- 已解锁 -->
+    <view class="revealed" v-else>
+      <view class="revealed-head">
+        <text class="badge">🔓 暗号 [{{ enteredCode }}] 解锁</text>
+        <text class="relock" @tap="reset">重新上锁</text>
+      </view>
+
+      <view class="hole-card">
+        <text class="hole-title" v-if="revealed.title">{{ revealed.title }}</text>
+        <text class="hole-from">— 一封来自远方的悄悄话 —</text>
+        <mp-html
+          class="rich"
+          :content="revealed.content_html"
+          selectable
+          :domain="serverOrigin"
+          :tag-style="richStyle"
+        />
+        <view class="hole-foot">
+          <text>已被阅读 {{ revealed.view_count }} 次</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 写树洞浮动按钮 -->
+    <view class="fab" @tap="openPublish">
+      <view class="fab-icon" v-html="planeSvg"></view>
+    </view>
+
+    <!-- 发布树洞弹窗(暗黑) -->
+    <view class="mask" v-if="publishVisible" @tap="closePublish">
+      <view class="pub-modal" @tap.stop>
+        <view class="pub-head">
+          <text class="pub-title serif">写一封悄悄话</text>
+          <text class="pub-close" @tap="closePublish">✕</text>
+        </view>
+
+        <!-- 发布成功:展示暗号 -->
+        <view v-if="pubResult" class="pub-result">
+          <text class="pub-result-tip">已藏好 ✿ 它的暗号是</text>
+          <text class="pub-result-code">{{ pubResult }}</text>
+          <text class="pub-result-sub">把暗号私下分享给想让他看到的人</text>
+          <view class="pub-result-actions">
+            <text class="r-btn" @tap="copyResult">复制</text>
+            <text class="r-btn primary" @tap="unlockResult">立即查看</text>
+          </view>
+        </view>
+
+        <!-- 编辑 -->
+        <view v-else class="pub-form">
+          <input class="pub-input" v-model="pub.title" placeholder="标题(可选)" />
+          <textarea
+            class="pub-textarea"
+            v-model="pub.content_html"
+            placeholder="说出心里话…"
+            :maxlength="-1"
+            auto-height
+          />
+          <view class="pub-media">
+            <text class="pub-mbtn" @tap="pubInsertImage">🖼 图片</text>
+            <text class="pub-mbtn" @tap="pubInsertAudio">🎵 音频</text>
+            <text v-if="pubUploading" class="pub-up">上传中…</text>
+          </view>
+          <view class="pub-code-row">
+            <input
+              class="pub-code-input"
+              v-model="pub.code"
+              type="number"
+              :maxlength="6"
+              placeholder="留空随机生成 6 位暗号"
+            />
+            <text class="pub-random" @tap="randomCode">🎲</text>
+          </view>
+          <button class="pub-submit" :loading="pubSubmitting" @tap="pubSubmit">藏进树洞</button>
+        </view>
       </view>
     </view>
 
@@ -46,31 +123,56 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { onMounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { api } from '../../api'
 import { SERVER_ORIGIN } from '../../config'
+import { chooseImage, pickAudio } from '../../utils/pick'
 import TabBar from '../../components/TabBar.vue'
 
 const serverOrigin = SERVER_ORIGIN
-const statusBarHeight = ref(0)
+const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
+
+/* ---- 解锁 ---- */
 const code = ref('')
+const focused = ref(false)
 const loading = ref(false)
 const revealed = ref(null)
+const enteredCode = ref('')
 
-onMounted(() => {
-  const sys = uni.getSystemInfoSync()
-  statusBarHeight.value = sys.statusBarHeight || 0
+const richStyle = {
+  p: 'color:#C8C8D8;line-height:1.9',
+  h1: 'color:#E0E0E0',
+  h2: 'color:#E0E0E0',
+  h3: 'color:#E0E0E0',
+  blockquote: 'color:#9aa0b8;border-left:3px solid #7B8CC4;padding-left:12px',
+  li: 'color:#C8C8D8',
+  a: 'color:#7B8CC4'
+}
+
+const pinDigits = computed(() => {
+  const arr = ['', '', '', '', '', '']
+  for (let i = 0; i < code.value.length && i < 6; i++) arr[i] = code.value[i]
+  return arr
 })
 
+function focusInput() {
+  focused.value = true
+}
+
+function onInput() {
+  code.value = code.value.replace(/\D/g, '').slice(0, 6)
+  if (code.value.length === 6) onUnlock()
+}
+
 async function onUnlock() {
-  if (code.value.length !== 6) return
+  if (loading.value) return
   loading.value = true
   try {
     revealed.value = await api.treeholes.unlock(code.value)
-    uni.vibrateShort && uni.vibrateShort({ type: 'light' })
-  } catch (err) {
-    // request 拦截器已 toast(暗号无效 / 已锁定)
+    enteredCode.value = code.value
+    focused.value = false
+  } catch {
+    code.value = ''
   } finally {
     loading.value = false
   }
@@ -78,119 +180,461 @@ async function onUnlock() {
 
 function reset() {
   revealed.value = null
+  enteredCode.value = ''
   code.value = ''
+}
+
+/* ---- 写树洞 ---- */
+const planeSvg = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><path d="M1007.9 7.2C1001.8 3 994.8.8 987.2.8c-6.6 0-12.6 1.7-18.3 5.2L18.9 554.1C5.9 561.4-.2 572.6.6 587.9c1 15.7 8.7 26.2 22.8 31.5l216.4 88.8c5.6 2.3 12 1.2 16.5-2.7L859.2 184.6 380.3 771.6c-9.3 11.4-14.4 25.7-14.4 40.5v176.3c0 7.7 2.3 14.6 6.7 20.9 4.3 6.4 10.2 10.7 17.4 13.4 3.6 1.5 7.8 2.3 12.7 2.3 11.8 0 21.1-4.2 28-13.1l115.5-141.3c8.9-10.9 23.8-14.6 36.8-9.3l236.7 96.8c4.9 1.9 9.5 2.9 13.7 2.9 6.4 0 12.4-1.7 17.7-4.9 8.9-5.2 14.3-13.1 16.4-23.2L1023.7 49.4c3.4-17.1-1.3-31.5-15.8-42.2z" fill="currentColor"/></svg>`
+
+const publishVisible = ref(false)
+const pub = reactive({ title: '', content_html: '', code: '' })
+const pubUploading = ref(false)
+const pubSubmitting = ref(false)
+const pubResult = ref('')
+
+async function uploadPicked(path) {
+  pubUploading.value = true
+  try {
+    return (await api.upload(path)).url
+  } finally {
+    pubUploading.value = false
+  }
+}
+
+async function pubInsertImage() {
+  try {
+    const url = await uploadPicked(await chooseImage())
+    pub.content_html += `<p><img src="${url}" style="max-width:100%;border-radius:12px"/></p>`
+  } catch {
+    /* cancel */
+  }
+}
+
+async function pubInsertAudio() {
+  try {
+    const url = await uploadPicked(await pickAudio())
+    pub.content_html += `<p><audio controls src="${url}" style="max-width:100%"></audio></p>`
+  } catch {
+    /* cancel / unsupported */
+  }
+}
+
+function randomCode() {
+  let s = ''
+  for (let i = 0; i < 6; i++) s += Math.floor(Math.random() * 10)
+  pub.code = s
+}
+
+async function pubSubmit() {
+  if (!pub.content_html.trim()) {
+    return uni.showToast({ title: '写点什么吧', icon: 'none' })
+  }
+  pubSubmitting.value = true
+  try {
+    const code = pub.code && /^\d{6}$/.test(pub.code) ? pub.code : null
+    const res = await api.write.createTreehole({
+      title: pub.title || null,
+      content_html: pub.content_html,
+      code
+    })
+    pubResult.value = res.code
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    pubSubmitting.value = false
+  }
+}
+
+function copyResult() {
+  uni.setClipboardData({ data: pubResult.value })
+}
+
+function unlockResult() {
+  // 用刚生成的暗号直接解锁查看
+  code.value = pubResult.value
+  publishVisible.value = false
+  resetPub()
+  onUnlock()
+}
+
+function resetPub() {
+  pub.title = ''
+  pub.content_html = ''
+  pub.code = ''
+  pubResult.value = ''
+}
+
+function openPublish() {
+  resetPub()
+  publishVisible.value = true
+}
+
+function closePublish() {
+  publishVisible.value = false
 }
 </script>
 
 <style scoped>
 .hole {
   min-height: 100vh;
-  background: linear-gradient(170deg, #f6f1ea 0%, #fdfbf7 60%, #f3eee8 100%);
-  padding-bottom: 160rpx;
+  background: #0d0d12;
+  display: flex;
+  flex-direction: column;
 }
 .status-bar {
   width: 100%;
+  background: #0d0d12;
 }
 .header {
-  padding: 16rpx 48rpx 36rpx;
+  padding: 16rpx 48rpx 24rpx;
 }
 .header-title {
-  font-size: 56rpx;
+  font-size: 52rpx;
   font-weight: 700;
-  color: #88a07a;
+  color: #e0e0e0;
   letter-spacing: 4rpx;
 }
 .header-sub {
   display: block;
-  color: #b8b8b8;
+  color: #666680;
   font-size: 24rpx;
   margin-top: 8rpx;
-  line-height: 1.6;
 }
-.unlock-card {
-  margin: 40rpx 48rpx;
-  padding: 64rpx 48rpx;
+
+/* 传送门 */
+.portal-wrap {
+  flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  padding: 0 48rpx 160rpx;
 }
-.lock-icon {
-  font-size: 72rpx;
-  color: #88a07a;
-  margin-bottom: 24rpx;
-}
-.unlock-tip {
-  color: #8d8d8d;
-  font-size: 26rpx;
-  margin-bottom: 48rpx;
-}
-.code-row {
+.portal {
   width: 100%;
-}
-.code-input {
-  width: 100%;
+  background: linear-gradient(135deg, #1a1a24 0%, #22222e 100%);
+  border-radius: 48rpx;
+  padding: 80rpx 48rpx;
   text-align: center;
-  font-size: 80rpx;
-  letter-spacing: 48rpx;
-  color: #4a4a4a;
-  padding: 24rpx 0;
-  border-bottom: 2rpx solid rgba(136, 160, 122, 0.4);
+  box-shadow: 0 16rpx 64rpx rgba(0, 0, 0, 0.5);
+  border: 2rpx solid rgba(255, 255, 255, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+.portal-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(100, 120, 200, 0.15) 0%, transparent 60%);
+  animation: portalGlow 6s infinite;
+}
+@keyframes portalGlow {
+  0%, 100% { transform: translate(-10%, -10%); }
+  50% { transform: translate(10%, 10%); }
+}
+.portal-desc {
+  font-size: 28rpx;
+  color: #666680;
+  display: block;
+  margin-bottom: 60rpx;
+  position: relative;
+  z-index: 1;
+}
+.pin-group {
+  display: flex;
+  justify-content: center;
+  gap: 24rpx;
   margin-bottom: 48rpx;
+  position: relative;
+  z-index: 1;
 }
-.ph {
-  color: #ddd6cc;
-  letter-spacing: 48rpx;
+.pin-box {
+  width: 88rpx;
+  height: 110rpx;
+  background: rgba(255, 255, 255, 0.04);
+  border: 3rpx solid #333348;
+  border-radius: 24rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s;
 }
-.unlock-btn {
-  width: 80%;
+.pin-box.filled {
+  border-color: #6c7ba0;
+  background: rgba(108, 123, 160, 0.12);
+}
+.pin-char {
+  font-size: 44rpx;
+  color: #c0c8e0;
+  font-weight: 600;
+}
+.hidden-input {
+  position: absolute;
+  opacity: 0;
+  height: 0;
+  width: 0;
+}
+.portal-bottom {
+  position: relative;
+  z-index: 1;
+}
+.portal-hint {
+  font-size: 24rpx;
+  color: #555568;
+}
+.loading-text {
+  font-size: 26rpx;
+  color: #7b8cc4;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* 解锁后 */
+.revealed {
+  flex: 1;
+  padding: 16rpx 48rpx 160rpx;
+}
+.revealed-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+.badge {
+  font-size: 26rpx;
+  color: #7b8cc4;
+  font-weight: 600;
+}
+.relock {
+  font-size: 24rpx;
+  color: #666680;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 12rpx 24rpx;
+  border-radius: 40rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.08);
+}
+.hole-card {
+  background: #1a1a24;
+  border-radius: 36rpx;
+  padding: 48rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 16rpx 64rpx rgba(0, 0, 0, 0.4);
+}
+.hole-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #e0e0e0;
+  display: block;
+  margin-bottom: 16rpx;
+}
+.hole-from {
+  display: block;
+  color: #555568;
+  font-size: 24rpx;
+  margin-bottom: 28rpx;
+}
+.rich {
+  font-size: 30rpx;
+}
+.hole-foot {
+  margin-top: 36rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.06);
+  font-size: 24rpx;
+  color: #555568;
+}
+
+/* 写树洞 FAB */
+.fab {
+  position: fixed;
+  right: 40rpx;
+  bottom: 150rpx;
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 52rpx;
+  background: linear-gradient(135deg, #3d4466 0%, #7b8cc4 100%);
+  box-shadow: 0 8rpx 32rpx rgba(123, 140, 196, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 998;
+}
+.fab-icon {
+  width: 52rpx;
+  height: 52rpx;
+  color: #fff;
+}
+.fab-icon :deep(svg) {
+  width: 52rpx;
+  height: 52rpx;
+  display: block;
+}
+
+/* 发布弹窗 */
+.mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.pub-modal {
+  width: 620rpx;
+  max-height: 86vh;
+  overflow-y: auto;
+  background: #1a1a24;
+  border-radius: 40rpx;
+  padding: 48rpx 40rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 16rpx 64rpx rgba(0, 0, 0, 0.5);
+}
+.pub-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+.pub-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #e0e0e0;
+}
+.pub-close {
+  font-size: 40rpx;
+  color: #555568;
+  padding: 0 8rpx;
+}
+.pub-input {
+  width: 100%;
+  height: 80rpx;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2rpx solid #333348;
+  border-radius: 20rpx;
+  padding: 0 24rpx;
+  font-size: 30rpx;
+  color: #c8c8d8;
+  box-sizing: border-box;
+  margin-bottom: 20rpx;
+}
+.pub-textarea {
+  width: 100%;
+  min-height: 280rpx;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2rpx solid #333348;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  font-size: 30rpx;
+  line-height: 1.7;
+  color: #c8c8d8;
+  box-sizing: border-box;
+}
+.pub-media {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin: 20rpx 0;
+}
+.pub-mbtn {
+  padding: 12rpx 24rpx;
+  background: rgba(123, 140, 196, 0.12);
+  color: #7b8cc4;
+  border-radius: 20rpx;
+  font-size: 26rpx;
+}
+.pub-up {
+  color: #7b8cc4;
+  font-size: 24rpx;
+}
+.pub-code-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 28rpx;
+}
+.pub-code-input {
+  flex: 1;
+  height: 80rpx;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2rpx solid #333348;
+  border-radius: 20rpx;
+  padding: 0 24rpx;
+  font-size: 32rpx;
+  letter-spacing: 8rpx;
+  color: #c8c8d8;
+  box-sizing: border-box;
+}
+.pub-random {
+  width: 80rpx;
+  height: 80rpx;
+  background: rgba(123, 140, 196, 0.12);
+  border: 2rpx solid #333348;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+}
+.pub-submit {
+  width: 100%;
   height: 92rpx;
   line-height: 92rpx;
-  background: #88a07a;
+  background: linear-gradient(135deg, #3d4466 0%, #7b8cc4 100%);
   color: #fff;
   border-radius: 46rpx;
   font-size: 32rpx;
   font-weight: 600;
   border: none;
 }
-.unlock-btn[disabled] {
-  background: #c8d2bf;
-  color: #fff;
-}
-.unlock-btn::after {
+.pub-submit::after {
   border: none;
 }
-.revealed-card {
-  margin: 20rpx 48rpx;
-  padding: 48rpx;
-}
-.revealed-title {
-  font-size: 40rpx;
-  font-weight: 700;
-  color: #4a4a4a;
-  display: block;
-  margin-bottom: 16rpx;
-}
-.revealed-from {
-  display: block;
-  color: #b0b0b0;
-  font-size: 24rpx;
-  margin-bottom: 28rpx;
-}
-.rich {
-  color: #4a4a4a;
-  font-size: 30rpx;
-  line-height: 1.9;
-}
-.revealed-meta {
+
+/* 发布成功 */
+.pub-result {
   display: flex;
-  justify-content: space-between;
-  margin-top: 40rpx;
-  padding-top: 28rpx;
-  border-top: 1rpx dashed rgba(196, 168, 130, 0.3);
-  font-size: 24rpx;
-  color: #b0b0b0;
+  flex-direction: column;
+  align-items: center;
+  padding: 24rpx 0;
 }
-.again {
-  color: #88a07a;
+.pub-result-tip {
+  color: #7b8cc4;
+  font-size: 28rpx;
+}
+.pub-result-code {
+  font-size: 88rpx;
+  font-weight: 700;
+  letter-spacing: 16rpx;
+  color: #c0c8e0;
+  font-family: 'Menlo', monospace;
+  margin: 24rpx 0 12rpx;
+}
+.pub-result-sub {
+  color: #555568;
+  font-size: 24rpx;
+  text-align: center;
+}
+.pub-result-actions {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 40rpx;
+}
+.r-btn {
+  padding: 16rpx 48rpx;
+  border-radius: 36rpx;
+  font-size: 28rpx;
+  background: rgba(255, 255, 255, 0.06);
+  color: #c8c8d8;
+}
+.r-btn.primary {
+  background: linear-gradient(135deg, #3d4466 0%, #7b8cc4 100%);
+  color: #fff;
 }
 </style>

@@ -59,14 +59,12 @@ import { resourceUrl, SERVER_ORIGIN } from '../../config'
 import { formatTime } from '../../utils/format'
 
 const serverOrigin = SERVER_ORIGIN
-const statusBarHeight = ref(0)
+const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const article = ref(null)
 const liked = ref(false)
 const loading = ref(true)
 
 onLoad((opts) => {
-  const sys = uni.getSystemInfoSync()
-  statusBarHeight.value = sys.statusBarHeight || 0
   if (opts.id) load(opts.id)
 })
 

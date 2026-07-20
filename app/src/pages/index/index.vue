@@ -36,6 +36,7 @@
           :src="resourceUrl(a.cover_url)"
           class="cover"
           mode="aspectFill"
+          lazy-load
         />
         <view class="body">
           <text class="title serif">{{ a.title }}</text>
@@ -75,7 +76,7 @@ import { formatDate } from '../../utils/format'
 import { isLoggedIn, refreshUser } from '../../store/user'
 import TabBar from '../../components/TabBar.vue'
 
-const statusBarHeight = ref(0)
+const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const articles = ref([])
 const tags = ref([])
 const activeTag = ref('')
@@ -85,8 +86,6 @@ const loading = ref(false)
 const noMore = ref(false)
 
 onMounted(async () => {
-  const sys = uni.getSystemInfoSync()
-  statusBarHeight.value = sys.statusBarHeight || 0
   if (isLoggedIn()) refreshUser()
   await Promise.all([loadTags(), loadArticles()])
 })

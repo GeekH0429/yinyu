@@ -8,6 +8,7 @@ import pathlib
 import uuid
 from datetime import datetime, timezone
 
+import aiofiles
 from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/upload", tags=["上传"])
 
 _ALLOWED = set(settings.allowed_mimes)
 _MAX_BYTES = settings.max_upload_mb * 1024 * 1024
+_CHUNK = 1024 * 1024  # 1MB / 块,流式读写,避免整文件入内存 + 阻塞事件循环
 
 
 @router.post("", response_model=MediaOut, status_code=201)
@@ -34,12 +36,6 @@ async def upload_file(
     if mime not in _ALLOWED:
         raise BadRequest(f"不支持的文件类型: {mime or '未知'}")
 
-    data = await file.read()
-    if len(data) == 0:
-        raise BadRequest("文件为空")
-    if len(data) > _MAX_BYTES:
-        raise BadRequest(f"文件过大,最大 {settings.max_upload_mb}MB")
-
     ext = pathlib.Path(file.filename or "").suffix.lower()[:10]
     name = f"{uuid.uuid4().hex}{ext}"
     date_dir = datetime.now(timezone.utc).strftime("%Y/%m/%d")
@@ -47,8 +43,26 @@ async def upload_file(
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, name)
 
-    with open(save_path, "wb") as f:
-        f.write(data)
+    # 分块流式落盘(异步),边写边累计大小,超限即终止并清理
+    size = 0
+    oversize = False
+    async with aiofiles.open(save_path, "wb") as f:
+        while True:
+            chunk = await file.read(_CHUNK)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > _MAX_BYTES:
+                oversize = True
+                break
+            await f.write(chunk)
+
+    if size == 0:
+        os.remove(save_path)
+        raise BadRequest("文件为空")
+    if oversize:
+        os.remove(save_path)
+        raise BadRequest(f"文件过大,最大 {settings.max_upload_mb}MB")
 
     rel = os.path.relpath(save_path, settings.upload_dir).replace("\\", "/")
     url = f"{settings.upload_url_prefix.rstrip('/')}/{rel}"
@@ -58,7 +72,7 @@ async def upload_file(
         filename=name,
         url=url,
         mime_type=mime,
-        size_bytes=len(data),
+        size_bytes=size,
     )
     db.add(media)
     await db.commit()
