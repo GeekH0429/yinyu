@@ -101,7 +101,13 @@
           <view class="pub-media">
             <text class="pub-mbtn" @tap="pubInsertImage">🖼 图片</text>
             <text class="pub-mbtn" @tap="pubInsertAudio">🎵 音频</text>
+            <text :class="['pub-mbtn', { rec: recording }]" @tap="toggleRecord">{{ recording ? '⏹ 停止' : '🎤 录音' }}</text>
             <text v-if="pubUploading" class="pub-up">上传中…</text>
+          </view>
+          <view class="pub-rec" v-if="recording">
+            <text class="pub-rec-dot">●</text>
+            <text class="pub-rec-time">{{ formatRecSecs(recSecs) }}</text>
+            <text class="pub-rec-tip">录音中…点「停止」结束并插入正文</text>
           </view>
           <view class="pub-code-row">
             <input
@@ -127,6 +133,7 @@ import { ref, reactive, computed } from 'vue'
 import { api } from '../../api'
 import { SERVER_ORIGIN } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
+import { startRecord, stopRecord, cancelRecord } from '../../utils/recorder'
 import TabBar from '../../components/TabBar.vue'
 
 const serverOrigin = SERVER_ORIGIN
@@ -192,6 +199,8 @@ const pub = reactive({ title: '', content_html: '', code: '' })
 const pubUploading = ref(false)
 const pubSubmitting = ref(false)
 const pubResult = ref('')
+const recording = ref(false)
+const recSecs = ref(0)
 
 async function uploadPicked(path) {
   pubUploading.value = true
@@ -218,6 +227,40 @@ async function pubInsertAudio() {
   } catch {
     /* cancel / unsupported */
   }
+}
+
+async function toggleRecord() {
+  if (!recording.value) {
+    try {
+      recSecs.value = 0
+      await startRecord({ onTick: (s) => (recSecs.value = s) })
+      recording.value = true
+    } catch {
+      uni.showToast({ title: '无法访问麦克风', icon: 'none' })
+    }
+    return
+  }
+  // 停止 → 上传 → 插入
+  recording.value = false
+  try {
+    const r = await stopRecord()
+    if (!r.duration) return
+    pubUploading.value = true
+    const data = await api.uploadRecorded(r)
+    pub.content_html += `<p><audio controls src="${data.url}" style="max-width:100%"></audio></p>`
+    uni.showToast({ title: '录音已加入', icon: 'success' })
+  } catch {
+    /* ignore */
+  } finally {
+    pubUploading.value = false
+    recSecs.value = 0
+  }
+}
+
+function formatRecSecs(s) {
+  const m = Math.floor(s / 60)
+  const ss = s % 60
+  return `${m}:${String(ss).padStart(2, '0')}`
 }
 
 function randomCode() {
@@ -271,6 +314,10 @@ function openPublish() {
 }
 
 function closePublish() {
+  if (recording.value) {
+    recording.value = false
+    cancelRecord()
+  }
   publishVisible.value = false
 }
 </script>
@@ -552,6 +599,37 @@ function closePublish() {
 .pub-up {
   color: #7b8cc4;
   font-size: 24rpx;
+}
+.pub-mbtn.rec {
+  background: rgba(224, 112, 112, 0.15);
+  color: #e07070;
+}
+.pub-rec {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  background: rgba(123, 140, 196, 0.08);
+  border-radius: 16rpx;
+}
+.pub-rec-dot {
+  color: #e07070;
+  font-size: 24rpx;
+  animation: recBlink 1s infinite;
+}
+@keyframes recBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.pub-rec-time {
+  color: #c0c8e0;
+  font-size: 28rpx;
+  font-family: 'Menlo', monospace;
+}
+.pub-rec-tip {
+  color: #555568;
+  font-size: 22rpx;
 }
 .pub-code-row {
   display: flex;

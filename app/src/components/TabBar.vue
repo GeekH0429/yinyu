@@ -44,7 +44,8 @@ onShow(syncCurrent)
 
 function onTap(pagePath) {
   if (current.value === pagePath) return
-  uni.reLaunch({ url: '/' + pagePath })
+  // switchTab 让 tabBar 页保活,切回不重新挂载(封面不重载)
+  uni.switchTab({ url: '/' + pagePath })
 }
 </script>
 

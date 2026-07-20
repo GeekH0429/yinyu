@@ -123,10 +123,26 @@ function upload(filePath, url = '/upload') {
   })
 }
 
+/** H5 录音等已拿到 File/Blob 的场景:fetch + FormData 上传(不设 Content-Type,让浏览器带 boundary)。 */
+function uploadBlob(file, filename, url = '/upload') {
+  return new Promise((resolve, reject) => {
+    const token = getToken()
+    const form = new FormData()
+    form.append('file', file, filename || file.name || 'file')
+    fetch(API_BASE + url, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then((r) => r.json().then((data) => (r.ok ? resolve(data) : reject(data))))
+      .catch(reject)
+  })
+}
+
 export default {
   get: (url, data, opts = {}) => request({ url, method: 'GET', data, ...opts }),
   post: (url, data, opts = {}) => request({ url, method: 'POST', data, ...opts }),
   put: (url, data, opts = {}) => request({ url, method: 'PUT', data, ...opts }),
   delete: (url, data, opts = {}) => request({ url, method: 'DELETE', data, ...opts }),
-  upload
+  upload,
+  uploadBlob
 }

@@ -69,11 +69,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { onShow, onReachBottom } from '@dcloudio/uni-app'
+import { onShow, onReachBottom, onPullDownRefresh } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { resourceUrl } from '../../config'
 import { formatDate } from '../../utils/format'
 import { isLoggedIn, refreshUser } from '../../store/user'
+import { feedDirty } from '../../store/feed'
 import TabBar from '../../components/TabBar.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
@@ -91,8 +92,9 @@ onMounted(async () => {
 })
 
 onShow(() => {
-  // 从写作页返回时刷新首页
-  if (articles.value.length) {
+  // 仅在发布过新图文时刷新一次;平时切 tab 不重载(tab 页保活)
+  if (feedDirty.value) {
+    feedDirty.value = false
     page.value = 1
     noMore.value = false
     loadArticles(true)
@@ -100,6 +102,13 @@ onShow(() => {
 })
 
 onReachBottom(() => loadArticles())
+
+onPullDownRefresh(async () => {
+  page.value = 1
+  noMore.value = false
+  await loadArticles(true)
+  uni.stopPullDownRefresh()
+})
 
 async function loadTags() {
   try {

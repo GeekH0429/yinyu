@@ -34,7 +34,9 @@ export const api = {
     createTreehole: (data) => http.post('/treeholes', data)
   },
 
-  upload: (filePath) => http.upload(filePath, '/upload')
+  upload: (filePath) => http.upload(filePath, '/upload'),
+  // 录音产物:H5 是 File 走 fetch,App 是 path 走 uni.uploadFile
+  uploadRecorded: (r) => (r.file ? http.uploadBlob(r.file, r.filename) : http.upload(r.path, '/upload'))
 }
 
 export default api

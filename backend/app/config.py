@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     allowed_mimes: Annotated[List[str], NoDecode] = [
         "image/jpeg", "image/png", "image/webp", "image/gif",
         "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-m4a",
+        "audio/aac", "audio/flac", "audio/webm", "audio/ogg",
         "video/mp4",
     ]
     max_upload_mb: int = 50
