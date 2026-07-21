@@ -30,12 +30,18 @@
         <text v-for="t in article.tags" :key="t" class="tag">{{ t }}</text>
       </view>
 
-      <mp-html
-        class="rich"
-        :content="article.content_html"
-        selectable
-        :domain="serverOrigin"
-      />
+      <view class="rich-content">
+        <AudioPlayer
+          v-for="audio in parsedAudioList"
+          :key="audio.id"
+          :src="audio.fullSrc"
+        />
+        <mp-html
+          :content="parsedContent"
+          selectable
+          :domain="serverOrigin"
+        />
+      </view>
 
       <view class="actions">
         <view :class="['like-btn', { liked }]" @tap="onLike">
@@ -52,17 +58,55 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { resourceUrl, SERVER_ORIGIN } from '../../config'
 import { formatTime } from '../../utils/format'
+import AudioPlayer from '../../components/AudioPlayer.vue'
 
 const serverOrigin = SERVER_ORIGIN
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const article = ref(null)
 const liked = ref(false)
 const loading = ref(true)
+
+// 解析音频列表
+const parsedAudioList = computed(() => {
+  if (!article.value?.content_html) return []
+
+  const audioList = []
+  const regex = /<audio[^>]*src=["']([^"']*)["'][^>]*>/gi
+  let match
+  let id = 0
+
+  while ((match = regex.exec(article.value.content_html)) !== null) {
+    const src = match[1]
+    // 转换为完整 URL
+    const fullSrc = resourceUrl(src)
+    audioList.push({
+      id: id++,
+      src: src,
+      fullSrc: fullSrc
+    })
+  }
+
+  return audioList
+})
+
+// 移除 audio 标签后的内容
+const parsedContent = computed(() => {
+  if (!article.value?.content_html) return ''
+
+  // 移除所有 audio 标签，但保留其周围的内容
+  return article.value.content_html.replace(/<audio[^>]*>.*?<\/audio>|<audio[^>]*\/>/gi, (match) => {
+    // 如果 audio 标签在 <p> 标签内，且没有其他内容，移除整个 <p> 标签
+    if (match.startsWith('<p>')) {
+      return ''
+    }
+    return match
+  }).replace(/<p>\s*<\/p>/gi, '') // 移除空的 p 标签
+})
 
 onLoad((opts) => {
   if (opts.id) load(opts.id)
@@ -168,8 +212,14 @@ function goBack() {
 .tags {
   margin: 28rpx 0 8rpx;
 }
-.rich {
+.rich-content {
   margin-top: 24rpx;
+  color: #4a4a4a;
+  font-size: 30rpx;
+  line-height: 1.85;
+}
+
+.rich-content :deep(.mp-html) {
   color: #4a4a4a;
   font-size: 30rpx;
   line-height: 1.85;

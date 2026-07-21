@@ -9,11 +9,11 @@
 
     <!-- 未解锁:暗号传送门 -->
     <view class="portal-wrap" v-if="!revealed">
-      <view class="portal">
+      <view class="portal" :class="{ leaving: unlocking }">
         <view class="portal-glow"></view>
         <text class="portal-desc">树洞无形&nbsp;&nbsp;&nbsp;回声共鸣</text>
 
-        <view class="pin-group" @tap="focusInput">
+        <view class="pin-group" :class="{ confirm: unlocking }" @tap="focusInput">
           <view
             v-for="(d, i) in pinDigits"
             :key="i"
@@ -51,17 +51,36 @@
       <view class="hole-card">
         <text class="hole-title" v-if="revealed.title">{{ revealed.title }}</text>
         <text class="hole-from">— 一封来自远方的悄悄话 —</text>
-        <mp-html
-          class="rich"
-          :content="revealed.content_html"
-          selectable
-          :domain="serverOrigin"
-          :tag-style="richStyle"
-        />
+
+        <!-- 音频播放器 -->
+        <view class="rich-content">
+          <AudioPlayer
+            v-for="audio in parsedAudioList"
+            :key="audio.id"
+            :src="audio.fullSrc"
+          />
+          <mp-html
+            class="rich"
+            :content="parsedContent"
+            selectable
+            :domain="serverOrigin"
+            :tag-style="richStyle"
+          />
+        </view>
+
         <view class="hole-foot">
           <text>已被阅读 {{ revealed.view_count }} 次</text>
         </view>
       </view>
+    </view>
+
+    <!-- 回声涟漪:输入暗号成功后的解锁动画 -->
+    <view class="echo-ripple" v-if="unlocking">
+      <view class="echo-flash"></view>
+      <view class="ripple ripple-1"></view>
+      <view class="ripple ripple-2"></view>
+      <view class="ripple ripple-3"></view>
+      <text class="echo-caption serif">回声抵达 ✦</text>
     </view>
 
     <!-- 写树洞浮动按钮 -->
@@ -124,6 +143,9 @@
       </view>
     </view>
 
+    <!-- 纸飞机寄向远方:发布成功动画覆盖层 -->
+    <FlyAwayOverlay :playing="flyPlaying" @done="onFlyDone" />
+
     <TabBar />
   </view>
 </template>
@@ -131,10 +153,12 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { api } from '../../api'
-import { SERVER_ORIGIN } from '../../config'
+import { SERVER_ORIGIN, resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
 import { startRecord, stopRecord, cancelRecord } from '../../utils/recorder'
 import TabBar from '../../components/TabBar.vue'
+import AudioPlayer from '../../components/AudioPlayer.vue'
+import FlyAwayOverlay from '../../components/FlyAwayOverlay.vue'
 
 const serverOrigin = SERVER_ORIGIN
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
@@ -145,6 +169,9 @@ const focused = ref(false)
 const loading = ref(false)
 const revealed = ref(null)
 const enteredCode = ref('')
+const unlocking = ref(false)
+let rippleTimer1 = null
+let rippleTimer2 = null
 
 const richStyle = {
   p: 'color:#C8C8D8;line-height:1.9',
@@ -155,6 +182,43 @@ const richStyle = {
   li: 'color:#C8C8D8',
   a: 'color:#7B8CC4'
 }
+
+// 解析音频列表
+const parsedAudioList = computed(() => {
+  if (!revealed.value?.content_html) return []
+
+  const audioList = []
+  const regex = /<audio[^>]*src=["']([^"']*)["'][^>]*>/gi
+  let match
+  let id = 0
+
+  while ((match = regex.exec(revealed.value.content_html)) !== null) {
+    const src = match[1]
+    // 转换为完整 URL
+    const fullSrc = resourceUrl(src)
+    audioList.push({
+      id: id++,
+      src: src,
+      fullSrc: fullSrc
+    })
+  }
+
+  return audioList
+})
+
+// 移除 audio 标签后的内容
+const parsedContent = computed(() => {
+  if (!revealed.value?.content_html) return ''
+
+  // 移除所有 audio 标签，但保留其周围的内容
+  return revealed.value.content_html.replace(/<audio[^>]*>.*?<\/audio>|<audio[^>]*\/>/gi, (match) => {
+    // 如果 audio 标签在 <p> 标签内，且没有其他内容，移除整个 <p> 标签
+    if (match.startsWith('<p>')) {
+      return ''
+    }
+    return match
+  }).replace(/<p>\s*<\/p>/gi, '') // 移除空的 p 标签
+})
 
 const pinDigits = computed(() => {
   const arr = ['', '', '', '', '', '']
@@ -175,9 +239,19 @@ async function onUnlock() {
   if (loading.value) return
   loading.value = true
   try {
-    revealed.value = await api.treeholes.unlock(code.value)
+    const data = await api.treeholes.unlock(code.value)
     enteredCode.value = code.value
     focused.value = false
+    // 回声涟漪:先涟漪扩散 + 传送门消散,再浮现树洞卡片
+    unlocking.value = true
+    clearTimeout(rippleTimer1)
+    clearTimeout(rippleTimer2)
+    rippleTimer1 = setTimeout(() => {
+      revealed.value = data
+    }, 600)
+    rippleTimer2 = setTimeout(() => {
+      unlocking.value = false
+    }, 1100)
   } catch {
     code.value = ''
   } finally {
@@ -186,6 +260,9 @@ async function onUnlock() {
 }
 
 function reset() {
+  clearTimeout(rippleTimer1)
+  clearTimeout(rippleTimer2)
+  unlocking.value = false
   revealed.value = null
   enteredCode.value = ''
   code.value = ''
@@ -199,6 +276,7 @@ const pub = reactive({ title: '', content_html: '', code: '' })
 const pubUploading = ref(false)
 const pubSubmitting = ref(false)
 const pubResult = ref('')
+const flyPlaying = ref(false)
 const recording = ref(false)
 const recSecs = ref(0)
 
@@ -223,7 +301,8 @@ async function pubInsertImage() {
 async function pubInsertAudio() {
   try {
     const url = await uploadPicked(await pickAudio())
-    pub.content_html += `<p><audio controls src="${url}" style="max-width:100%"></audio></p>`
+    // 插入特殊标记，阅读页面会解析为音频播放器
+    pub.content_html += `<p><audio src="${url}" controls style="max-width:100%"></audio></p>`
   } catch {
     /* cancel / unsupported */
   }
@@ -282,11 +361,16 @@ async function pubSubmit() {
       code
     })
     pubResult.value = res.code
+    flyPlaying.value = true // 放飞纸飞机,动画结束后由 onFlyDone 复位
   } catch {
     /* 拦截器已提示 */
   } finally {
     pubSubmitting.value = false
   }
+}
+
+function onFlyDone() {
+  flyPlaying.value = false
 }
 
 function copyResult() {
@@ -318,6 +402,7 @@ function closePublish() {
     recording.value = false
     cancelRecord()
   }
+  flyPlaying.value = false
   publishVisible.value = false
 }
 </script>
@@ -368,6 +453,13 @@ function closePublish() {
   position: relative;
   overflow: hidden;
 }
+.portal.leaving {
+  animation: portalLeave 0.55s ease-in 0.05s both;
+}
+@keyframes portalLeave {
+  0% { opacity: 1; transform: scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: scale(0.92); filter: blur(6rpx); }
+}
 .portal-glow {
   position: absolute;
   top: -50%;
@@ -412,6 +504,16 @@ function closePublish() {
   border-color: #6c7ba0;
   background: rgba(108, 123, 160, 0.12);
 }
+.pin-group.confirm .pin-box {
+  border-color: #7b8cc4;
+  background: rgba(123, 140, 196, 0.22);
+  animation: pinConfirm 0.45s ease-out both;
+}
+@keyframes pinConfirm {
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(123, 140, 196, 0); }
+  45% { transform: scale(1.14); box-shadow: 0 0 28rpx rgba(123, 140, 196, 0.6); }
+  100% { transform: scale(1); box-shadow: 0 0 0 rgba(123, 140, 196, 0); }
+}
 .pin-char {
   font-size: 44rpx;
   color: #c0c8e0;
@@ -441,6 +543,69 @@ function closePublish() {
   50% { opacity: 1; }
 }
 
+/* 回声涟漪(解锁动画) */
+.echo-ripple {
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  z-index: 1001;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.echo-flash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 320rpx;
+  height: 320rpx;
+  margin: -160rpx 0 0 -160rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(123, 140, 196, 0.55) 0%, rgba(123, 140, 196, 0.15) 40%, transparent 70%);
+  opacity: 0;
+  animation: echoFlash 0.7s 0.05s ease-out both;
+}
+@keyframes echoFlash {
+  0% { opacity: 0; transform: scale(0.4); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+.ripple {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 80rpx;
+  height: 80rpx;
+  margin: -40rpx 0 0 -40rpx;
+  border-radius: 50%;
+  border: 3rpx solid rgba(123, 140, 196, 0.65);
+  opacity: 0;
+}
+.ripple-1 { animation: rippleOut 1s 0.1s ease-out both; }
+.ripple-2 { animation: rippleOut 1s 0.3s ease-out both; }
+.ripple-3 { animation: rippleOut 1s 0.5s ease-out both; }
+@keyframes rippleOut {
+  0% { transform: scale(0.3); opacity: 0; border-width: 5rpx; }
+  15% { opacity: 0.85; }
+  100% { transform: scale(9); opacity: 0; border-width: 1rpx; }
+}
+.echo-caption {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  white-space: nowrap;
+  color: #7b8cc4;
+  font-size: 28rpx;
+  letter-spacing: 4rpx;
+  opacity: 0;
+  animation: echoCap 1s 0.35s ease-out both;
+}
+@keyframes echoCap {
+  0% { opacity: 0; transform: translate(-50%, 60rpx); }
+  45% { opacity: 1; transform: translate(-50%, 48rpx); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, 36rpx); }
+}
+
 /* 解锁后 */
 .revealed {
   flex: 1;
@@ -451,6 +616,11 @@ function closePublish() {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32rpx;
+  animation: headFade 0.5s 0.1s ease-out both;
+}
+@keyframes headFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 .badge {
   font-size: 26rpx;
@@ -471,6 +641,11 @@ function closePublish() {
   padding: 48rpx;
   border: 2rpx solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 16rpx 64rpx rgba(0, 0, 0, 0.4);
+  animation: cardEnter 0.55s 0.15s ease-out both;
+}
+@keyframes cardEnter {
+  0% { opacity: 0; transform: translateY(48rpx) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 .hole-title {
   font-family: 'Noto Serif SC', serif;
@@ -488,6 +663,10 @@ function closePublish() {
 }
 .rich {
   font-size: 30rpx;
+}
+
+.rich-content {
+  margin-top: 16rpx;
 }
 .hole-foot {
   margin-top: 36rpx;

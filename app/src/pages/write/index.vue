@@ -90,7 +90,8 @@ async function insertImage() {
 async function insertAudio() {
   try {
     const url = await uploadPicked(await pickAudio())
-    form.content_html += `<p><audio controls src="${url}" style="max-width:100%"></audio></p>`
+    // 插入特殊标记，阅读页面会解析为音频播放器
+    form.content_html += `<p><audio src="${url}" controls style="max-width:100%"></audio></p>`
   } catch {
     /* user cancel / unsupported */
   }
