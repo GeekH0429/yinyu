@@ -94,9 +94,17 @@ function request(options) {
   })
 }
 
-/** 上传文件(filePath 为 uni.chooseImage/chooseMessageFile 返回的临时路径)。 */
+/** 上传文件(filePath 为 uni.chooseImage/chooseMessageFile 返回的临时路径或 H5 的 File 对象)。 */
 function upload(filePath, url = '/upload') {
   return new Promise((resolve, reject) => {
+    // #ifdef H5
+    // H5 环境下如果是 File 对象，使用 uploadBlob
+    if (filePath instanceof File) {
+      uploadBlob(filePath, filePath.name, url).then(resolve).catch(reject)
+      return
+    }
+    // #endif
+
     const token = getToken()
     uni.uploadFile({
       url: API_BASE + url,
