@@ -170,16 +170,28 @@ function goBack() {
 .content {
   padding: 24rpx 48rpx 120rpx;
 }
+/* 逐行浮现:加载完成后内容从上到下依次淡入上浮,像缓缓铺开一页纸 */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(28rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title, .author, .tags, .rich-content, .actions {
+    animation: none;
+  }
+}
 .title {
   font-size: 48rpx;
   font-weight: 700;
   color: #4a4a4a;
   line-height: 1.4;
+  animation: rise 0.6s ease-out both;
 }
 .author {
   display: flex;
   align-items: center;
   margin-top: 32rpx;
+  animation: rise 0.6s 0.12s ease-out both;
 }
 .avatar {
   width: 64rpx;
@@ -211,12 +223,14 @@ function goBack() {
 }
 .tags {
   margin: 28rpx 0 8rpx;
+  animation: rise 0.6s 0.22s ease-out both;
 }
 .rich-content {
   margin-top: 24rpx;
   color: #4a4a4a;
   font-size: 30rpx;
   line-height: 1.85;
+  animation: rise 0.8s 0.32s ease-out both;
 }
 
 .rich-content :deep(.mp-html) {
@@ -228,6 +242,7 @@ function goBack() {
   margin-top: 48rpx;
   display: flex;
   justify-content: center;
+  animation: rise 0.6s 0.5s ease-out both;
 }
 .like-btn {
   display: flex;
@@ -255,5 +270,10 @@ function goBack() {
 .load-text {
   color: #b8b8b8;
   font-size: 26rpx;
+  animation: breathe 1.8s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 </style>
