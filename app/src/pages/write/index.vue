@@ -55,7 +55,7 @@ import { ref, reactive } from 'vue'
 import { api } from '../../api'
 import { resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
-import { feedDirty } from '../../store/feed'
+import { invalidateFeed } from '../../store/feed'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const submitting = ref(false)
@@ -127,7 +127,7 @@ async function onSubmit() {
       status: 'published'
     })
     uni.showToast({ title: '已发布', icon: 'success' })
-    feedDirty.value = true
+    invalidateFeed()
     setTimeout(() => uni.navigateBack(), 500)
   } catch {
     /* 拦截器已提示 */

@@ -68,47 +68,57 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { onShow, onReachBottom, onPullDownRefresh } from '@dcloudio/uni-app'
+import { ref, onMounted, nextTick } from 'vue'
+import { onShow, onReachBottom, onPullDownRefresh, onPageScroll } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { resourceUrl } from '../../config'
 import { formatDate } from '../../utils/format'
 import { isLoggedIn, refreshUser } from '../../store/user'
-import { feedDirty } from '../../store/feed'
+import {
+  articles, tags, activeTag, page, noMore, loading,
+  scrollTop, hydrated, dirty
+} from '../../store/feed'
 import TabBar from '../../components/TabBar.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
-const articles = ref([])
-const tags = ref([])
-const activeTag = ref('')
-const page = ref(1)
 const pageSize = 10
-const loading = ref(false)
-const noMore = ref(false)
 
 onMounted(async () => {
   if (isLoggedIn()) refreshUser()
-  await Promise.all([loadTags(), loadArticles()])
+  // reLaunch 重挂载:有缓存就还原滚动位置、不重载;无缓存或已失效才拉取
+  if (hydrated.value && !dirty.value) {
+    restoreScroll()
+    return
+  }
+  await Promise.all([loadTags(), loadArticles(true)])
+  hydrated.value = true
+  dirty.value = false
 })
 
+// navigateBack(write 发完帖返回)不重挂载页面,用 onShow 处理失效刷新
 onShow(() => {
-  // 仅在发布过新图文时刷新一次;平时切 tab 不重载(tab 页保活)
-  if (feedDirty.value) {
-    feedDirty.value = false
-    page.value = 1
-    noMore.value = false
+  if (dirty.value) {
+    dirty.value = false
     loadArticles(true)
   }
+})
+
+onPageScroll((e) => {
+  scrollTop.value = e.scrollTop
 })
 
 onReachBottom(() => loadArticles())
 
 onPullDownRefresh(async () => {
-  page.value = 1
-  noMore.value = false
   await loadArticles(true)
   uni.stopPullDownRefresh()
 })
+
+function restoreScroll() {
+  if (scrollTop.value <= 0) return
+  // 等列表渲染稳定再还原(H5 下需 DOM 就绪)
+  nextTick(() => setTimeout(() => uni.pageScrollTo({ scrollTop: scrollTop.value, duration: 0 }), 50))
+}
 
 async function loadTags() {
   try {
@@ -124,7 +134,10 @@ async function loadArticles(reset = false) {
   if (noMore.value && !reset) return
   loading.value = true
   try {
-    if (reset) page.value = 1
+    if (reset) {
+      page.value = 1
+      noMore.value = false
+    }
     const params = { page: page.value, page_size: pageSize }
     if (activeTag.value) params.tag = activeTag.value
     const res = await api.articles.list(params)

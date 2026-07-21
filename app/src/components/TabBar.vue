@@ -44,8 +44,9 @@ onShow(syncCurrent)
 
 function onTap(pagePath) {
   if (current.value === pagePath) return
-  // switchTab 让 tabBar 页保活,切回不重新挂载(封面不重载)
-  uni.switchTab({ url: '/' + pagePath })
+  // 已改用纯自定义 tabBar(无 pages.json 注册),三主页不再是 tabBar 页,switchTab 会失败,
+  // 改用 reLaunch。代价:切 tab 会重新挂载目标页(不再保活,列表/滚动位置不保留)
+  uni.reLaunch({ url: '/' + pagePath })
 }
 </script>
 

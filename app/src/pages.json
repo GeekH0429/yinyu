@@ -18,17 +18,5 @@
     "navigationBarTitleText": "隐语",
     "navigationBarBackgroundColor": "#FDFBF7",
     "backgroundColor": "#FDFBF7"
-  },
-  "tabBar": {
-    "custom": true,
-    "color": "#8D8D8D",
-    "selectedColor": "#C4A882",
-    "backgroundColor": "#FDFBF7",
-    "borderStyle": "white",
-    "list": [
-      { "pagePath": "pages/index/index", "text": "阅读" },
-      { "pagePath": "pages/treehole/index", "text": "树洞" },
-      { "pagePath": "pages/mine/index", "text": "我的" }
-    ]
   }
 }
