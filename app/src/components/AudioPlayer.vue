@@ -15,7 +15,7 @@
       <!-- 右侧控制 -->
       <view class="control-area">
         <view class="play-btn" @tap="togglePlay">
-          <text class="play-icon">{{ isPlaying ? '⏸' : '▶' }}</text>
+          <text class="play-icon">{{ loading ? '…' : (isPlaying ? '⏸' : '▶') }}</text>
         </view>
       </view>
     </view>
@@ -36,95 +36,70 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 
 const props = defineProps({
-  src: {
-    type: String,
-    required: true
-  }
+  src: { type: String, required: true }
 })
 
 const isPlaying = ref(false)
+const loading = ref(false)
 const currentTime = ref(0)
 const duration = ref(0)
 const progress = ref(0)
 const isSeeking = ref(false)
 
-const innerAudioContext = ref(null)
+// InnerAudioContext 实例:懒创建(首次播放才 create + 赋 src),
+// 避免一进文章就为每个音频预拉流。用普通变量而非 ref(实例本身不参与渲染)。
+let ctx = null
+let lastUiTick = 0
 
-onMounted(() => {
-  // 使用 uni.createInnerAudioContext API（支持 H5/小程序/APP）
-  innerAudioContext.value = uni.createInnerAudioContext()
-  innerAudioContext.value.src = props.src
+function ensureContext() {
+  if (ctx) return ctx
+  ctx = uni.createInnerAudioContext()
+  ctx.src = props.src
 
-  // 获取时长
-  innerAudioContext.value.onCanplay(() => {
-    if (duration.value === 0) {
-      duration.value = innerAudioContext.value.duration || 0
+  ctx.onCanplay(() => {
+    if (duration.value === 0 && ctx) duration.value = ctx.duration || 0
+  })
+
+  ctx.onTimeUpdate(() => {
+    if (!ctx || isSeeking.value) return
+    // 节流:每 500ms 更新一次进度 UI,减少 slider 重绘与响应式开销
+    const now = Date.now()
+    if (now - lastUiTick < 500) return
+    lastUiTick = now
+    currentTime.value = ctx.currentTime || 0
+    const d = ctx.duration || duration.value
+    if (d > 0) {
+      duration.value = d
+      progress.value = (currentTime.value / d) * 100
     }
   })
 
-  // 时间更新
-  innerAudioContext.value.onTimeUpdate(() => {
-    if (!isSeeking.value) {
-      currentTime.value = innerAudioContext.value.currentTime || 0
-      const currentDuration = innerAudioContext.value.duration || duration.value
-      if (currentDuration > 0) {
-        duration.value = currentDuration
-        progress.value = (currentTime.value / duration.value) * 100
-      }
-    }
-  })
-
-  // 播放状态
-  innerAudioContext.value.onPlay(() => {
-    isPlaying.value = true
-  })
-
-  innerAudioContext.value.onPause(() => {
-    isPlaying.value = false
-  })
-
-  // 播放结束
-  innerAudioContext.value.onEnded(() => {
+  ctx.onPlay(() => { isPlaying.value = true; loading.value = false })
+  ctx.onPause(() => { isPlaying.value = false })
+  ctx.onEnded(() => {
     isPlaying.value = false
     currentTime.value = 0
     progress.value = 0
   })
-
-  // 错误处理
-  innerAudioContext.value.onError((err) => {
+  ctx.onError((err) => {
     console.error('音频播放错误', err)
     uni.showToast({ title: '音频加载失败', icon: 'none' })
     isPlaying.value = false
+    loading.value = false
   })
-})
-
-onUnmounted(() => {
-  if (innerAudioContext.value) {
-    try {
-      innerAudioContext.value.stop()
-      innerAudioContext.value.offCanplay()
-      innerAudioContext.value.offTimeUpdate()
-      innerAudioContext.value.offPlay()
-      innerAudioContext.value.offPause()
-      innerAudioContext.value.offEnded()
-      innerAudioContext.value.offError()
-      innerAudioContext.value.destroy()
-    } catch (e) {
-      console.warn('[音频播放器] 清理资源时出错:', e)
-    } finally {
-      innerAudioContext.value = null
-    }
-  }
-})
+  return ctx
+}
 
 function togglePlay() {
+  const c = ensureContext()
   if (isPlaying.value) {
-    innerAudioContext.value.pause()
+    c.pause()
   } else {
-    innerAudioContext.value.play()
+    loading.value = true
+    c.play()
   }
 }
 
@@ -133,10 +108,7 @@ function onSeek(e) {
   currentTime.value = seekTime
   progress.value = e.detail.value
   isSeeking.value = false
-
-  if (innerAudioContext.value) {
-    innerAudioContext.value.seek(seekTime)
-  }
+  if (ctx) ctx.seek(seekTime)
 }
 
 function onSeeking(e) {
@@ -150,6 +122,17 @@ function formatDuration(seconds) {
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
+
+onUnmounted(() => {
+  const c = ctx
+  ctx = null  // 先置空,避免卸载后的回调再访问
+  if (!c) return
+  // App 端原生 InnerAudioContext 的 offXxx() 无参调用会触发
+  // "indexOf of undefined" 内部异常,故不手动 offXxx;监听由 destroy 自动清理。
+  // stop / destroy 各自隔离,保证 destroy 一定执行。
+  try { c.stop() } catch (e) { /* ignore */ }
+  try { c.destroy() } catch (e) { /* ignore */ }
+})
 </script>
 
 <style scoped>
