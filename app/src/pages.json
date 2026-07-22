@@ -9,7 +9,7 @@
     { "path": "pages/index/index", "style": { "navigationStyle": "custom", "enablePullDownRefresh": true, "backgroundTextStyle": "dark" } },
     { "path": "pages/read/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/treehole/index", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/write/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/write/index", "style": { "navigationStyle": "custom", "app-plus": { "softinputMode": "adjustResize" } } },
     { "path": "pages/mine/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/settings/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/login/index", "style": { "navigationStyle": "custom" } }

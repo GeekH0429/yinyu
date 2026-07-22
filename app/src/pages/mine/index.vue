@@ -50,7 +50,15 @@
       >
         <!-- 我的图文 -->
         <swiper-item>
-          <scroll-view scroll-y class="tab-content" @scrolltolower="onReachArticles" :lower-threshold="120">
+          <scroll-view
+            scroll-y
+            class="tab-content"
+            refresher-enabled
+            :refresher-triggered="artRefreshing"
+            @refresherrefresh="onRefreshArticles"
+            @scrolltolower="onReachArticles"
+            :lower-threshold="120"
+          >
             <view class="card mini-card" v-for="a in articles" :key="a.id" @tap="goRead(a.id)">
               <text class="mini-title">{{ a.title }}</text>
               <view class="mini-meta">
@@ -84,7 +92,15 @@
 
         <!-- 我的树洞 -->
         <swiper-item>
-          <scroll-view scroll-y class="tab-content" @scrolltolower="onReachTreeholes" :lower-threshold="120">
+          <scroll-view
+            scroll-y
+            class="tab-content"
+            refresher-enabled
+            :refresher-triggered="thRefreshing"
+            @refresherrefresh="onRefreshTreeholes"
+            @scrolltolower="onReachTreeholes"
+            :lower-threshold="120"
+          >
             <view class="card mini-card" v-for="t in treeholes" :key="t.id">
               <view class="th-top">
                 <text class="mini-title">{{ t.title || '无题的悄悄话' }}</text>
@@ -157,6 +173,8 @@ const artLoading = ref(false)
 const thLoading = ref(false)
 const artError = ref(false)
 const thError = ref(false)
+const artRefreshing = ref(false)
+const thRefreshing = ref(false)
 const tabs = computed(() => [
   { key: 'articles', label: '我的图文', count: articles.value.length },
   { key: 'treeholes', label: '我的树洞', count: treeholes.value.length }
@@ -308,6 +326,17 @@ function retryArticles() {
 function retryTreeholes() {
   thError.value = false
   loadTreeholes(true)
+}
+// 下拉刷新(scroll-view 组件级 refresher:列表在 swiper 内滚动,页面级下拉不触发)
+async function onRefreshArticles() {
+  artRefreshing.value = true
+  await loadArticles(true)
+  artRefreshing.value = false
+}
+async function onRefreshTreeholes() {
+  thRefreshing.value = true
+  await loadTreeholes(true)
+  thRefreshing.value = false
 }
 </script>
 

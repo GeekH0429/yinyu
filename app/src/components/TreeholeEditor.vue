@@ -21,13 +21,15 @@
 
         <!-- 编辑 / 表单 -->
         <view v-else class="pub-form">
-          <input class="pub-input" v-model="pub.title" placeholder="标题(可选)" />
+          <input class="pub-input" v-model="pub.title" placeholder="标题(可选)" :cursor-spacing="20" />
           <textarea
             class="pub-textarea"
             v-model="pub.content_html"
             placeholder="说出心里话…"
             :maxlength="-1"
             auto-height
+            :cursor-spacing="20"
+            :adjust-position="true"
           />
           <view class="pub-media">
             <text class="pub-mbtn" @tap="pubInsertImage">🖼 图片</text>
@@ -48,6 +50,7 @@
               type="number"
               :maxlength="6"
               placeholder="留空随机生成 6 位暗号"
+              :cursor-spacing="20"
             />
             <text class="pub-random" @tap="randomCode">🎲</text>
           </view>

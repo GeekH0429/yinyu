@@ -97,11 +97,11 @@
 
     <!-- 修改密码弹窗 -->
     <view v-if="showPwd" class="mask" @tap="closePwd">
-      <view class="dialog" @tap.stop>
+      <view class="dialog" :style="dialogStyle" @tap.stop>
         <text class="dialog-title">修改密码</text>
-        <input class="dialog-input" v-model="pwdForm.old" password placeholder="当前密码" />
-        <input class="dialog-input" v-model="pwdForm.pwd" password placeholder="新密码(至少 6 位)" />
-        <input class="dialog-input" v-model="pwdForm.confirm" password placeholder="再次输入新密码" />
+        <input class="dialog-input" v-model="pwdForm.old" password placeholder="当前密码" :cursor-spacing="20" />
+        <input class="dialog-input" v-model="pwdForm.pwd" password placeholder="新密码(至少 6 位)" :cursor-spacing="20" />
+        <input class="dialog-input" v-model="pwdForm.confirm" password placeholder="再次输入新密码" :cursor-spacing="20" />
         <view class="dialog-actions">
           <text class="dialog-btn cancel" @tap="closePwd">取消</text>
           <text class="dialog-btn confirm" @tap="submitPwd">确定</text>
@@ -112,8 +112,8 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { ref, reactive, computed } from 'vue'
+import { onShow, onLoad, onUnload } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { getUser, logout } from '../../store/user'
 import CachedImage from '../../components/CachedImage.vue'
@@ -124,6 +124,21 @@ const user = ref(getUser())
 // 修改密码弹窗
 const showPwd = ref(false)
 const pwdForm = reactive({ old: '', pwd: '', confirm: '' })
+
+// 软键盘高度:密码弹窗据此上移避开键盘(App/小程序;H5 该回调不触发,降级靠系统自适应)
+const kbHeight = ref(0)
+let kbCb = null
+onLoad(() => {
+  kbCb = (res) => (kbHeight.value = res.height || 0)
+  uni.onKeyboardHeightChange(kbCb)
+})
+onUnload(() => {
+  if (kbCb) uni.offKeyboardHeightChange(kbCb)
+})
+const dialogStyle = computed(() => ({
+  transform: kbHeight.value ? `translateY(${-Math.round(kbHeight.value * 0.45)}px)` : 'translateY(0)',
+  transition: 'transform 0.2s ease'
+}))
 
 onShow(() => {
   // 从编辑弹窗/其它操作返回时同步本地最新资料

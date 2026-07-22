@@ -50,7 +50,7 @@
 
       <view class="actions">
         <view :class="['like-btn', { liked }]" @tap="onLike">
-          <text class="like-icon">{{ liked ? '♥' : '♡' }}</text>
+          <text :class="['like-icon', { pop: likePulse }]">{{ liked ? '♥' : '♡' }}</text>
           <text class="like-text">{{ article.like_count }}</text>
         </view>
       </view>
@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { SERVER_ORIGIN, resourceUrl, isRemoteUrl } from '../../config'
@@ -95,6 +95,7 @@ const article = ref(null)
 const liked = ref(false)
 const loading = ref(true)
 const loadError = ref(false) // 无快照时加载失败,展示错误占位 + 重试
+const likePulse = ref(false) // 点赞心形 pop 动画触发器
 
 // 解析音频(提取出来交给 AudioPlayer,正文剥除 audio,避免 mp-html 与 AudioPlayer 双重渲染)
 const richParsed = computed(() => extractAudio(article.value?.content_html))
@@ -175,6 +176,13 @@ async function onLike() {
     const res = await api.articles.like(article.value.id)
     liked.value = res.liked
     article.value.like_count += res.liked ? 1 : -1
+    if (res.liked) {
+      // 心形 pop:先复位再触发,保证连续点赞都能重放动画
+      likePulse.value = false
+      nextTick(() => {
+        likePulse.value = true
+      })
+    }
   } catch {
     /* ignore */
   }
@@ -330,6 +338,16 @@ function goBack() {
 }
 .like-icon {
   font-size: 36rpx;
+  display: inline-block;
+}
+.like-icon.pop {
+  animation: likePop 0.45s ease;
+}
+@keyframes likePop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.45); }
+  70% { transform: scale(0.88); }
+  100% { transform: scale(1); }
 }
 .like-text {
   font-size: 28rpx;
