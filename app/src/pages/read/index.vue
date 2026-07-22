@@ -68,6 +68,7 @@ import { SERVER_ORIGIN } from '../../config'
 import { formatTime } from '../../utils/format'
 import { extractAudio } from '../../utils/audioCard'
 import { getArticleSnap, setArticleSnap } from '../../utils/articleCache'
+import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourceCache'
 import AudioPlayer from '../../components/AudioPlayer.vue'
 import CachedImage from '../../components/CachedImage.vue'
 
@@ -80,7 +81,7 @@ const loading = ref(true)
 // 解析音频(提取出来交给 AudioPlayer,正文剥除 audio,避免 mp-html 与 AudioPlayer 双重渲染)
 const richParsed = computed(() => extractAudio(article.value?.content_html))
 const parsedAudioList = computed(() => richParsed.value.audioList)
-const parsedContent = computed(() => richParsed.value.html)
+const parsedContent = computed(() => applyCachedImages(richParsed.value.html))
 
 onLoad((opts) => {
   if (opts.id) load(opts.id)
@@ -99,6 +100,8 @@ async function load(id) {
     const fresh = await api.articles.get(id)
     article.value = fresh
     setArticleSnap(id, fresh)
+    // 后台预热正文图,下次进入命中本地缓存(配合 applyCachedImages 同步替换)
+    prefetch(extractImgUrls(fresh.content_html), 'image')
   } catch {
     // 弱网:有快照则静默保留;无快照才提示失败
     if (!snap) uni.showToast({ title: '加载失败', icon: 'none' })

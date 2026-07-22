@@ -163,6 +163,7 @@ import { SERVER_ORIGIN, resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
 import { extractAudio, buildAudioCard } from '../../utils/audioCard'
 import { normalizeContentHtml } from '../../utils/content'
+import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourceCache'
 import { invalidateMe } from '../../store/me'
 import { startRecord, stopRecord, cancelRecord } from '../../utils/recorder'
 import TabBar from '../../components/TabBar.vue'
@@ -196,7 +197,7 @@ const richStyle = {
 // 解析音频(提取出来交给 AudioPlayer,正文剥除 audio,避免 mp-html 与 AudioPlayer 双重渲染)
 const richParsed = computed(() => extractAudio(revealed.value?.content_html))
 const parsedAudioList = computed(() => richParsed.value.audioList)
-const parsedContent = computed(() => richParsed.value.html)
+const parsedContent = computed(() => applyCachedImages(richParsed.value.html))
 
 const pinDigits = computed(() => {
   const arr = ['', '', '', '', '', '']
@@ -226,6 +227,8 @@ async function onUnlock() {
     clearTimeout(rippleTimer2)
     rippleTimer1 = setTimeout(() => {
       revealed.value = data
+      // 后台预热正文图,下次解锁同暗号时命中本地缓存
+      prefetch(extractImgUrls(data.content_html), 'image')
     }, 600)
     rippleTimer2 = setTimeout(() => {
       unlocking.value = false

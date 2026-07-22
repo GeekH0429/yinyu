@@ -15,6 +15,8 @@
  * 业务层无感知:getCachedResource(远程URL) → 返回可直接喂 <image>/InnerAudioContext.src 的路径。
  */
 
+import { resourceUrl, isRemoteUrl } from '../config'
+
 const DIR = '_doc/yinyu_cache/'
 const MANIFEST_KEY = 'yinyu_res_manifest'
 const MAX_BYTES = 200 * 1024 * 1024 // 总容量上限,可按需调整
@@ -132,9 +134,13 @@ function lruSweep() {
   if (tasks.length) Promise.all(tasks).then(persistManifest)
 }
 
-// convertLocalFileSystemURL 返回可直接用于 src 的绝对 URL(含 file://)
+// convertLocalFileSystemURL 返回无协议绝对路径(如 /storage/emulated/0/...),不带 file://。
+// 必须补 file:// 前缀:
+//  ① mp-html 的 getUrl 会对「不含 ://  的路径」二次拼接 domain → 请求错误地址 → 正文图挂;
+//     补 file:// 后含 ://,getUrl 原样放行。
+//  ② file:// 是标准本地文件 URL,<image> / InnerAudioContext 均可直接加载。
 function convertUrl(rel) {
-  return plus.io.convertLocalFileSystemURL(rel)
+  return 'file://' + plus.io.convertLocalFileSystemURL(rel)
 }
 
 async function appGet(norm, type) {
@@ -208,5 +214,57 @@ export function clearAllResourceCache() {
   locals.forEach((rel) => {
     removeFile(rel)
   })
+  // #endif
+}
+
+/**
+ * 同步查询本地缓存路径(仅查内存 manifest,不下载、不校验文件存在)。
+ * 用于富文本 img src 的同步替换:命中即返回本地路径,未命中返回原 url。
+ * 不做 fileExists 校验(那是异步的)——「清除缓存」会同步清 manifest,常规路径不裂图;
+ * 极罕见的「manifest 有记录但文件被外部删除」会裂一次,后台 prefetch 会自愈。
+ */
+export function getCachedResourceSync(remoteUrl) {
+  const norm = remoteUrl
+  if (!isHttp(norm)) return norm
+  // #ifndef APP-PLUS
+  return norm
+  // #endif
+  // #ifdef APP-PLUS
+  const entry = manifest[hashUrl(cacheKey(norm))]
+  return entry ? convertUrl(entry.local) : norm
+  // #endif
+}
+
+/** 提取 HTML 中所有 <img src> 的完整远程 URL(相对路径补全)。用于后台 prefetch 预热正文图。 */
+export function extractImgUrls(html) {
+  if (!html) return []
+  const urls = []
+  let m
+  const re = /<img\b[^>]*\bsrc=["']([^"']+)["']/gi
+  while ((m = re.exec(html)) !== null) {
+    const url = m[1]
+    if (url) urls.push(isRemoteUrl(url) ? url : resourceUrl(url))
+  }
+  return urls
+}
+
+/**
+ * 把 HTML 里 <img src> 已缓存的远程图同步替换为本地路径(仅 App 端生效)。
+ * 用于富文本(mp-html)正文图缓存:在 content 喂给 mp-html 之前调用。
+ * 命中 manifest 的图换成本地路径(二次进入直接渲染本地、不再走网络);未命中保持远程。
+ */
+export function applyCachedImages(html) {
+  if (!html) return html
+  // #ifndef APP-PLUS
+  return html
+  // #endif
+  // #ifdef APP-PLUS
+  return html.replace(/<img\b[^>]*>/gi, (tag) =>
+    tag.replace(/\bsrc=["']([^"']+)["']/i, (m, url) => {
+      const full = isRemoteUrl(url) ? url : resourceUrl(url)
+      const local = getCachedResourceSync(full)
+      return local !== full ? m.replace(url, local) : m
+    })
+  )
   // #endif
 }
