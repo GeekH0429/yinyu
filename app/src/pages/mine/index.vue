@@ -4,6 +4,9 @@
 
     <view class="header">
       <text class="header-title serif">我的</text>
+      <view class="settings-icon" @tap="goSettings">
+        <text class="settings-gear">⚙</text>
+      </view>
     </view>
 
     <!-- 资料 -->
@@ -24,51 +27,100 @@
       </view>
     </view>
 
-    <!-- 我的图文 -->
-    <view class="section">
-      <view class="section-head">
-        <text class="section-title serif">我的图文</text>
-        <text class="section-count">{{ articles.length }} 篇</text>
-      </view>
-      <view class="card mini-card" v-for="a in articles" :key="a.id" @tap="goRead(a.id)">
-        <text class="mini-title">{{ a.title }}</text>
-        <view class="mini-meta">
-          <text>{{ a.status === 'published' ? '已发布' : '草稿' }} · ♡ {{ a.like_count }}</text>
-          <view class="mini-right">
-            <text class="mini-edit" @tap.stop="goEdit(a)">编辑</text>
-            <text class="mini-time">{{ formatDate(a.created_at) }}</text>
-          </view>
+    <!-- Tab 切换 -->
+    <view class="tabs-wrapper">
+      <view class="tabs-header">
+        <view
+          v-for="tab in tabs"
+          :key="tab.key"
+          :class="['tab-item', { active: currentTab === tab.key }]"
+          @tap="switchTab(tab.key)"
+        >
+          <text class="tab-text">{{ tab.label }}</text>
+          <text class="tab-count">{{ tab.count }}</text>
         </view>
       </view>
-      <text v-if="!articles.length" class="empty">还没有作品,去首页 ✎ 写一篇吧</text>
-    </view>
 
-    <!-- 我的树洞 -->
-    <view class="section">
-      <view class="section-head">
-        <text class="section-title serif">我的树洞</text>
-        <text class="section-count">{{ treeholes.length }} 篇</text>
-      </view>
-      <view class="card mini-card" v-for="t in treeholes" :key="t.id">
-        <view class="th-top">
-          <text class="mini-title">{{ t.title || '无题的悄悄话' }}</text>
-          <text :class="['th-status', { off: !t.is_active }]">{{ t.is_active ? '有效' : '已停用' }}</text>
-        </view>
-        <view class="th-code-row">
-          <text class="th-code">{{ t.code }}</text>
-          <view class="th-actions">
-            <text class="th-btn" @tap="editTreehole(t)">编辑</text>
-            <text class="th-btn" @tap="copy(t.code)">复制</text>
-            <text class="th-btn" @tap="refreshCode(t)">换暗号</text>
-          </view>
-        </view>
-        <text class="mini-time">被阅读 {{ t.view_count }} 次</text>
-      </view>
-      <text v-if="!treeholes.length" class="empty">还没有树洞,去写一封悄悄话吧</text>
-    </view>
+      <!-- Tab 内容区 -->
+      <swiper
+        :current="currentTabIndex"
+        @change="onSwiperChange"
+        :duration="300"
+        class="tabs-content"
+      >
+        <!-- 我的图文 -->
+        <swiper-item>
+          <scroll-view scroll-y class="tab-content" @scrolltolower="onReachArticles" :lower-threshold="120">
+            <view class="card mini-card" v-for="a in articles" :key="a.id" @tap="goRead(a.id)">
+              <text class="mini-title">{{ a.title }}</text>
+              <view class="mini-meta">
+                <text>{{ a.status === 'published' ? '已发布' : '草稿' }} · ♡ {{ a.like_count }}</text>
+                <view class="mini-right">
+                  <text class="mini-edit" @tap.stop="goEdit(a)">编辑</text>
+                  <text class="mini-time">{{ formatDate(a.created_at) }}</text>
+                </view>
+              </view>
+            </view>
+            <StateView
+              v-if="artError && !articles.length"
+              type="error"
+              text="加载失败"
+              retry
+              @retry="retryArticles"
+            />
+            <view v-else-if="artLoading && !articles.length">
+              <view v-for="n in 3" :key="'sk'+n" class="card mini-card">
+                <view class="sk sk-line sk-mtitle"></view>
+                <view class="sk sk-line sk-mmeta"></view>
+              </view>
+            </view>
+            <view v-else-if="articles.length || artLoading" class="load-more">
+              <text v-if="artLoading" class="load-text">加载中…</text>
+              <text v-else-if="artNoMore" class="load-text">没有更多了 ✿</text>
+            </view>
+            <text v-else class="empty">还没有作品,去首页 ✎ 写一篇吧</text>
+          </scroll-view>
+        </swiper-item>
 
-    <view class="logout-row" @tap="onLogout">
-      <text>退出登录</text>
+        <!-- 我的树洞 -->
+        <swiper-item>
+          <scroll-view scroll-y class="tab-content" @scrolltolower="onReachTreeholes" :lower-threshold="120">
+            <view class="card mini-card" v-for="t in treeholes" :key="t.id">
+              <view class="th-top">
+                <text class="mini-title">{{ t.title || '无题的悄悄话' }}</text>
+                <text :class="['th-status', { off: !t.is_active }]">{{ t.is_active ? '有效' : '已停用' }}</text>
+              </view>
+              <view class="th-code-row">
+                <text class="th-code">{{ t.code }}</text>
+                <view class="th-actions">
+                  <text class="th-btn" @tap="editTreehole(t)">编辑</text>
+                  <text class="th-btn" @tap="copy(t.code)">复制</text>
+                  <text class="th-btn" @tap="refreshCode(t)">换暗号</text>
+                </view>
+              </view>
+              <text class="mini-time">被阅读 {{ t.view_count }} 次</text>
+            </view>
+            <StateView
+              v-if="thError && !treeholes.length"
+              type="error"
+              text="加载失败"
+              retry
+              @retry="retryTreeholes"
+            />
+            <view v-else-if="thLoading && !treeholes.length">
+              <view v-for="n in 3" :key="'sk'+n" class="card mini-card">
+                <view class="sk sk-line sk-mtitle"></view>
+                <view class="sk sk-line sk-mmeta"></view>
+              </view>
+            </view>
+            <view v-else-if="treeholes.length || thLoading" class="load-more">
+              <text v-if="thLoading" class="load-text">加载中…</text>
+              <text v-else-if="thNoMore" class="load-text">没有更多了 ✿</text>
+            </view>
+            <text v-else class="empty">还没有树洞,去写一封悄悄话吧</text>
+          </scroll-view>
+        </swiper-item>
+      </swiper>
     </view>
 
     <!-- 编辑我的树洞(复用 treehole 页同一组件) -->
@@ -79,18 +131,40 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { formatDate } from '../../utils/format'
-import { getUser, refreshUser, logout, isLoggedIn } from '../../store/user'
-import { articles, treeholes, hydrated, dirty, hydrateMeFromSnap, persistMeSnap, invalidateMe } from '../../store/me'
+import { getUser, refreshUser, isLoggedIn } from '../../store/user'
+import {
+  articles, treeholes,
+  artPage, artNoMore, thPage, thNoMore,
+  hydrated, dirty, hydrateMeFromSnap, persistMeSnap, invalidateMe
+} from '../../store/me'
 import TabBar from '../../components/TabBar.vue'
 import CachedImage from '../../components/CachedImage.vue'
 import TreeholeEditor from '../../components/TreeholeEditor.vue'
+import StateView from '../../components/StateView.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const user = ref(getUser())
+
+// Tab 切换相关
+const currentTab = ref('articles')
+const pageSize = 20
+// 列表加载中(瞬时态):触底守卫 + 底部"加载中"提示
+const artLoading = ref(false)
+const thLoading = ref(false)
+const artError = ref(false)
+const thError = ref(false)
+const tabs = computed(() => [
+  { key: 'articles', label: '我的图文', count: articles.value.length },
+  { key: 'treeholes', label: '我的树洞', count: treeholes.value.length }
+])
+
+const currentTabIndex = computed(() => {
+  return currentTab.value === 'articles' ? 0 : 1
+})
 
 // 树洞编辑弹窗
 const thEditorVisible = ref(false)
@@ -101,40 +175,67 @@ onShow(async () => {
   if (!isLoggedIn()) {
     return uni.reLaunch({ url: '/pages/login/index' })
   }
-  // ① 内存缓存命中(切 tab 回来):直接还原,不重拉
+  // ① 内存缓存命中(切 tab 回来):数据+分页状态都在,直接还原
   if (hydrated.value && !dirty.value) return
-  // ② 冷启动:先从持久快照水合,立即展示上次内容
+  // ② 冷启动:从持久快照水合(含分页状态),立即展示
   const hasSnap = hydrateMeFromSnap()
   hydrated.value = true
+  const wasDirty = dirty.value
   dirty.value = false
   user.value = await refreshUser()
-  if (hasSnap) {
-    // 有快照:后台静默刷新,成功覆盖快照
-    Promise.all([loadArticles(), loadTreeholes()])
-      .then(() => persistMeSnap())
-      .catch(() => {})
-  } else {
-    // ③ 无快照:前台拉取
-    await Promise.all([loadArticles(), loadTreeholes()])
-    persistMeSnap()
+  if (!hasSnap || wasDirty) {
+    // 无快照(首次) 或 已失效(发布/编辑后):reset 重拉第一页;
+    // 有快照且未失效则直接展示,触底继续加载(不后台覆盖,保留已分页内容)
+    await Promise.all([loadArticles(true), loadTreeholes(true)])
   }
+  persistMeSnap()
 })
 
-async function loadArticles() {
+async function loadArticles(reset = false) {
+  if (artLoading.value) return
+  if (artNoMore.value && !reset) return
+  artLoading.value = true
   try {
-    const res = await api.me.myArticles({ page: 1, page_size: 20 })
-    articles.value = res.items || []
+    if (reset) {
+      artPage.value = 1
+      artNoMore.value = false
+    }
+    const res = await api.me.myArticles({ page: artPage.value, page_size: pageSize })
+    const items = res.items || []
+    if (reset) articles.value = items
+    else articles.value.push(...items)
+    if (items.length < pageSize) artNoMore.value = true
+    else artPage.value++
+    persistMeSnap()
+    artError.value = false
   } catch {
-    /* ignore */
+    if (!articles.value.length) artError.value = true
+  } finally {
+    artLoading.value = false
   }
 }
 
-async function loadTreeholes() {
+async function loadTreeholes(reset = false) {
+  if (thLoading.value) return
+  if (thNoMore.value && !reset) return
+  thLoading.value = true
   try {
-    const res = await api.me.myTreeholes({ page: 1, page_size: 20 })
-    treeholes.value = res.items || []
+    if (reset) {
+      thPage.value = 1
+      thNoMore.value = false
+    }
+    const res = await api.me.myTreeholes({ page: thPage.value, page_size: pageSize })
+    const items = res.items || []
+    if (reset) treeholes.value = items
+    else treeholes.value.push(...items)
+    if (items.length < pageSize) thNoMore.value = true
+    else thPage.value++
+    persistMeSnap()
+    thError.value = false
   } catch {
-    /* ignore */
+    if (!treeholes.value.length) thError.value = true
+  } finally {
+    thLoading.value = false
   }
 }
 
@@ -174,21 +275,39 @@ function editTreehole(t) {
 }
 
 async function onThUpdated() {
-  // 弹窗关闭不会触发 onShow,这里手动刷新当前列表
+  // 弹窗关闭不会触发 onShow,这里手动刷新当前列表(覆盖式重拉第一页)
   invalidateMe()
-  await loadTreeholes()
+  await loadTreeholes(true)
 }
 
-function onLogout() {
-  uni.showModal({
-    title: '退出登录',
-    content: '确定要离开这个角落吗?',
-    success: (r) => {
-      if (!r.confirm) return
-      logout()
-      uni.reLaunch({ url: '/pages/login/index' })
-    }
-  })
+function goSettings() {
+  uni.navigateTo({ url: '/pages/settings/index' })
+}
+
+// Tab 切换
+function switchTab(key) {
+  currentTab.value = key
+}
+
+function onSwiperChange(e) {
+  const index = e.detail.current
+  currentTab.value = index === 0 ? 'articles' : 'treeholes'
+}
+
+// 触底加载更多(swiper 内是 scroll-view 滚动,走 scrolltolower 而非页面 onReachBottom)
+function onReachArticles() {
+  loadArticles()
+}
+function onReachTreeholes() {
+  loadTreeholes()
+}
+function retryArticles() {
+  artError.value = false
+  loadArticles(true)
+}
+function retryTreeholes() {
+  thError.value = false
+  loadTreeholes(true)
 }
 </script>
 
@@ -203,10 +322,20 @@ function onLogout() {
 }
 .header {
   padding: 16rpx 48rpx 12rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 .header-title {
   font-size: 52rpx;
   font-weight: 700;
+  color: #c4a882;
+}
+.settings-icon {
+  padding: 12rpx;
+}
+.settings-gear {
+  font-size: 48rpx;
   color: #c4a882;
 }
 .profile-card {
@@ -251,27 +380,21 @@ function onLogout() {
   border-radius: 16rpx;
   font-size: 22rpx;
 }
-.section {
-  margin: 16rpx 32rpx;
-}
-.section-head {
-  display: flex;
-  align-items: baseline;
-  margin: 24rpx 8rpx 16rpx;
-}
-.section-title {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: #4a4a4a;
-}
-.section-count {
-  margin-left: 16rpx;
-  font-size: 24rpx;
-  color: #b0b0b0;
-}
 .mini-card {
   padding: 28rpx 32rpx;
   margin-bottom: 20rpx;
+}
+/* 骨架屏(mini 卡片) */
+.sk-mtitle {
+  height: 32rpx;
+  width: 50%;
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+}
+.sk-mmeta {
+  height: 22rpx;
+  width: 30%;
+  border-radius: 11rpx;
 }
 .mini-title {
   font-size: 30rpx;
@@ -350,14 +473,60 @@ function onLogout() {
   border-radius: 24rpx;
   font-size: 24rpx;
 }
-.logout-row {
-  margin: 40rpx 32rpx;
-  padding: 30rpx 0;
-  text-align: center;
+
+/* Tab 样式 */
+.tabs-wrapper {
+  margin: 24rpx 32rpx;
+}
+.tabs-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32rpx;
+  margin-bottom: 24rpx;
+}
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16rpx 40rpx;
+  border-radius: 32rpx;
   background: #fff;
-  border-radius: 40rpx;
-  color: #c4a882;
-  font-size: 30rpx;
-  box-shadow: 0 8rpx 32rpx rgba(196, 168, 130, 0.12);
+  box-shadow: 0 4rpx 16rpx rgba(196, 168, 130, 0.08);
+  transition: all 0.3s;
+}
+.tab-item.active {
+  background: linear-gradient(135deg, rgba(196, 168, 130, 0.95), rgba(196, 168, 130, 0.85));
+  box-shadow: 0 8rpx 24rpx rgba(196, 168, 130, 0.2);
+}
+.tab-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #8d8d8d;
+}
+.tab-item.active .tab-text {
+  color: #fff;
+}
+.tab-count {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #b0b0b0;
+}
+.tab-item.active .tab-count {
+  color: rgba(255, 255, 255, 0.85);
+}
+.tabs-content {
+  height: calc(100vh - 420rpx);
+}
+.tab-content {
+  height: 100%;
+}
+.load-more {
+  padding: 24rpx 0 60rpx;
+  text-align: center;
+}
+.load-text {
+  font-size: 24rpx;
+  color: #c8c8c8;
 }
 </style>

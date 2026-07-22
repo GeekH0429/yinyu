@@ -4,7 +4,7 @@
 
     <view class="header">
       <text class="header-title serif">树洞</text>
-      <text class="header-sub">这里没有世间的繁华,只有你与暗号之间的秘密。</text>
+      <text class="header-sub">这里没有世间的繁华,只有你与世间的和解。</text>
     </view>
 
     <!-- 未解锁:暗号传送门 -->
@@ -45,7 +45,7 @@
     <view class="revealed" v-else>
       <view class="revealed-head">
         <text class="badge">🔓 暗号 [{{ enteredCode }}] 解锁</text>
-        <text class="relock" @tap="reset">重新上锁</text>
+        <text class="relock" @tap="reset">返回</text>
       </view>
 
       <view class="hole-card">
@@ -68,6 +68,7 @@
             selectable
             :domain="serverOrigin"
             :tag-style="richStyle"
+            @imgtap="onImgTap"
           />
         </view>
 
@@ -106,7 +107,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { api } from '../../api'
-import { SERVER_ORIGIN } from '../../config'
+import { SERVER_ORIGIN, resourceUrl, isRemoteUrl } from '../../config'
 import { extractAudio } from '../../utils/audioCard'
 import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourceCache'
 import { invalidateMe } from '../../store/me'
@@ -210,6 +211,20 @@ function onUnlockFromCreate(c) {
   // 创建后「立即查看」:复用页面的解锁动画
   code.value = c
   onUnlock()
+}
+
+// 正文图片点击 → 全屏预览(可左右滑动浏览本篇所有图)
+function onImgTap(e) {
+  const tapped = e?.detail?.src || e?.src || ''
+  if (!tapped) return
+  const urls = extractImgUrls(revealed.value?.content_html || '').map((u) =>
+    isRemoteUrl(u) ? u : resourceUrl(u)
+  )
+  const current =
+    urls.find((u) => tapped === u || tapped.indexOf(u) >= 0 || u.indexOf(tapped) >= 0) ||
+    urls[0] ||
+    tapped
+  uni.previewImage({ current, urls: urls.length ? urls : [tapped] })
 }
 </script>
 

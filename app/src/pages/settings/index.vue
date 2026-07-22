@@ -1,0 +1,407 @@
+<template>
+  <view class="settings">
+    <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
+
+    <!-- 自定义导航栏 -->
+    <view class="nav">
+      <view class="nav-back" @tap="goBack">
+        <text class="nav-back-icon">‹</text>
+      </view>
+      <text class="nav-title">设置</text>
+      <view class="nav-placeholder"></view>
+    </view>
+
+    <!-- 个人资料分组 -->
+    <text class="group-title">个人资料</text>
+    <view class="card group">
+      <!-- 头像 -->
+      <view class="row" @tap="changeAvatar">
+        <text class="row-label">头像</text>
+        <view class="row-value">
+          <CachedImage
+            v-if="user && user.avatar_url"
+            class="avatar"
+            :src="user.avatar_url"
+            mode="aspectFill"
+          />
+          <view v-else class="avatar placeholder">
+            {{ (user?.nickname || user?.username || '?').slice(0, 1) }}
+          </view>
+          <text class="row-arrow">›</text>
+        </view>
+      </view>
+      <!-- 昵称 -->
+      <view class="row" @tap="editField('nickname')">
+        <text class="row-label">昵称</text>
+        <view class="row-value">
+          <text class="row-text">{{ user?.nickname || '未设置' }}</text>
+          <text class="row-arrow">›</text>
+        </view>
+      </view>
+      <!-- 简介 -->
+      <view class="row" @tap="editField('bio')">
+        <text class="row-label">简介</text>
+        <view class="row-value">
+          <text class="row-text ellipsis">{{ user?.bio || '这个角落还很安静' }}</text>
+          <text class="row-arrow">›</text>
+        </view>
+      </view>
+      <!-- 邮箱 -->
+      <view class="row" @tap="editField('email')">
+        <text class="row-label">邮箱</text>
+        <view class="row-value">
+          <text class="row-text">{{ user?.email || '未绑定' }}</text>
+          <text class="row-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 账号与安全分组 -->
+    <text class="group-title">账号与安全</text>
+    <view class="card group">
+      <view class="row" @tap="openPwd">
+        <text class="row-label">修改密码</text>
+        <view class="row-value">
+          <text class="row-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 关于分组 -->
+    <text class="group-title">关于</text>
+    <view class="card group">
+      <view class="row">
+        <text class="row-label">当前账号</text>
+        <view class="row-value">
+          <text class="row-text">{{ user?.username }}</text>
+        </view>
+      </view>
+      <view class="row" v-if="user?.role === 'admin'">
+        <text class="row-label">身份</text>
+        <view class="row-value">
+          <text class="row-text">管理员</text>
+        </view>
+      </view>
+      <view class="row">
+        <text class="row-label">版本</text>
+        <view class="row-value">
+          <text class="row-text">v1.0.0</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 退出登录 -->
+    <view class="logout-btn" @tap="onLogout">
+      <text>退出登录</text>
+    </view>
+
+    <!-- 修改密码弹窗 -->
+    <view v-if="showPwd" class="mask" @tap="closePwd">
+      <view class="dialog" @tap.stop>
+        <text class="dialog-title">修改密码</text>
+        <input class="dialog-input" v-model="pwdForm.old" password placeholder="当前密码" />
+        <input class="dialog-input" v-model="pwdForm.pwd" password placeholder="新密码(至少 6 位)" />
+        <input class="dialog-input" v-model="pwdForm.confirm" password placeholder="再次输入新密码" />
+        <view class="dialog-actions">
+          <text class="dialog-btn cancel" @tap="closePwd">取消</text>
+          <text class="dialog-btn confirm" @tap="submitPwd">确定</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup>
+import { ref, reactive } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { api } from '../../api'
+import { getUser, logout } from '../../store/user'
+import CachedImage from '../../components/CachedImage.vue'
+
+const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
+const user = ref(getUser())
+
+// 修改密码弹窗
+const showPwd = ref(false)
+const pwdForm = reactive({ old: '', pwd: '', confirm: '' })
+
+onShow(() => {
+  // 从编辑弹窗/其它操作返回时同步本地最新资料
+  user.value = getUser()
+})
+
+function goBack() {
+  uni.navigateBack()
+}
+
+// 各字段的弹窗配置
+const FIELD_CONFIG = {
+  nickname: { label: '昵称', placeholder: '请输入昵称' },
+  bio: { label: '简介', placeholder: '写点什么介绍自己吧' },
+  email: { label: '邮箱', placeholder: '请输入邮箱' }
+}
+
+function editField(field) {
+  const cfg = FIELD_CONFIG[field]
+  uni.showModal({
+    title: '修改' + cfg.label,
+    editable: true,
+    placeholderText: cfg.placeholder,
+    content: user.value?.[field] || '',
+    success: async (r) => {
+      if (!r.confirm) return
+      const value = (r.content || '').trim()
+      if (field === 'nickname' && !value) {
+        uni.showToast({ title: '昵称不能为空', icon: 'none' })
+        return
+      }
+      if (field === 'email' && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        uni.showToast({ title: '邮箱格式不正确', icon: 'none' })
+        return
+      }
+      try {
+        const me = await api.me.update({ [field]: value })
+        uni.setStorageSync('userInfo', me)
+        user.value = me
+        uni.showToast({ title: '已保存', icon: 'success' })
+      } catch {
+        /* request 拦截器已 toast */
+      }
+    }
+  })
+}
+
+async function changeAvatar() {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    success: async (res) => {
+      const path = res.tempFilePaths && res.tempFilePaths[0]
+      if (!path) return
+      uni.showLoading({ title: '上传中' })
+      try {
+        const media = await api.upload(path)
+        const me = await api.me.update({ avatar_url: media.url })
+        uni.setStorageSync('userInfo', me)
+        user.value = me
+        uni.showToast({ title: '已更换', icon: 'success' })
+      } catch {
+        /* ignore */
+      } finally {
+        uni.hideLoading()
+      }
+    }
+  })
+}
+
+function openPwd() {
+  pwdForm.old = pwdForm.pwd = pwdForm.confirm = ''
+  showPwd.value = true
+}
+
+function closePwd() {
+  showPwd.value = false
+}
+
+function submitPwd() {
+  const { old, pwd, confirm } = pwdForm
+  if (!old || !pwd || !confirm) {
+    uni.showToast({ title: '请填写完整', icon: 'none' })
+    return
+  }
+  if (pwd.length < 6) {
+    uni.showToast({ title: '新密码至少 6 位', icon: 'none' })
+    return
+  }
+  if (pwd !== confirm) {
+    uni.showToast({ title: '两次输入不一致', icon: 'none' })
+    return
+  }
+  api.auth
+    .changePassword(old, pwd)
+    .then(() => {
+      uni.showToast({ title: '密码已修改', icon: 'success' })
+      closePwd()
+    })
+    .catch(() => {
+      /* request 拦截器已 toast */
+    })
+}
+
+function onLogout() {
+  uni.showModal({
+    title: '退出登录',
+    content: '确定要离开这个角落吗?',
+    success: (r) => {
+      if (!r.confirm) return
+      logout()
+      uni.reLaunch({ url: '/pages/login/index' })
+    }
+  })
+}
+</script>
+
+<style scoped>
+.settings {
+  min-height: 100vh;
+  background: #fdfbf7;
+  padding-bottom: 80rpx;
+}
+.status-bar {
+  width: 100%;
+}
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx 24rpx 12rpx 16rpx;
+}
+.nav-back {
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-back-icon {
+  font-size: 56rpx;
+  color: #c4a882;
+  line-height: 1;
+}
+.nav-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #4a4a4a;
+}
+.nav-placeholder {
+  width: 64rpx;
+}
+.group-title {
+  display: block;
+  margin: 36rpx 48rpx 16rpx;
+  font-size: 24rpx;
+  color: #b0b0b0;
+}
+.group {
+  margin: 0 32rpx;
+  overflow: hidden;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26rpx 32rpx;
+  border-bottom: 1rpx solid #f5f1ea;
+}
+.row:last-child {
+  border-bottom: none;
+}
+.row-label {
+  font-size: 30rpx;
+  color: #4a4a4a;
+  flex-shrink: 0;
+}
+.row-value {
+  display: flex;
+  align-items: center;
+  margin-left: 24rpx;
+}
+.row-text {
+  font-size: 28rpx;
+  color: #8d8d8d;
+  text-align: right;
+}
+.row-text.ellipsis {
+  max-width: 360rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.row-arrow {
+  margin-left: 14rpx;
+  font-size: 40rpx;
+  color: #d8d8d8;
+  line-height: 1;
+}
+.avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 44rpx;
+}
+.avatar.placeholder {
+  background: #e8c4c4;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+}
+.logout-btn {
+  margin: 64rpx 32rpx 0;
+  padding: 30rpx 0;
+  text-align: center;
+  background: #fff;
+  border-radius: 40rpx;
+  color: #e8a0a0;
+  font-size: 30rpx;
+  box-shadow: 0 8rpx 32rpx rgba(232, 160, 160, 0.16);
+}
+
+/* 修改密码弹窗 */
+.mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dialog {
+  width: 600rpx;
+  background: #fff;
+  border-radius: 28rpx;
+  padding: 40rpx;
+}
+.dialog-title {
+  display: block;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #4a4a4a;
+  margin-bottom: 32rpx;
+}
+.dialog-input {
+  width: 100%;
+  height: 84rpx;
+  background: #f8f5f0;
+  border-radius: 20rpx;
+  padding: 0 24rpx;
+  margin-bottom: 20rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+.dialog-actions {
+  display: flex;
+  margin-top: 12rpx;
+}
+.dialog-btn {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  border-radius: 20rpx;
+  font-size: 30rpx;
+}
+.dialog-btn.cancel {
+  color: #8d8d8d;
+  background: #f3eee5;
+  margin-right: 20rpx;
+}
+.dialog-btn.confirm {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(196, 168, 130, 0.95), rgba(196, 168, 130, 0.85));
+}
+</style>

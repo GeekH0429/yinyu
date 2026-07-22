@@ -11,6 +11,7 @@
     { "path": "pages/treehole/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/write/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/mine/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/settings/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/login/index", "style": { "navigationStyle": "custom" } }
   ],
   "globalStyle": {

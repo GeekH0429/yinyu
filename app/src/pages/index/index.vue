@@ -25,6 +25,17 @@
     </view>
 
     <view class="list">
+      <!-- 骨架屏:首次加载且无数据 -->
+      <view v-if="loading && !articles.length">
+        <view v-for="n in 3" :key="'sk'+n" class="card sk-card">
+          <view class="sk sk-cover"></view>
+          <view class="sk-body">
+            <view class="sk sk-line sk-title"></view>
+            <view class="sk sk-line"></view>
+            <view class="sk sk-line short"></view>
+          </view>
+        </view>
+      </view>
       <view
         v-for="a in articles"
         :key="a.id"
@@ -52,9 +63,20 @@
       </view>
 
       <view class="load-area">
-        <text v-if="loading" class="load-text">加载中…</text>
+        <text v-if="loading && articles.length" class="load-text">加载中…</text>
+        <StateView
+          v-else-if="feedError && !articles.length"
+          type="error"
+          text="没能连上这个角落,稍后再试?"
+          retry
+          @retry="retryFeed"
+        />
+        <StateView
+          v-else-if="!articles.length"
+          type="empty"
+          text="这里还很安静,去写第一篇吧"
+        />
         <text v-else-if="noMore" class="load-text">没有更多了,愿你也成为温暖的人 ✿</text>
-        <text v-else-if="!articles.length" class="empty-text">这里还很安静,去写第一篇吧</text>
       </view>
     </view>
 
@@ -79,9 +101,11 @@ import {
 } from '../../store/feed'
 import TabBar from '../../components/TabBar.vue'
 import CachedImage from '../../components/CachedImage.vue'
+import StateView from '../../components/StateView.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const pageSize = 10
+const feedError = ref(false) // 首次加载失败且无数据时,展示错误占位 + 重试
 
 onMounted(async () => {
   if (isLoggedIn()) refreshUser()
@@ -164,8 +188,10 @@ async function loadArticles(reset = false, silent = false) {
     else articles.value.push(...items)
     if (items.length < pageSize) noMore.value = true
     else page.value++
+    feedError.value = false
   } catch {
-    /* ignore */
+    // 静默刷新失败不提示;仅"无任何数据 + 非静默"时显示错误占位(有旧数据则保留)
+    if (!silent && !articles.value.length) feedError.value = true
   } finally {
     if (!silent) loading.value = false
   }
@@ -173,6 +199,11 @@ async function loadArticles(reset = false, silent = false) {
 
 function setTag(t) {
   activeTag.value = t
+  loadArticles(true)
+}
+
+function retryFeed() {
+  feedError.value = false
   loadArticles(true)
 }
 
@@ -246,6 +277,32 @@ function goWrite() {
 .cover {
   width: 100%;
   height: 320rpx;
+}
+/* 骨架屏 */
+.sk-card {
+  margin-bottom: 32rpx;
+  overflow: hidden;
+}
+.sk-cover {
+  width: 100%;
+  height: 320rpx;
+}
+.sk-body {
+  padding: 36rpx 40rpx 40rpx;
+}
+.sk-line {
+  height: 26rpx;
+  border-radius: 13rpx;
+  margin-bottom: 18rpx;
+}
+.sk-line.sk-title {
+  height: 40rpx;
+  width: 55%;
+  border-radius: 20rpx;
+  margin-bottom: 26rpx;
+}
+.sk-line.short {
+  width: 40%;
 }
 .body {
   padding: 36rpx 40rpx 40rpx;

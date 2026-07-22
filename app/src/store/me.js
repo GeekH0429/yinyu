@@ -13,6 +13,11 @@ import { SNAP, readSnap, writeSnap } from '../utils/snap'
  */
 export const articles = ref([])
 export const treeholes = ref([])
+// 列表分页状态与数据同驻模块级:reLaunch 切 tab 回来可完整恢复,触底加载不重复
+export const artPage = ref(1)
+export const artNoMore = ref(false)
+export const thPage = ref(1)
+export const thNoMore = ref(false)
 export const hydrated = ref(false)
 export const dirty = ref(false)
 
@@ -27,6 +32,10 @@ export function hydrateMeFromSnap() {
   if (!s) return false
   articles.value = s.data.articles || []
   treeholes.value = s.data.treeholes || []
+  artPage.value = s.data.artPage || 1
+  artNoMore.value = !!s.data.artNoMore
+  thPage.value = s.data.thPage || 1
+  thNoMore.value = !!s.data.thNoMore
   return true
 }
 
@@ -34,6 +43,10 @@ export function hydrateMeFromSnap() {
 export function persistMeSnap() {
   writeSnap(SNAP.ME, {
     articles: articles.value,
-    treeholes: treeholes.value
+    treeholes: treeholes.value,
+    artPage: artPage.value,
+    artNoMore: artNoMore.value,
+    thPage: thPage.value,
+    thNoMore: thNoMore.value
   })
 }

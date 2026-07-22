@@ -44,6 +44,7 @@
           :content="parsedContent"
           selectable
           :domain="serverOrigin"
+          @imgtap="onImgTap"
         />
       </view>
 
@@ -55,9 +56,22 @@
       </view>
     </view>
 
-    <view class="loading" v-else-if="loading">
-      <text class="load-text">轻轻翻开…</text>
+    <view class="read-skeleton" v-else-if="loading">
+      <view class="sk sk-rd-title"></view>
+      <view class="sk sk-rd-line"></view>
+      <view class="sk sk-rd-line"></view>
+      <view class="sk sk-rd-line short"></view>
+      <view class="sk sk-rd-line"></view>
+      <view class="sk sk-rd-line short"></view>
     </view>
+
+    <StateView
+      v-else-if="loadError"
+      type="error"
+      text="这篇暂时打不开"
+      retry
+      @retry="reload"
+    />
   </view>
 </template>
 
@@ -65,7 +79,7 @@
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
-import { SERVER_ORIGIN } from '../../config'
+import { SERVER_ORIGIN, resourceUrl, isRemoteUrl } from '../../config'
 import { formatTime } from '../../utils/format'
 import { extractAudio } from '../../utils/audioCard'
 import { getArticleSnap, setArticleSnap } from '../../utils/articleCache'
@@ -73,12 +87,14 @@ import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourc
 import { getUser } from '../../store/user'
 import AudioPlayer from '../../components/AudioPlayer.vue'
 import CachedImage from '../../components/CachedImage.vue'
+import StateView from '../../components/StateView.vue'
 
 const serverOrigin = SERVER_ORIGIN
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const article = ref(null)
 const liked = ref(false)
 const loading = ref(true)
+const loadError = ref(false) // 无快照时加载失败,展示错误占位 + 重试
 
 // 解析音频(提取出来交给 AudioPlayer,正文剥除 audio,避免 mp-html 与 AudioPlayer 双重渲染)
 const richParsed = computed(() => extractAudio(article.value?.content_html))
@@ -125,12 +141,33 @@ async function load(id) {
     setArticleSnap(id, fresh)
     // 后台预热正文图,下次进入命中本地缓存(配合 applyCachedImages 同步替换)
     prefetch(extractImgUrls(fresh.content_html), 'image')
+    loadError.value = false
   } catch {
-    // 弱网:有快照则静默保留;无快照才提示失败
-    if (!snap) uni.showToast({ title: '加载失败', icon: 'none' })
+    // 弱网:有快照则静默保留;无快照才显示错误占位
+    if (!snap) loadError.value = true
   } finally {
     loading.value = false
   }
+}
+
+function reload() {
+  loadError.value = false
+  loading.value = true
+  load(currentId.value)
+}
+
+// 正文图片点击 → 全屏预览(可左右滑动浏览本篇所有图)
+function onImgTap(e) {
+  const tapped = e?.detail?.src || e?.src || ''
+  if (!tapped) return
+  const urls = extractImgUrls(article.value?.content_html || '').map((u) =>
+    isRemoteUrl(u) ? u : resourceUrl(u)
+  )
+  const current =
+    urls.find((u) => tapped === u || tapped.indexOf(u) >= 0 || u.indexOf(tapped) >= 0) ||
+    urls[0] ||
+    tapped
+  uni.previewImage({ current, urls: urls.length ? urls : [tapped] })
 }
 
 async function onLike() {
@@ -185,6 +222,24 @@ function goBack() {
 }
 .content {
   padding: 24rpx 48rpx 120rpx;
+}
+/* 骨架屏(阅读) */
+.read-skeleton {
+  padding: 32rpx 48rpx;
+}
+.sk-rd-title {
+  height: 48rpx;
+  width: 70%;
+  border-radius: 24rpx;
+  margin-bottom: 36rpx;
+}
+.sk-rd-line {
+  height: 28rpx;
+  border-radius: 14rpx;
+  margin-bottom: 22rpx;
+}
+.sk-rd-line.short {
+  width: 50%;
 }
 /* 逐行浮现:加载完成后内容从上到下依次淡入上浮,像缓缓铺开一页纸 */
 @keyframes rise {

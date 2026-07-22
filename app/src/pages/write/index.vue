@@ -9,7 +9,7 @@
     </view>
 
     <view class="form" v-if="!loadingDetail">
-      <input class="title-input serif" v-model="form.title" placeholder="标题" />
+      <input class="title-input serif" v-model="form.title" placeholder="标题" @input="markDirty" />
 
       <textarea
         class="content-input"
@@ -17,6 +17,9 @@
         placeholder="慢慢写,慢慢治愈…"
         :maxlength="-1"
         auto-height
+        :cursor-spacing="120"
+        :adjust-position="true"
+        @input="markDirty"
       />
 
       <view class="media-bar">
@@ -39,11 +42,11 @@
         </view>
         <view class="row">
           <text class="row-label">摘要</text>
-          <input class="row-input" v-model="form.summary" placeholder="一句话简介(可选)" />
+          <input class="row-input" v-model="form.summary" placeholder="一句话简介(可选)" @input="markDirty" />
         </view>
         <view class="row">
           <text class="row-label">标签</text>
-          <input class="row-input" v-model="tagsText" placeholder="逗号分隔,如 治愈,夜读" />
+          <input class="row-input" v-model="tagsText" placeholder="逗号分隔,如 治愈,夜读" @input="markDirty" />
         </view>
       </view>
     </view>
@@ -72,6 +75,11 @@ import AudioInfoPopup from '../../components/AudioInfoPopup.vue'
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const submitting = ref(false)
 const uploading = ref(false)
+// 用户改动标记:取消离开时据此弹二次确认,防误触丢失内容
+const dirty = ref(false)
+function markDirty() {
+  dirty.value = true
+}
 
 const articleId = ref(null)
 const isEdit = ref(false)
@@ -126,6 +134,7 @@ async function insertImage() {
   try {
     const url = await uploadPicked(await chooseImage())
     form.content_html += `<p><img src="${url}" style="max-width:100%;border-radius:12px"/></p>`
+    markDirty()
   } catch {
     /* user cancel */
   }
@@ -144,12 +153,14 @@ async function insertAudio() {
 
 function onAudioConfirm({ title, artist, cover }) {
   form.content_html += buildAudioCard({ src: audioPopup.src, title, artist, cover })
+  markDirty()
   uni.showToast({ title: '已加入', icon: 'success' })
 }
 
 async function chooseCover() {
   try {
     form.cover_url = await uploadPicked(await chooseImage())
+    markDirty()
   } catch {
     /* ignore */
   }
@@ -198,7 +209,16 @@ async function onSubmit() {
 }
 
 function goBack() {
-  uni.navigateBack()
+  if (!dirty.value) return uni.navigateBack()
+  uni.showModal({
+    title: '还没保存',
+    content: '离开会丢失已写的内容,确定吗?',
+    confirmText: '离开',
+    cancelText: '继续写',
+    success: (r) => {
+      if (r.confirm) uni.navigateBack()
+    }
+  })
 }
 </script>
 

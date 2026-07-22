@@ -71,6 +71,17 @@ page {
   font-family: 'Noto Serif SC', 'Songti SC', serif;
 }
 
+/* 骨架屏 shimmer 基础类:各页面用 .sk + 自定尺寸 class */
+.sk {
+  background: linear-gradient(90deg, #efe9df 25%, #f7f2ea 37%, #efe9df 63%);
+  background-size: 400% 100%;
+  animation: sk-shimmer 1.4s ease infinite;
+}
+@keyframes sk-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
 /* 隐藏滚动条 */
 ::-webkit-scrollbar {
   display: none;

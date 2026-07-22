@@ -1,15 +1,16 @@
 <template>
-  <image :src="useSrc" @error="onErr" />
+  <image :src="displaySrc" class="cached-img" @error="onErr" />
 </template>
 
 <script setup>
 /**
- * 透明替换 <image>:套一层本地资源缓存(仅 App 真机生效)。
+ * 透明替换 <image>:套一层本地资源缓存(仅 App 真机生效) + 加载占位/失败兜底。
  *
  * 首屏先用远程 src 渲染(不阻塞),后台异步解析到本地路径后切换;
- * 缓存命中后,二次进入/冷启动即用本地。@error 兜底:本地文件失联回退远程并触发重缓存。
+ * 缓存命中后,二次进入/冷启动即用本地。@error 兜底:本地失联回退远程并重缓存;
+ * 远程仍失败则切透明占位,露出暖色 background 作为兜底块(避免破图)。
  *
- * 用法与 <image> 一致:mode / lazy-load / class / style 等自动透传到内部 <image>。
+ * 保持 <image> 为单根节点:mode / lazy-load / class / style 仍自动透传。
  *   <CachedImage :src="a.cover_url" mode="aspectFill" lazy-load class="cover" />
  */
 import { ref, computed, watch, onMounted } from 'vue'
@@ -20,7 +21,12 @@ const props = defineProps({
   src: { type: String, default: '' }
 })
 
+// 1x1 透明占位:失败时切到它,露出 .cached-img 的暖色背景作为兜底块
+const TRANSPARENT =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+
 const localPath = ref('')
+const failed = ref(false)
 // 远程完整 URL:相对路径补全,已是 http(或协议相对)的原样
 const remote = computed(() => {
   const s = props.src
@@ -28,6 +34,7 @@ const remote = computed(() => {
   return isRemoteUrl(s) ? s : resourceUrl(s)
 })
 const useSrc = computed(() => localPath.value || remote.value)
+const displaySrc = computed(() => (failed.value ? TRANSPARENT : useSrc.value))
 
 function resolve() {
   const url = remote.value
@@ -47,6 +54,7 @@ watch(
   () => props.src,
   () => {
     localPath.value = ''
+    failed.value = false
     resolve()
   }
 )
@@ -58,6 +66,15 @@ function onErr() {
   if (localPath.value) {
     localPath.value = ''
     getCachedResource(remote.value, 'image').catch(() => {})
+    return
   }
+  // 远程也失败:切透明占位,露出暖色背景作为兜底块,避免破图
+  failed.value = true
 }
 </script>
+
+<style scoped>
+.cached-img {
+  background: #efe9df;
+}
+</style>
