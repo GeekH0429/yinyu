@@ -88,6 +88,26 @@
           />
         </view>
       </view>
+      <view class="row font-row">
+        <text class="row-label">阅读字号</text>
+        <view class="row-font-controls">
+          <text class="rf-letter sm">A</text>
+          <slider
+            class="rf-slider"
+            :min="0"
+            :max="FONT_LEVELS.length - 1"
+            :step="1"
+            :value="fontIdx"
+            active-color="#C4A882"
+            background-color="#EFE3D2"
+            block-color="#C4A882"
+            @changing="onFontChanging"
+            @change="onFontChange"
+          />
+          <text class="rf-letter lg">A</text>
+          <text class="rf-label">{{ fontLevel.label }}</text>
+        </view>
+      </view>
       <view class="row" @tap="clearCache">
         <text class="row-label">清除缓存</text>
         <view class="row-value">
@@ -147,6 +167,7 @@ import { onShow, onLoad, onUnload } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { getUser, logout } from '../../store/user'
 import { themePref, setTheme, THEME_OPTIONS, animationsEnabled, setAnimationsEnabled } from '../../store/theme'
+import { FONT_LEVELS, fontIdx, fontLevel, setFontIdxLive, setFontIdxCommit } from '../../store/readFont'
 import { clearAllResourceCache, getCacheSize } from '../../utils/resourceCache'
 import { clearArticleSnaps } from '../../utils/articleCache'
 import { SNAP, clearSnap } from '../../utils/snap'
@@ -205,6 +226,14 @@ function cycleTheme() {
 /* ---- 动画开关(默认开;关闭后所有入场/反馈动画压成瞬态) ---- */
 function onAnimChange(e) {
   setAnimationsEnabled(e.detail.value)
+}
+
+/* ---- 阅读字号(与阅读页 Aa 共用 store/readFont,任一处改动另一处自动同步) ---- */
+function onFontChanging(e) {
+  setFontIdxLive(e.detail.value)
+}
+function onFontChange(e) {
+  setFontIdxCommit(e.detail.value)
 }
 
 /* ---- 缓存大小展示 + 一键清除 ---- */
@@ -432,6 +461,37 @@ function onLogout() {
 .anim-switch {
   transform: scale(0.85);
   margin-right: -8rpx;
+}
+/* 阅读字号行:label 在左,滑块控件组占满右侧 */
+.font-row {
+  align-items: center;
+}
+.row-font-controls {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-left: 24rpx;
+}
+.rf-letter {
+  color: #c4a882;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.rf-letter.sm { font-size: 24rpx; }
+.rf-letter.lg { font-size: 38rpx; }
+.rf-slider {
+  flex: 1;
+  margin: 0 4rpx;
+}
+/* 当前档位名称固定宽度,避免 1 字 ↔ 2 字切换时挤动布局 */
+.rf-label {
+  font-size: 26rpx;
+  color: #c4a882;
+  font-weight: 600;
+  min-width: 64rpx;
+  text-align: center;
+  flex-shrink: 0;
 }
 .avatar {
   width: 88rpx;

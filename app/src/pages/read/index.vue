@@ -119,31 +119,18 @@ const loading = ref(true)
 const loadError = ref(false) // 无快照时加载失败,展示错误占位 + 重试
 const likePulse = ref(false) // 点赞心形 pop 动画触发器
 
-/* ---- 阅读字号(六档:小/中/大/较大/特大/超大,持久化到 storage) ----
- * 滑块用 index(0-5)做值,带 step=1 自然吸附到这 6 档;mp-html 去掉 tag-style,
- * 字号通过 CSS 变量(--read-fs / --read-lh)从 .rich-content 注入到内部 p/h,
- * 改字号无需重解析,六档间切换零卡顿。 */
-const FONT_KEY = 'yinyu_read_font'
-const FONT_LEVELS = [
-  { label: '小',   size: 32, line: 1.85 },
-  { label: '中',   size: 38, line: 1.9 },
-  { label: '大',   size: 44, line: 2.0 },
-  { label: '较大', size: 52, line: 2.1 },
-  { label: '特大', size: 60, line: 2.2 },
-  { label: '超大', size: 68, line: 2.3 }
-]
-function readStoredFontIdx() {
-  const stored = uni.getStorageSync(FONT_KEY)
-  if (typeof stored === 'number') {
-    const i = FONT_LEVELS.findIndex((l) => l.size === stored)
-    if (i >= 0) return i
-  }
-  return 2 // 默认「大」
-}
-const fontIdx = ref(readStoredFontIdx())
-const fontLevel = computed(() => FONT_LEVELS[fontIdx.value])
-const fontSize = computed(() => fontLevel.value.size)
-const fontLine = computed(() => fontLevel.value.line)
+/* 阅读字号档位与状态从 store/readFont.js 引入:阅读页 Aa 与设置页「阅读字号」共用一份。
+ * 这里只保留本页专用的 popover 开关、CSS 变量注入、Aa 图标缩放三件事。 */
+import {
+  FONT_LEVELS,
+  fontIdx,
+  fontLevel,
+  fontSize,
+  fontLine,
+  setFontIdxLive,
+  setFontIdxCommit
+} from '../../store/readFont'
+
 const showFontSlider = ref(false)
 // 通过 CSS 变量把字号喂给 mp-html 内部的 p/h —— 改字号只触发 CSS 重排,不触发重解析
 const richWrapStyle = computed(() => ({
@@ -163,12 +150,11 @@ function closeFontSlider() {
 }
 function onFontChanging(e) {
   // 拖动中:只改内存值实时预览,不落盘(@changing 触发密集,IO 会卡)
-  fontIdx.value = e.detail.value
+  setFontIdxLive(e.detail.value)
 }
 function onFontChange(e) {
   // 释放:落盘当前档位的 size
-  fontIdx.value = e.detail.value
-  uni.setStorageSync(FONT_KEY, fontLevel.value.size)
+  setFontIdxCommit(e.detail.value)
 }
 
 // 解析音频(提取出来交给 AudioPlayer,正文剥除 audio,避免 mp-html 与 AudioPlayer 双重渲染)
