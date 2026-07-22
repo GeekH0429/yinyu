@@ -1,4 +1,8 @@
 import http from '../utils/request'
+import { SNAP, clearSnap } from '../utils/snap'
+import { clearArticleSnaps } from '../utils/articleCache'
+import { resetFeed } from './feed'
+import { resetMe } from './me'
 
 export function isLoggedIn() {
   return !!uni.getStorageSync('token')
@@ -35,4 +39,10 @@ export function logout() {
   uni.removeStorageSync('token')
   uni.removeStorageSync('refresh_token')
   uni.removeStorageSync('userInfo')
+  // 清缓存:换号登录时不会看到上一账号的图文/树洞(treehole 含 code,属隐私)
+  clearSnap(SNAP.FEED)
+  clearSnap(SNAP.ME)
+  clearArticleSnaps()
+  resetFeed()
+  resetMe()
 }

@@ -68,53 +68,74 @@ function request(options) {
     const token = getToken()
     if (token) header.Authorization = `Bearer ${token}`
 
-    uni.request({
-      url: API_BASE + options.url,
-      method: options.method || 'GET',
-      data: options.data,
-      header,
-      success: async (res) => {
-        // 2xx:直接返回业务对象
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(res.data)
-          return
-        }
-        // 401:单飞续期后重放一次(登录/刷新接口自身 401 不重放)
-        const isAuthCall =
-          options.url.startsWith('/auth/login') || options.url.startsWith('/auth/refresh')
-        if (res.statusCode === 401 && !options.__retried && !isAuthCall) {
-          if (refreshing) {
-            // 已有刷新在进行,入队等结果,避免并发刷新把 refresh_token 用废
-            return new Promise((resolve2, reject2) => {
-              waitingQueue.push({ resolve: resolve2, reject: reject2, options })
-            })
-          }
-          refreshing = true
-          const ok = await tryRefresh()
-          refreshing = false
-          if (ok) {
-            notifyQueue(true)
-            request({ ...options, __retried: true }).then(resolve).catch(reject)
+    const method = (options.method || 'GET').toUpperCase()
+    // 超时:GET 默认 12s,其它默认 20s;允许 options.timeout 覆盖
+    // uni.request 的 timeout 既控制连接又控制整体,超时后 fail 回调 errMsg 含 'timeout'
+    const timeout = options.timeout || (method === 'GET' ? 12000 : 20000)
+    // GET 类查询接口允许一次静默重试(5xx/网络异常),写操作(POST/PUT/DELETE)不重试避免重复提交
+    const allowRetry = method === 'GET' && !options.__retried
+
+    const doRequest = (retryCount) => {
+      uni.request({
+        url: API_BASE + options.url,
+        method,
+        data: options.data,
+        header,
+        timeout,
+        success: async (res) => {
+          // 2xx:直接返回业务对象
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(res.data)
             return
           }
-          notifyQueue(false)
-          clearAuth()
-          uni.reLaunch({ url: '/pages/login/index' })
+          // 401:单飞续期后重放一次(登录/刷新接口自身 401 不重放)
+          const isAuthCall =
+            options.url.startsWith('/auth/login') || options.url.startsWith('/auth/refresh')
+          if (res.statusCode === 401 && !options.__retried && !isAuthCall) {
+            if (refreshing) {
+              // 已有刷新在进行:直接把外层 resolve/reject 入队
+              // 注意:不能 new 新 Promise(原代码的 bug —— 外层 Promise 永远 pending)
+              waitingQueue.push({ resolve, reject, options })
+              return // 仅退出 success 回调;外层 Promise 由 notifyQueue 结算
+            }
+            refreshing = true
+            const ok = await tryRefresh()
+            refreshing = false
+            if (ok) {
+              notifyQueue(true)
+              request({ ...options, __retried: true }).then(resolve).catch(reject)
+              return
+            }
+            notifyQueue(false)
+            clearAuth()
+            uni.reLaunch({ url: '/pages/login/index' })
+            reject(res.data)
+            return
+          }
+          // 5xx:GET 静默重试一次(瞬时服务器错误常见,重试能救回一部分)
+          if (allowRetry && retryCount === 0 && res.statusCode >= 500) {
+            setTimeout(() => doRequest(1), 500)
+            return
+          }
+          if (!options.__silent) toast(res.data)
           reject(res.data)
-          return
+        },
+        fail: (err) => {
+          // 网络异常/超时:GET 重试一次
+          if (allowRetry && retryCount === 0) {
+            setTimeout(() => doRequest(1), 500)
+            return
+          }
+          const msg =
+            err.errMsg && err.errMsg.includes('timeout')
+              ? '请求超时'
+              : '网络异常,请检查网络或服务器地址'
+          if (!options.__silent) uni.showToast({ title: msg, icon: 'none' })
+          reject(err)
         }
-        if (!options.__silent) toast(res.data)
-        reject(res.data)
-      },
-      fail: (err) => {
-        const msg =
-          err.errMsg && err.errMsg.includes('timeout')
-            ? '请求超时'
-            : '网络异常,请检查网络或服务器地址'
-        if (!options.__silent) uni.showToast({ title: msg, icon: 'none' })
-        reject(err)
-      }
-    })
+      })
+    }
+    doRequest(0)
   })
 }
 

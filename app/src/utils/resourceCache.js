@@ -217,6 +217,11 @@ export function clearAllResourceCache() {
   // #endif
 }
 
+/** 当前缓存总占用字节数(非 App 端恒为 0)。用于设置页显示「已占用 XX MB」 */
+export function getCacheSize() {
+  return totalBytes || 0
+}
+
 /**
  * 同步查询本地缓存路径(仅查内存 manifest,不下载、不校验文件存在)。
  * 用于富文本 img src 的同步替换:命中即返回本地路径,未命中返回原 url。

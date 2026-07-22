@@ -67,6 +67,36 @@
       </view>
     </view>
 
+    <!-- 显示分组:主题 + 字号 + 缓存 -->
+    <text class="group-title">显示与缓存</text>
+    <view class="card group">
+      <view class="row" @tap="cycleTheme">
+        <text class="row-label">主题</text>
+        <view class="row-value">
+          <text class="row-text">{{ themeLabel }}</text>
+          <text class="row-arrow">›</text>
+        </view>
+      </view>
+      <view class="row">
+        <text class="row-label">动画效果</text>
+        <view class="row-value">
+          <switch
+            class="anim-switch"
+            :checked="animationsEnabled"
+            color="#C4A882"
+            @change="onAnimChange"
+          />
+        </view>
+      </view>
+      <view class="row" @tap="clearCache">
+        <text class="row-label">清除缓存</text>
+        <view class="row-value">
+          <text class="row-text">{{ cacheSizeText }}</text>
+          <text class="row-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 关于分组 -->
     <text class="group-title">关于</text>
     <view class="card group">
@@ -116,6 +146,10 @@ import { ref, reactive, computed } from 'vue'
 import { onShow, onLoad, onUnload } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { getUser, logout } from '../../store/user'
+import { themePref, setTheme, THEME_OPTIONS, animationsEnabled, setAnimationsEnabled } from '../../store/theme'
+import { clearAllResourceCache, getCacheSize } from '../../utils/resourceCache'
+import { clearArticleSnaps } from '../../utils/articleCache'
+import { SNAP, clearSnap } from '../../utils/snap'
 import CachedImage from '../../components/CachedImage.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
@@ -143,10 +177,67 @@ const dialogStyle = computed(() => ({
 onShow(() => {
   // 从编辑弹窗/其它操作返回时同步本地最新资料
   user.value = getUser()
+  refreshCacheSize()
 })
 
 function goBack() {
   uni.navigateBack()
+}
+
+/* ---- 主题切换(跟随系统 / 浅色 / 深色) ---- */
+const themeLabel = computed(() => {
+  const opt = THEME_OPTIONS.find((o) => o.value === themePref.value)
+  return opt ? opt.label : '跟随系统'
+})
+function cycleTheme() {
+  uni.showActionSheet({
+    itemList: THEME_OPTIONS.map((o) => o.label),
+    success: (r) => {
+      const opt = THEME_OPTIONS[r.tapIndex]
+      if (opt) setTheme(opt.value)
+    },
+    fail: () => {
+      /* 用户取消 */
+    }
+  })
+}
+
+/* ---- 动画开关(默认开;关闭后所有入场/反馈动画压成瞬态) ---- */
+function onAnimChange(e) {
+  setAnimationsEnabled(e.detail.value)
+}
+
+/* ---- 缓存大小展示 + 一键清除 ---- */
+const cacheBytes = ref(0)
+const cacheSizeText = computed(() => {
+  const b = cacheBytes.value
+  if (!b) return '0 MB'
+  if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB'
+  return (b / 1024 / 1024).toFixed(1) + ' MB'
+})
+function refreshCacheSize() {
+  cacheBytes.value = getCacheSize()
+}
+async function clearCache() {
+  uni.showModal({
+    title: '清除缓存',
+    content: '清除图片/音频本地缓存与列表快照?文章内容本身不会丢失。',
+    confirmText: '清除',
+    success: (r) => {
+      if (!r.confirm) return
+      uni.showLoading({ title: '清理中' })
+      try {
+        clearAllResourceCache() // App 端真正删沙箱文件
+        clearArticleSnaps()
+        clearSnap(SNAP.FEED)
+        clearSnap(SNAP.ME)
+        cacheBytes.value = 0
+        uni.showToast({ title: '已清理', icon: 'success' })
+      } finally {
+        uni.hideLoading()
+      }
+    }
+  })
 }
 
 // 各字段的弹窗配置
@@ -337,6 +428,10 @@ function onLogout() {
   font-size: 40rpx;
   color: #d8d8d8;
   line-height: 1;
+}
+.anim-switch {
+  transform: scale(0.85);
+  margin-right: -8rpx;
 }
 .avatar {
   width: 88rpx;

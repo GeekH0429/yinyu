@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { SNAP, readSnap, writeSnap } from '../utils/snap'
+import { SNAP, readSnap, writeSnapDebounced as writeSnap } from '../utils/snap'
 
 /**
  * 「我的」页列表状态(模块级缓存)。
@@ -24,6 +24,18 @@ export const dirty = ref(false)
 /** 失效缓存(发布图文/树洞、改资料后调用)。 */
 export function invalidateMe() {
   dirty.value = true
+}
+
+/** 重置全部「我的」状态(登出换号时调用)。 */
+export function resetMe() {
+  articles.value = []
+  treeholes.value = []
+  artPage.value = 1
+  artNoMore.value = false
+  thPage.value = 1
+  thNoMore.value = false
+  hydrated.value = false
+  dirty.value = false
 }
 
 /** 从持久快照水合(冷启动立即展示)。命中返回 true。 */

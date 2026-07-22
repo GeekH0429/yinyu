@@ -15,6 +15,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { effectiveTheme } from '../store/theme'
 
 const homeSvg = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><path d="M49.6 515.3a34.9 34.9 0 0 1-23.6-60.6L488.4 29.6a35 35 0 0 1 47.3.1L995.4 454.7a34.9 34.9 0 1 1-47.4 51.3L511.9 102.8 73.2 506.1a34.8 34.8 0 0 1-23.6 9.2z" fill="currentColor"/><path d="M827.3 1001.8H196.7c-44.9 0-81.5-36.5-81.5-81.5V541.9a34.9 34.9 0 1 1 69.8 0v378.5a11.6 11.6 0 0 0 11.6 11.6h630.6a11.6 11.6 0 0 0 11.6-11.6V541.9a34.9 34.9 0 1 1 69.8 0v378.5c0 44.9-36.5 81.4-81.5 81.4z" fill="currentColor"/></svg>`
 const planeSvg = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><path d="M1007.9 7.2C1001.8 3 994.8.8 987.2.8c-6.6 0-12.6 1.7-18.3 5.2L18.9 554.1C5.9 561.4-.2 572.6.6 587.9c1 15.7 8.7 26.2 22.8 31.5l216.4 88.8c5.6 2.3 12 1.2 16.5-2.7L859.2 184.6 380.3 771.6c-9.3 11.4-14.4 25.7-14.4 40.5v176.3c0 7.7 2.3 14.6 6.7 20.9 4.3 6.4 10.2 10.7 17.4 13.4 3.6 1.5 7.8 2.3 12.7 2.3 11.8 0 21.1-4.2 28-13.1l115.5-141.3c8.9-10.9 23.8-14.6 36.8-9.3l236.7 96.8c4.9 1.9 9.5 2.9 13.7 2.9 6.4 0 12.4-1.7 17.7-4.9 8.9-5.2 14.3-13.1 16.4-23.2L1023.7 49.4c3.4-17.1-1.3-31.5-15.8-42.2z" fill="currentColor"/></svg>`
@@ -27,8 +28,10 @@ const tabs = [
 ]
 
 const current = ref('pages/index/index')
-// 树洞页是暗黑系,TabBar 跟着转暗
-const isDark = computed(() => current.value === 'pages/treehole/index')
+// 暗黑:树洞页固定暗,或全局主题为深色
+const isDark = computed(
+  () => current.value === 'pages/treehole/index' || effectiveTheme.value === 'dark'
+)
 
 function syncCurrent() {
   try {

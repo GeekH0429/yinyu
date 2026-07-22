@@ -13,7 +13,7 @@
         <view class="portal-glow"></view>
         <text class="portal-desc">树洞无形&nbsp;&nbsp;&nbsp;回声共鸣</text>
 
-        <view class="pin-group" :class="{ confirm: unlocking }" @tap="focusInput">
+        <view class="pin-group" :class="{ confirm: unlocking, shake: pinShake }" @tap="focusInput">
           <view
             v-for="(d, i) in pinDigits"
             :key="i"
@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { api } from '../../api'
 import { SERVER_ORIGIN, resourceUrl, isRemoteUrl } from '../../config'
 import { extractAudio } from '../../utils/audioCard'
@@ -125,8 +125,10 @@ const loading = ref(false)
 const revealed = ref(null)
 const enteredCode = ref('')
 const unlocking = ref(false)
+const pinShake = ref(false) // 解锁失败时,6 个 PIN 格子整体 shake
 let rippleTimer1 = null
 let rippleTimer2 = null
+let shakeTimer = null
 
 const richStyle = {
   p: 'color:#C8C8D8;line-height:1.9',
@@ -178,7 +180,16 @@ async function onUnlock() {
       unlocking.value = false
     }, 1100)
   } catch {
+    // 暗号无效(或被限流):清空输入 + PIN 格子整体 shake,反馈更强
     code.value = ''
+    pinShake.value = false
+    nextTick(() => {
+      pinShake.value = true
+    })
+    clearTimeout(shakeTimer)
+    shakeTimer = setTimeout(() => {
+      pinShake.value = false
+    }, 450)
   } finally {
     loading.value = false
   }
@@ -334,6 +345,19 @@ function onImgTap(e) {
   0% { transform: scale(1); box-shadow: 0 0 0 rgba(123, 140, 196, 0); }
   45% { transform: scale(1.14); box-shadow: 0 0 28rpx rgba(123, 140, 196, 0.6); }
   100% { transform: scale(1); box-shadow: 0 0 0 rgba(123, 140, 196, 0); }
+}
+/* 解锁失败:6 个格子整体 shake,类似 macOS 密码错误的反馈 */
+.pin-group.shake {
+  animation: pinShake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@keyframes pinShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-14rpx); }
+  30% { transform: translateX(12rpx); }
+  45% { transform: translateX(-10rpx); }
+  60% { transform: translateX(8rpx); }
+  75% { transform: translateX(-6rpx); }
+  90% { transform: translateX(4rpx); }
 }
 .pin-char {
   font-size: 44rpx;

@@ -5,8 +5,31 @@
     <view class="topbar">
       <text class="back" @tap="goBack">‹ 返回</text>
       <text class="topbar-title">阅读</text>
-      <text v-if="canEdit" class="topbar-edit" @tap="goEdit">编辑</text>
-      <text class="topbar-right" v-else></text>
+      <view class="topbar-right topbar-aa-wrap">
+        <view v-if="showFontSlider" class="font-mask" @tap="closeFontSlider"></view>
+        <view v-if="showFontSlider" class="font-popover">
+          <text class="fp-letter sm">A</text>
+          <slider
+            class="fp-slider"
+            :min="0"
+            :max="FONT_LEVELS.length - 1"
+            :step="1"
+            :value="fontIdx"
+            active-color="#C4A882"
+            background-color="#EFE3D2"
+            block-color="#C4A882"
+            @changing="onFontChanging"
+            @change="onFontChange"
+          />
+          <text class="fp-letter lg">A</text>
+          <text class="fp-label">{{ fontLevel.label }}</text>
+        </view>
+        <text
+          class="topbar-aa"
+          :style="{ fontSize: fontIconSize + 'rpx' }"
+          @tap="toggleFontSlider"
+        >Aa</text>
+      </view>
     </view>
 
     <view class="content" v-if="article">
@@ -31,7 +54,7 @@
         <text v-for="t in article.tags" :key="t" class="tag">{{ t }}</text>
       </view>
 
-      <view class="rich-content">
+      <view class="rich-content" :style="richWrapStyle">
         <AudioPlayer
           v-for="audio in parsedAudioList"
           :key="audio.id"
@@ -51,7 +74,7 @@
       <view class="actions">
         <view :class="['like-btn', { liked }]" @tap="onLike">
           <text :class="['like-icon', { pop: likePulse }]">{{ liked ? '♥' : '♡' }}</text>
-          <text class="like-text">{{ article.like_count }}</text>
+          <text :class="['like-text', { pop: likePulse }]">{{ article.like_count }}</text>
         </view>
       </view>
     </view>
@@ -84,7 +107,6 @@ import { formatTime } from '../../utils/format'
 import { extractAudio } from '../../utils/audioCard'
 import { getArticleSnap, setArticleSnap } from '../../utils/articleCache'
 import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourceCache'
-import { getUser } from '../../store/user'
 import AudioPlayer from '../../components/AudioPlayer.vue'
 import CachedImage from '../../components/CachedImage.vue'
 import StateView from '../../components/StateView.vue'
@@ -96,6 +118,58 @@ const liked = ref(false)
 const loading = ref(true)
 const loadError = ref(false) // 无快照时加载失败,展示错误占位 + 重试
 const likePulse = ref(false) // 点赞心形 pop 动画触发器
+
+/* ---- 阅读字号(六档:小/中/大/较大/特大/超大,持久化到 storage) ----
+ * 滑块用 index(0-5)做值,带 step=1 自然吸附到这 6 档;mp-html 去掉 tag-style,
+ * 字号通过 CSS 变量(--read-fs / --read-lh)从 .rich-content 注入到内部 p/h,
+ * 改字号无需重解析,六档间切换零卡顿。 */
+const FONT_KEY = 'yinyu_read_font'
+const FONT_LEVELS = [
+  { label: '小',   size: 32, line: 1.85 },
+  { label: '中',   size: 38, line: 1.9 },
+  { label: '大',   size: 44, line: 2.0 },
+  { label: '较大', size: 52, line: 2.1 },
+  { label: '特大', size: 60, line: 2.2 },
+  { label: '超大', size: 68, line: 2.3 }
+]
+function readStoredFontIdx() {
+  const stored = uni.getStorageSync(FONT_KEY)
+  if (typeof stored === 'number') {
+    const i = FONT_LEVELS.findIndex((l) => l.size === stored)
+    if (i >= 0) return i
+  }
+  return 2 // 默认「大」
+}
+const fontIdx = ref(readStoredFontIdx())
+const fontLevel = computed(() => FONT_LEVELS[fontIdx.value])
+const fontSize = computed(() => fontLevel.value.size)
+const fontLine = computed(() => fontLevel.value.line)
+const showFontSlider = ref(false)
+// 通过 CSS 变量把字号喂给 mp-html 内部的 p/h —— 改字号只触发 CSS 重排,不触发重解析
+const richWrapStyle = computed(() => ({
+  '--read-fs': fontSize.value + 'rpx',
+  '--read-lh': fontLine.value,
+  fontSize: fontSize.value + 'rpx',
+  lineHeight: fontLine.value
+}))
+// Aa 图标随当前档位缩放,按钮即指示器
+const fontIconSize = computed(() => Math.round((fontSize.value - 24) * 0.6 + 24))
+
+function toggleFontSlider() {
+  showFontSlider.value = !showFontSlider.value
+}
+function closeFontSlider() {
+  showFontSlider.value = false
+}
+function onFontChanging(e) {
+  // 拖动中:只改内存值实时预览,不落盘(@changing 触发密集,IO 会卡)
+  fontIdx.value = e.detail.value
+}
+function onFontChange(e) {
+  // 释放:落盘当前档位的 size
+  fontIdx.value = e.detail.value
+  uni.setStorageSync(FONT_KEY, fontLevel.value.size)
+}
 
 // 解析音频(提取出来交给 AudioPlayer,正文剥除 audio,避免 mp-html 与 AudioPlayer 双重渲染)
 const richParsed = computed(() => extractAudio(article.value?.content_html))
@@ -117,15 +191,6 @@ onShow(() => {
     if (snap) article.value = snap
   }
 })
-
-const canEdit = computed(() => {
-  const u = getUser()
-  return !!(u && article.value && article.value.author && u.id === article.value.author.id)
-})
-
-function goEdit() {
-  uni.navigateTo({ url: '/pages/write/index?id=' + article.value.id })
-}
 
 async function load(id) {
   // 先读本地快照立即展示(SWR stale),再后台拉新覆盖
@@ -222,11 +287,22 @@ function goBack() {
 .topbar-right {
   width: 120rpx;
 }
-.topbar-edit {
-  width: 120rpx;
-  text-align: right;
+/* 右上角 Aa:承载字号滑块弹层。topbar-right 占 120rpx 与左侧 back 对称,
+   popover 用 position:absolute 挂在这一格的 top:100%,从顶部往下展开 */
+.topbar-aa-wrap {
+  position: relative;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  z-index: 100;
+}
+.topbar-aa {
   color: #c4a882;
-  font-size: 28rpx;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+  padding: 12rpx 0 12rpx 40rpx; /* 扩大可点区域,主要向左扩展,不顶到 title */
 }
 .content {
   padding: 24rpx 48rpx 120rpx;
@@ -253,11 +329,6 @@ function goBack() {
 @keyframes rise {
   from { opacity: 0; transform: translateY(28rpx); }
   to { opacity: 1; transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .title, .author, .tags, .rich-content, .actions {
-    animation: none;
-  }
 }
 .title {
   font-size: 48rpx;
@@ -307,21 +378,109 @@ function goBack() {
 .rich-content {
   margin-top: 24rpx;
   color: #4a4a4a;
-  font-size: 30rpx;
-  line-height: 1.85;
+  font-size: var(--read-fs, 32rpx);
+  line-height: var(--read-lh, 1.85);
   animation: rise 0.8s 0.32s ease-out both;
 }
 
-.rich-content :deep(.mp-html) {
+/* mp-html 内部 p/h 的字号/行距由 .rich-content 上的 CSS 变量驱动,
+   拖动滑块只触发 CSS 变量更新 + 浏览器重排,无需重解析 HTML。 */
+.rich-content :deep(.mp-html),
+.rich-content :deep(p),
+.rich-content :deep(li) {
+  font-size: var(--read-fs, 32rpx) !important;
+  line-height: var(--read-lh, 1.85) !important;
   color: #4a4a4a;
-  font-size: 30rpx;
-  line-height: 1.85;
 }
+.rich-content :deep(h1) {
+  font-size: calc(var(--read-fs, 32rpx) + 10rpx) !important;
+  line-height: 1.4;
+  color: #4a4a4a;
+  font-weight: 700;
+}
+.rich-content :deep(h2) {
+  font-size: calc(var(--read-fs, 32rpx) + 6rpx) !important;
+  line-height: 1.4;
+  color: #4a4a4a;
+  font-weight: 600;
+}
+.rich-content :deep(h3) {
+  font-size: calc(var(--read-fs, 32rpx) + 3rpx) !important;
+  line-height: 1.5;
+  color: #4a4a4a;
+  font-weight: 600;
+}
+.rich-content :deep(blockquote) {
+  font-size: var(--read-fs, 32rpx) !important;
+  line-height: var(--read-lh, 1.85) !important;
+  color: #666;
+  border-left: 3px solid #c4a882;
+  padding-left: 12px;
+}
+
 .actions {
   margin-top: 48rpx;
   display: flex;
   justify-content: center;
   animation: rise 0.6s 0.5s ease-out both;
+}
+.font-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99;
+}
+.font-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 22rpx 32rpx;
+  background: #fff;
+  border-radius: 40rpx;
+  box-shadow: 0 12rpx 40rpx rgba(196, 168, 130, 0.28);
+  width: 620rpx;
+  box-sizing: border-box;
+  z-index: 101;
+  animation: popIn 0.22s ease-out both;
+}
+.font-popover::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  right: 28rpx;
+  border: 12rpx solid transparent;
+  border-bottom-color: #fff;
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(-8rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fp-letter {
+  color: #c4a882;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.fp-letter.sm { font-size: 24rpx; }
+.fp-letter.lg { font-size: 38rpx; }
+.fp-slider {
+  flex: 1;
+  margin: 0 4rpx;
+}
+/* 当前档位名称:固定宽度,避免「小/中/大」(1 字)与「较大/特大/超大」(2 字)切换时挤动布局 */
+.fp-label {
+  font-size: 26rpx;
+  color: #c4a882;
+  font-weight: 600;
+  min-width: 64rpx;
+  text-align: center;
+  flex-shrink: 0;
+  margin-left: 4rpx;
 }
 .like-btn {
   display: flex;
@@ -351,6 +510,18 @@ function goBack() {
 }
 .like-text {
   font-size: 28rpx;
+  display: inline-block;
+  min-width: 36rpx;
+  text-align: center;
+}
+/* 数字弹跳:比心形再轻一点,跟手不晃眼 */
+.like-text.pop {
+  animation: numPop 0.45s ease;
+}
+@keyframes numPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.3); }
+  100% { transform: scale(1); }
 }
 .loading {
   padding: 200rpx 0;

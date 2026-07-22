@@ -1,14 +1,40 @@
-/* 全局 SCSS 变量 —— 治愈暖色系 */
-$warm-white: #FDFBF7;
-$wood-bark: #C4A882;
-$moss-green: #88A07A;
-$sunset-pink: #E8C4C4;
-$text-main: #4A4A4A;
-$text-sec: #8D8D8D;
+/**
+ * uni-app 全局 SCSS 变量(自动注入到所有 .scss 编译单元)。
+ *
+ * 注意:色板请使用 CSS 变量(定义在 App.vue 的 page 上,支持浅/深色切换),
+ *      不要在这里再维护一份 SCSS 色板,避免双源不同步。
+ *      用法:color: var(--text-main);  background: var(--warm-surface);
+ *
+ * 这里只保留对 uni-app 内置组件变量的赋值,让 uni-ui 等组件遵循暖色基调。
+ */
+$uni-color-primary: #c4a882; // 木褐色:主按钮、激活态
+$uni-color-success: #88a07a; // 苔藓绿:成功/正向
+$uni-color-warning: #e0a8b0; // 暖粉:警示(柔化)
+$uni-color-error: #d97a7a;
 
-/* uni-app 内置变量 */
-$uni-color-primary: $wood-bark;
-$uni-color-success: $moss-green;
-$uni-text-color: $text-main;
-$uni-text-color-grey: $text-sec;
-$uni-bg-color: $warm-white;
+$uni-text-color: #4a4a4a;
+$uni-text-color-inverse: #ffffff;
+$uni-text-color-grey: #8d8d8d;
+$uni-text-color-placeholder: #b0b0b0;
+$uni-text-color-disable: #c0c0c0;
+
+$uni-bg-color: #fdfbf7;
+$uni-bg-color-grey: #f3eee5;
+$uni-bg-color-hover: #f1f1f1;
+$uni-bg-color-mask: rgba(0, 0, 0, 0.4);
+
+$uni-border-color: #f0ebe2;
+
+$uni-font-size-sm: 24rpx;
+$uni-font-size-base: 28rpx;
+$uni-font-size-lg: 32rpx;
+
+$uni-spacing-row-sm: 10rpx;
+$uni-spacing-row-base: 20rpx;
+$uni-spacing-col-sm: 8rpx;
+$uni-spacing-col-base: 16rpx;
+
+$uni-border-radius-sm: 16rpx;
+$uni-border-radius-base: 24rpx;
+$uni-border-radius-lg: 48rpx;
+$uni-border-radius-circle: 50%;

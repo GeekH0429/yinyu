@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { SNAP, readSnap, writeSnap } from '../utils/snap'
+import { SNAP, readSnap, writeSnapDebounced as writeSnap } from '../utils/snap'
 
 /**
  * 阅读页(图文 feed)列表状态。
@@ -28,6 +28,19 @@ export const dirty = ref(false)     // 失效标记:发布/删除图文后置 tr
 /** 失效缓存(发布新图文后调用)。 */
 export function invalidateFeed() {
   dirty.value = true
+}
+
+/** 重置全部 feed 状态(登出换号时调用,避免看到上一账号的列表残留)。 */
+export function resetFeed() {
+  articles.value = []
+  tags.value = []
+  activeTag.value = ''
+  page.value = 1
+  noMore.value = false
+  loading.value = false
+  scrollTop.value = 0
+  hydrated.value = false
+  dirty.value = false
 }
 
 /** 从持久快照水合列表(冷启动立即展示上次内容)。命中返回 true;不改动 hydrated 语义。 */

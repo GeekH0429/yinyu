@@ -1,5 +1,11 @@
 <template>
-  <image :src="displaySrc" class="cached-img" @error="onErr" />
+  <image
+    :src="displaySrc"
+    :lazy-load="lazyLoad"
+    :style="ratioStyle"
+    class="cached-img"
+    @error="onErr"
+  />
 </template>
 
 <script setup>
@@ -10,15 +16,19 @@
  * 缓存命中后,二次进入/冷启动即用本地。@error 兜底:本地失联回退远程并重缓存;
  * 远程仍失败则切透明占位,露出暖色 background 作为兜底块(避免破图)。
  *
- * 保持 <image> 为单根节点:mode / lazy-load / class / style 仍自动透传。
- *   <CachedImage :src="a.cover_url" mode="aspectFill" lazy-load class="cover" />
+ * 保持 <image> 为单根节点:mode / class / style 仍自动透传。
+ * lazy-load 默认开(列表场景必备);首屏可见的大图可显式 :lazy-load="false"。
+ * ratio(宽高比,如 16/9)给定时撑 aspect-ratio 占位,避免图片加载完才撑高造成布局抖动(CLS)。
+ *   <CachedImage :src="a.cover_url" mode="aspectFill" ratio="1.6" class="cover" />
  */
 import { ref, computed, watch, onMounted } from 'vue'
 import { resourceUrl, isRemoteUrl } from '../config'
 import { getCachedResource } from '../utils/resourceCache'
 
 const props = defineProps({
-  src: { type: String, default: '' }
+  src: { type: String, default: '' },
+  lazyLoad: { type: Boolean, default: true },
+  ratio: { type: Number, default: 0 }
 })
 
 // 1x1 透明占位:失败时切到它,露出 .cached-img 的暖色背景作为兜底块
@@ -35,6 +45,10 @@ const remote = computed(() => {
 })
 const useSrc = computed(() => localPath.value || remote.value)
 const displaySrc = computed(() => (failed.value ? TRANSPARENT : useSrc.value))
+
+// 宽高比占位:aspect-ratio 是现代 CSS 标准属性
+// H5 现代浏览器完美支持;不支持的环境会降级为「图加载完才撑高」(原行为,不崩)
+const ratioStyle = computed(() => (props.ratio > 0 ? `aspect-ratio:${props.ratio};` : ''))
 
 function resolve() {
   const url = remote.value

@@ -29,6 +29,31 @@ export function writeSnap(key, data) {
   }
 }
 
+/**
+ * 防抖写入:列表每次触底加载都会调一次 persistXxxSnap,频繁同步写 storage 在弱机型上是卡顿源。
+ * 按 key 记录最后一次 data,延迟 delay ms 后真正落盘;期间新调用覆盖旧 data。
+ */
+const debouncers = new Map()
+export function writeSnapDebounced(key, data, delay = 500) {
+  let entry = debouncers.get(key)
+  if (entry) {
+    clearTimeout(entry.timer)
+  } else {
+    entry = {}
+    debouncers.set(key, entry)
+  }
+  entry.data = data
+  entry.timer = setTimeout(() => {
+    const d = entry.data
+    try {
+      uni.setStorageSync(key, JSON.stringify({ ts: Date.now(), data: d }))
+    } catch (e) {
+      /* ignore */
+    }
+    if (debouncers.get(key) === entry) debouncers.delete(key)
+  }, delay)
+}
+
 export function clearSnap(key) {
   try {
     uni.removeStorageSync(key)

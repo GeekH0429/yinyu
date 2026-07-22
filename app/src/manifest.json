@@ -6,6 +6,7 @@
   "versionCode": "100",
   "transformPx": false,
   "app-plus": {
+    "screenOrientation": ["portrait-primary"],
     "distribute": {
       "android": {
         "permissions": [

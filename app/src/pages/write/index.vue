@@ -60,8 +60,8 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { onLoad, onBackPress } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
@@ -220,6 +220,36 @@ function goBack() {
     }
   })
 }
+
+// App 端:拦截物理返回 / 系统返回手势,触发与「取消」按钮一致的二次确认
+// H5 端 onBackPress 不触发 SPA 内的后退,改用 beforeunload 兜底(关闭/刷新提示)
+onBackPress((e) => {
+  // e.from === 'navigateBack' 时是上面 goBack 已经 confirm 后主动 navigateBack,
+  // 此时不要再拦,否则会循环。其它来源(backbutton)按 dirty 判断
+  if (e && e.from === 'navigateBack') return false
+  if (!dirty.value) return false
+  goBack()
+  return true // 拦截,自己处理
+})
+
+// H5 兜底:用户改动后关闭/刷新页面时,浏览器原生确认(SPA 内的后退浏览器不允许真正拦截)
+function onBeforeUnload(e) {
+  // #ifdef H5
+  if (!dirty.value) return
+  e.preventDefault()
+  e.returnValue = ''
+  // #endif
+}
+onMounted(() => {
+  // #ifdef H5
+  if (typeof window !== 'undefined') window.addEventListener('beforeunload', onBeforeUnload)
+  // #endif
+})
+onUnmounted(() => {
+  // #ifdef H5
+  if (typeof window !== 'undefined') window.removeEventListener('beforeunload', onBeforeUnload)
+  // #endif
+})
 </script>
 
 <style scoped>

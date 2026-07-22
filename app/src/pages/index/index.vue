@@ -24,6 +24,12 @@
       </scroll-view>
     </view>
 
+    <!-- SWR 离线提示:后台静默刷新失败但本地有旧数据时,告诉用户当前是缓存内容 -->
+    <view class="offline-banner" v-if="offlineStale" @tap="dismissOffline">
+      <text class="offline-text">网络不太通,显示的是上次的内容 ✦</text>
+      <text class="offline-close">×</text>
+    </view>
+
     <view class="list">
       <!-- 骨架屏:首次加载且无数据 -->
       <view v-if="loading && !articles.length">
@@ -47,7 +53,7 @@
           :src="a.cover_url"
           class="cover"
           mode="aspectFill"
-          lazy-load
+          :ratio="2"
         />
         <view class="body">
           <text class="title serif">{{ a.title }}</text>
@@ -106,6 +112,11 @@ import StateView from '../../components/StateView.vue'
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const pageSize = 10
 const feedError = ref(false) // 首次加载失败且无数据时,展示错误占位 + 重试
+const offlineStale = ref(false) // SWR:后台刷新失败但本地有数据时,顶部轻提示
+
+// 标签切换:防抖 + reqId race 防护(连续点按不同标签只发最后一次请求,过期响应丢弃)
+let tagDebounce = null
+let listReqId = 0
 
 onMounted(async () => {
   if (isLoggedIn()) refreshUser()
@@ -130,11 +141,21 @@ onMounted(async () => {
   dirty.value = false
 })
 
-/** 后台静默刷新(SWR revalidate):不显示 loading,成功后覆盖快照 */
+/** 后台静默刷新(SWR revalidate):不显示 loading,成功后覆盖快照,失败时给顶部提示 */
 function backgroundRefresh() {
   Promise.all([loadTags(), loadArticles(true, true)])
-    .then(() => persistFeedSnap())
-    .catch(() => {})
+    .then(() => {
+      offlineStale.value = false
+      persistFeedSnap()
+    })
+    .catch(() => {
+      // 弱网:有旧数据则提示「这是上次的内容」,没旧数据则交给前台错误占位
+      if (articles.value.length) offlineStale.value = true
+    })
+}
+
+function dismissOffline() {
+  offlineStale.value = false
 }
 
 // navigateBack(write 发完帖返回)不重挂载页面,用 onShow 处理失效刷新
@@ -172,8 +193,10 @@ async function loadTags() {
 }
 
 async function loadArticles(reset = false, silent = false) {
-  if (loading.value) return
+  // reset 由标签切换/下拉刷新触发,允许并发(用 reqId 仲裁);触底不 reset 时仍守卫
+  if (loading.value && !reset) return
   if (noMore.value && !reset) return
+  const reqId = ++listReqId
   if (!silent) loading.value = true
   try {
     if (reset) {
@@ -183,6 +206,7 @@ async function loadArticles(reset = false, silent = false) {
     const params = { page: page.value, page_size: pageSize }
     if (activeTag.value) params.tag = activeTag.value
     const res = await api.articles.list(params)
+    if (reqId !== listReqId) return // 已被后续请求取代,丢弃过期响应
     const items = res.items || []
     if (reset) articles.value = items
     else articles.value.push(...items)
@@ -190,16 +214,28 @@ async function loadArticles(reset = false, silent = false) {
     else page.value++
     feedError.value = false
   } catch {
+    if (reqId !== listReqId) return
     // 静默刷新失败不提示;仅"无任何数据 + 非静默"时显示错误占位(有旧数据则保留)
     if (!silent && !articles.value.length) feedError.value = true
   } finally {
-    if (!silent) loading.value = false
+    // 仅当前请求是最新的时才解除 loading,避免被新请求接管时误清
+    if (reqId === listReqId && !silent) loading.value = false
   }
 }
 
 function setTag(t) {
+  if (activeTag.value === t) return
   activeTag.value = t
-  loadArticles(true)
+  // 立即清空旧内容,展示骨架(避免旧标签内容闪一下)
+  articles.value = []
+  noMore.value = false
+  offlineStale.value = false
+  // 防抖:连续切多个标签只发最后一次(250ms 内的连点合并)
+  clearTimeout(tagDebounce)
+  loading.value = true
+  tagDebounce = setTimeout(() => {
+    loadArticles(true)
+  }, 250)
 }
 
 function retryFeed() {
@@ -242,6 +278,25 @@ function goWrite() {
 }
 .filter-bar {
   padding: 12rpx 0 24rpx;
+}
+/* SWR 离线提示条 */
+.offline-banner {
+  margin: 0 32rpx 16rpx;
+  padding: 18rpx 28rpx;
+  background: rgba(196, 168, 130, 0.12);
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.offline-text {
+  font-size: 24rpx;
+  color: #c4a882;
+}
+.offline-close {
+  font-size: 32rpx;
+  color: #c4a882;
+  padding-left: 16rpx;
 }
 .tag-scroll {
   white-space: nowrap;

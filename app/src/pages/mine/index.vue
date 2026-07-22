@@ -54,6 +54,7 @@
             scroll-y
             class="tab-content"
             refresher-enabled
+            enable-back-to-top
             :refresher-triggered="artRefreshing"
             @refresherrefresh="onRefreshArticles"
             @scrolltolower="onReachArticles"
@@ -96,6 +97,7 @@
             scroll-y
             class="tab-content"
             refresher-enabled
+            enable-back-to-top
             :refresher-triggered="thRefreshing"
             @refresherrefresh="onRefreshTreeholes"
             @scrolltolower="onReachTreeholes"

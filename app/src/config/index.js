@@ -5,7 +5,7 @@
  * - 生产:改成线上域名(https)
  */
 // export const SERVER_ORIGIN = 'http://127.0.0.1:8000'
-export const SERVER_ORIGIN = 'http://192.168.137.1:8000'
+export const SERVER_ORIGIN = 'http://192.168.1.5:8000'
 export const API_BASE = SERVER_ORIGIN + '/api/v1'
 
 /**
