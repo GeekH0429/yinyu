@@ -4,11 +4,11 @@
 
     <view class="topbar">
       <text class="back" @tap="goBack">‹ 取消</text>
-      <text class="topbar-title serif">写图文</text>
-      <text class="publish" @tap="onSubmit">{{ submitting ? '…' : '发布' }}</text>
+      <text class="topbar-title serif">{{ isEdit ? '编辑图文' : '写图文' }}</text>
+      <text class="publish" @tap="onSubmit">{{ submitting ? '…' : isEdit ? '保存' : '发布' }}</text>
     </view>
 
-    <view class="form">
+    <view class="form" v-if="!loadingDetail">
       <input class="title-input serif" v-model="form.title" placeholder="标题" />
 
       <textarea
@@ -48,12 +48,17 @@
       </view>
     </view>
 
+    <view class="loading" v-else>
+      <text class="load-text">正在打开…</text>
+    </view>
+
     <AudioInfoPopup v-model:visible="audioPopup.visible" :src="audioPopup.src" @confirm="onAudioConfirm" />
   </view>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
@@ -61,11 +66,16 @@ import { buildAudioCard } from '../../utils/audioCard'
 import { normalizeContentHtml } from '../../utils/content'
 import { invalidateFeed } from '../../store/feed'
 import { invalidateMe } from '../../store/me'
+import { setArticleSnap } from '../../utils/articleCache'
 import AudioInfoPopup from '../../components/AudioInfoPopup.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const submitting = ref(false)
 const uploading = ref(false)
+
+const articleId = ref(null)
+const isEdit = ref(false)
+const loadingDetail = ref(false)
 
 const form = reactive({
   title: '',
@@ -77,6 +87,31 @@ const tagsText = ref('')
 
 // 音频信息弹窗:选完音频上传后弹出,填写 名称/歌手/封面 再插入卡片
 const audioPopup = reactive({ visible: false, src: '' })
+
+onLoad((opts) => {
+  // 带 id 进入即编辑模式:拉取详情回显
+  if (opts && opts.id) {
+    articleId.value = Number(opts.id)
+    isEdit.value = true
+    loadDetail(articleId.value)
+  }
+})
+
+async function loadDetail(id) {
+  loadingDetail.value = true
+  try {
+    const a = await api.articles.get(id)
+    form.title = a.title || ''
+    form.content_html = a.content_html || ''
+    form.cover_url = a.cover_url || ''
+    form.summary = a.summary || ''
+    tagsText.value = (a.tags || []).join(',')
+  } catch {
+    uni.showToast({ title: '加载失败', icon: 'none' })
+  } finally {
+    loadingDetail.value = false
+  }
+}
 
 async function uploadPicked(path) {
   uploading.value = true
@@ -134,17 +169,26 @@ async function onSubmit() {
       .split(/[,，]/)
       .map((t) => t.trim())
       .filter(Boolean)
-    await api.write.createArticle({
+    const payload = {
       title: form.title,
       summary: form.summary || null,
       cover_url: form.cover_url || null,
       tags,
-      content_html: normalizeContentHtml(form.content_html),
-      status: 'published'
-    })
-    uni.showToast({ title: '已发布', icon: 'success' })
-    invalidateFeed()
-    invalidateMe()
+      content_html: normalizeContentHtml(form.content_html)
+    }
+    if (isEdit.value) {
+      // 编辑:不传 status,保持原文(草稿/已发布)状态不变
+      const fresh = await api.write.updateArticle(articleId.value, payload)
+      setArticleSnap(articleId.value, fresh) // 阅读页 SWR 快照同步更新
+      invalidateMe()
+      invalidateFeed()
+      uni.showToast({ title: '已保存', icon: 'success' })
+    } else {
+      await api.write.createArticle({ ...payload, status: 'published' })
+      invalidateFeed()
+      invalidateMe()
+      uni.showToast({ title: '已发布', icon: 'success' })
+    }
     setTimeout(() => uni.navigateBack(), 500)
   } catch {
     /* 拦截器已提示 */
@@ -256,5 +300,13 @@ function goBack() {
 .cover-add {
   color: #c4a882;
   font-size: 28rpx;
+}
+.loading {
+  padding: 200rpx 0;
+  text-align: center;
+}
+.load-text {
+  color: #b8b8b8;
+  font-size: 26rpx;
 }
 </style>

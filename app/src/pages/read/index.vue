@@ -5,7 +5,8 @@
     <view class="topbar">
       <text class="back" @tap="goBack">‹ 返回</text>
       <text class="topbar-title">阅读</text>
-      <text class="topbar-right"></text>
+      <text v-if="canEdit" class="topbar-edit" @tap="goEdit">编辑</text>
+      <text class="topbar-right" v-else></text>
     </view>
 
     <view class="content" v-if="article">
@@ -62,13 +63,14 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { SERVER_ORIGIN } from '../../config'
 import { formatTime } from '../../utils/format'
 import { extractAudio } from '../../utils/audioCard'
 import { getArticleSnap, setArticleSnap } from '../../utils/articleCache'
 import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourceCache'
+import { getUser } from '../../store/user'
 import AudioPlayer from '../../components/AudioPlayer.vue'
 import CachedImage from '../../components/CachedImage.vue'
 
@@ -83,9 +85,30 @@ const richParsed = computed(() => extractAudio(article.value?.content_html))
 const parsedAudioList = computed(() => richParsed.value.audioList)
 const parsedContent = computed(() => applyCachedImages(richParsed.value.html))
 
+const currentId = ref(null)
 onLoad((opts) => {
-  if (opts.id) load(opts.id)
+  if (opts.id) {
+    currentId.value = Number(opts.id)
+    load(currentId.value)
+  }
 })
+
+onShow(() => {
+  // 从编辑页返回:用最新快照覆盖,立即呈现更新后的内容
+  if (currentId.value) {
+    const snap = getArticleSnap(currentId.value)
+    if (snap) article.value = snap
+  }
+})
+
+const canEdit = computed(() => {
+  const u = getUser()
+  return !!(u && article.value && article.value.author && u.id === article.value.author.id)
+})
+
+function goEdit() {
+  uni.navigateTo({ url: '/pages/write/index?id=' + article.value.id })
+}
 
 async function load(id) {
   // 先读本地快照立即展示(SWR stale),再后台拉新覆盖
@@ -153,6 +176,12 @@ function goBack() {
 }
 .topbar-right {
   width: 120rpx;
+}
+.topbar-edit {
+  width: 120rpx;
+  text-align: right;
+  color: #c4a882;
+  font-size: 28rpx;
 }
 .content {
   padding: 24rpx 48rpx 120rpx;

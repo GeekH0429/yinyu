@@ -34,7 +34,10 @@
         <text class="mini-title">{{ a.title }}</text>
         <view class="mini-meta">
           <text>{{ a.status === 'published' ? '已发布' : '草稿' }} · ♡ {{ a.like_count }}</text>
-          <text class="mini-time">{{ formatDate(a.created_at) }}</text>
+          <view class="mini-right">
+            <text class="mini-edit" @tap.stop="goEdit(a)">编辑</text>
+            <text class="mini-time">{{ formatDate(a.created_at) }}</text>
+          </view>
         </view>
       </view>
       <text v-if="!articles.length" class="empty">还没有作品,去首页 ✎ 写一篇吧</text>
@@ -54,6 +57,7 @@
         <view class="th-code-row">
           <text class="th-code">{{ t.code }}</text>
           <view class="th-actions">
+            <text class="th-btn" @tap="editTreehole(t)">编辑</text>
             <text class="th-btn" @tap="copy(t.code)">复制</text>
             <text class="th-btn" @tap="refreshCode(t)">换暗号</text>
           </view>
@@ -67,6 +71,9 @@
       <text>退出登录</text>
     </view>
 
+    <!-- 编辑我的树洞(复用 treehole 页同一组件) -->
+    <TreeholeEditor v-model:visible="thEditorVisible" :editing="thEditing" @updated="onThUpdated" />
+
     <TabBar />
   </view>
 </template>
@@ -77,12 +84,17 @@ import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { formatDate } from '../../utils/format'
 import { getUser, refreshUser, logout, isLoggedIn } from '../../store/user'
-import { articles, treeholes, hydrated, dirty, hydrateMeFromSnap, persistMeSnap } from '../../store/me'
+import { articles, treeholes, hydrated, dirty, hydrateMeFromSnap, persistMeSnap, invalidateMe } from '../../store/me'
 import TabBar from '../../components/TabBar.vue'
 import CachedImage from '../../components/CachedImage.vue'
+import TreeholeEditor from '../../components/TreeholeEditor.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const user = ref(getUser())
+
+// 树洞编辑弹窗
+const thEditorVisible = ref(false)
+const thEditing = ref(null)
 
 onShow(async () => {
   user.value = getUser()
@@ -130,6 +142,10 @@ function goRead(id) {
   uni.navigateTo({ url: '/pages/read/index?id=' + id })
 }
 
+function goEdit(a) {
+  uni.navigateTo({ url: '/pages/write/index?id=' + a.id })
+}
+
 function copy(text) {
   uni.setClipboardData({ data: String(text) })
 }
@@ -149,6 +165,18 @@ async function refreshCode(t) {
       }
     }
   })
+}
+
+function editTreehole(t) {
+  // 先设 editing 再开 visible,组件 watch(visible) 时才能拿到待编辑数据
+  thEditing.value = { id: t.id, title: t.title, content_html: t.content_html }
+  thEditorVisible.value = true
+}
+
+async function onThUpdated() {
+  // 弹窗关闭不会触发 onShow,这里手动刷新当前列表
+  invalidateMe()
+  await loadTreeholes()
 }
 
 function onLogout() {
@@ -262,6 +290,18 @@ function onLogout() {
   color: #b0b0b0;
   margin-top: 8rpx;
   display: block;
+}
+.mini-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.mini-edit {
+  font-size: 22rpx;
+  color: #c4a882;
+  padding: 4rpx 18rpx;
+  background: rgba(196, 168, 130, 0.14);
+  border-radius: 16rpx;
 }
 .empty {
   display: block;

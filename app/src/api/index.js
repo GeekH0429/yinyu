@@ -31,7 +31,9 @@ export const api = {
 
   write: {
     createArticle: (data) => http.post('/articles', data),
-    createTreehole: (data) => http.post('/treeholes', data)
+    updateArticle: (id, data) => http.put('/articles/' + id, data),
+    createTreehole: (data) => http.post('/treeholes', data),
+    updateTreehole: (id, data) => http.put('/treeholes/' + id, data)
   },
 
   upload: (filePath) => http.upload(filePath, '/upload'),

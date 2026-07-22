@@ -4,7 +4,7 @@
 
     <view class="header">
       <text class="header-title serif">树洞</text>
-      <text class="header-sub">这里没有列表,只有你与暗号之间的秘密。</text>
+      <text class="header-sub">这里没有世间的繁华,只有你与暗号之间的秘密。</text>
     </view>
 
     <!-- 未解锁:暗号传送门 -->
@@ -87,89 +87,32 @@
     </view>
 
     <!-- 写树洞浮动按钮 -->
-    <view class="fab" @tap="openPublish">
+    <view class="fab" @tap="publishVisible = true">
       <view class="fab-icon" v-html="planeSvg"></view>
     </view>
 
-    <!-- 发布树洞弹窗(暗黑) -->
-    <view class="mask" v-if="publishVisible" @tap="closePublish">
-      <view class="pub-modal" @tap.stop>
-        <view class="pub-head">
-          <text class="pub-title serif">写一封悄悄话</text>
-          <text class="pub-close" @tap="closePublish">✕</text>
-        </view>
-
-        <!-- 发布成功:展示暗号 -->
-        <view v-if="pubResult" class="pub-result">
-          <text class="pub-result-tip">已藏好 ✿ 它的暗号是</text>
-          <text class="pub-result-code">{{ pubResult }}</text>
-          <text class="pub-result-sub">把暗号私下分享给想让他看到的人</text>
-          <view class="pub-result-actions">
-            <text class="r-btn" @tap="copyResult">复制</text>
-            <text class="r-btn primary" @tap="unlockResult">立即查看</text>
-          </view>
-        </view>
-
-        <!-- 编辑 -->
-        <view v-else class="pub-form">
-          <input class="pub-input" v-model="pub.title" placeholder="标题(可选)" />
-          <textarea
-            class="pub-textarea"
-            v-model="pub.content_html"
-            placeholder="说出心里话…"
-            :maxlength="-1"
-            auto-height
-          />
-          <view class="pub-media">
-            <text class="pub-mbtn" @tap="pubInsertImage">🖼 图片</text>
-            <text class="pub-mbtn" @tap="pubInsertAudio">🎵 音频</text>
-            <text :class="['pub-mbtn', { rec: recording }]" @tap="toggleRecord">{{ recording ? '⏹ 停止' : '🎤 录音' }}</text>
-            <text v-if="pubUploading" class="pub-up">上传中…</text>
-          </view>
-          <view class="pub-rec" v-if="recording">
-            <text class="pub-rec-dot">●</text>
-            <text class="pub-rec-time">{{ formatRecSecs(recSecs) }}</text>
-            <text class="pub-rec-tip">录音中…点「停止」结束并插入正文</text>
-          </view>
-          <view class="pub-code-row">
-            <input
-              class="pub-code-input"
-              v-model="pub.code"
-              type="number"
-              :maxlength="6"
-              placeholder="留空随机生成 6 位暗号"
-            />
-            <text class="pub-random" @tap="randomCode">🎲</text>
-          </view>
-          <button class="pub-submit" :loading="pubSubmitting" @tap="pubSubmit">藏进树洞</button>
-        </view>
-      </view>
-    </view>
-
-    <!-- 纸飞机寄向远方:发布成功动画覆盖层 -->
-    <FlyAwayOverlay :playing="flyPlaying" @done="onFlyDone" />
+    <!-- 写 / 编辑树洞:暗号展示、纸飞机、音频信息均封装在组件内 -->
+    <TreeholeEditor
+      v-model:visible="publishVisible"
+      @published="onPublished"
+      @updated="onUpdated"
+      @unlock="onUnlockFromCreate"
+    />
 
     <TabBar />
-
-    <!-- 音频信息弹窗(z-index 2000,盖在发布弹窗 1000 之上) -->
-    <AudioInfoPopup v-model:visible="audioPopup.visible" :src="audioPopup.src" @confirm="onAudioConfirm" />
   </view>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, computed } from 'vue'
 import { api } from '../../api'
-import { SERVER_ORIGIN, resourceUrl } from '../../config'
-import { chooseImage, pickAudio } from '../../utils/pick'
-import { extractAudio, buildAudioCard } from '../../utils/audioCard'
-import { normalizeContentHtml } from '../../utils/content'
+import { SERVER_ORIGIN } from '../../config'
+import { extractAudio } from '../../utils/audioCard'
 import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourceCache'
 import { invalidateMe } from '../../store/me'
-import { startRecord, stopRecord, cancelRecord } from '../../utils/recorder'
 import TabBar from '../../components/TabBar.vue'
 import AudioPlayer from '../../components/AudioPlayer.vue'
-import FlyAwayOverlay from '../../components/FlyAwayOverlay.vue'
-import AudioInfoPopup from '../../components/AudioInfoPopup.vue'
+import TreeholeEditor from '../../components/TreeholeEditor.vue'
 
 const serverOrigin = SERVER_ORIGIN
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
@@ -249,151 +192,24 @@ function reset() {
   code.value = ''
 }
 
-/* ---- 写树洞 ---- */
+/* ---- 写树洞(写作/编辑逻辑封装进 TreeholeEditor,这里只控制显隐与刷新) ---- */
 const planeSvg = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><path d="M1007.9 7.2C1001.8 3 994.8.8 987.2.8c-6.6 0-12.6 1.7-18.3 5.2L18.9 554.1C5.9 561.4-.2 572.6.6 587.9c1 15.7 8.7 26.2 22.8 31.5l216.4 88.8c5.6 2.3 12 1.2 16.5-2.7L859.2 184.6 380.3 771.6c-9.3 11.4-14.4 25.7-14.4 40.5v176.3c0 7.7 2.3 14.6 6.7 20.9 4.3 6.4 10.2 10.7 17.4 13.4 3.6 1.5 7.8 2.3 12.7 2.3 11.8 0 21.1-4.2 28-13.1l115.5-141.3c8.9-10.9 23.8-14.6 36.8-9.3l236.7 96.8c4.9 1.9 9.5 2.9 13.7 2.9 6.4 0 12.4-1.7 17.7-4.9 8.9-5.2 14.3-13.1 16.4-23.2L1023.7 49.4c3.4-17.1-1.3-31.5-15.8-42.2z" fill="currentColor"/></svg>`
 
 const publishVisible = ref(false)
-const pub = reactive({ title: '', content_html: '', code: '' })
-// 音频信息弹窗:选音频 / 录音上传后弹出,填写 名称/歌手/封面 再插入卡片
-const audioPopup = reactive({ visible: false, src: '' })
-const pubUploading = ref(false)
-const pubSubmitting = ref(false)
-const pubResult = ref('')
-const flyPlaying = ref(false)
-const recording = ref(false)
-const recSecs = ref(0)
 
-async function uploadPicked(path) {
-  pubUploading.value = true
-  try {
-    return (await api.upload(path)).url
-  } finally {
-    pubUploading.value = false
-  }
+function onPublished() {
+  // 新增一篇,回「我的」时刷新
+  invalidateMe()
 }
 
-async function pubInsertImage() {
-  try {
-    const url = await uploadPicked(await chooseImage())
-    pub.content_html += `<p><img src="${url}" style="max-width:100%;border-radius:12px"/></p>`
-  } catch {
-    /* cancel */
-  }
+function onUpdated() {
+  invalidateMe()
 }
 
-async function pubInsertAudio() {
-  try {
-    const url = await uploadPicked(await pickAudio())
-    // 上传成功后弹音频信息(名称/歌手/封面),确认再插入卡片
-    audioPopup.src = url
-    audioPopup.visible = true
-  } catch {
-    /* cancel / unsupported */
-  }
-}
-
-function onAudioConfirm({ title, artist, cover }) {
-  pub.content_html += buildAudioCard({ src: audioPopup.src, title, artist, cover })
-  uni.showToast({ title: '已加入', icon: 'success' })
-}
-
-async function toggleRecord() {
-  if (!recording.value) {
-    try {
-      recSecs.value = 0
-      await startRecord({ onTick: (s) => (recSecs.value = s) })
-      recording.value = true
-    } catch {
-      uni.showToast({ title: '无法访问麦克风', icon: 'none' })
-    }
-    return
-  }
-  // 停止 → 上传 → 弹音频信息(名称/歌手/封面)→ 确认插入卡片
-  recording.value = false
-  try {
-    const r = await stopRecord()
-    if (!r.duration) return
-    pubUploading.value = true
-    const data = await api.uploadRecorded(r)
-    audioPopup.src = data.url
-    audioPopup.visible = true
-  } catch {
-    /* ignore */
-  } finally {
-    pubUploading.value = false
-    recSecs.value = 0
-  }
-}
-
-function formatRecSecs(s) {
-  const m = Math.floor(s / 60)
-  const ss = s % 60
-  return `${m}:${String(ss).padStart(2, '0')}`
-}
-
-function randomCode() {
-  let s = ''
-  for (let i = 0; i < 6; i++) s += Math.floor(Math.random() * 10)
-  pub.code = s
-}
-
-async function pubSubmit() {
-  if (!pub.content_html.trim()) {
-    return uni.showToast({ title: '写点什么吧', icon: 'none' })
-  }
-  pubSubmitting.value = true
-  try {
-    const code = pub.code && /^\d{6}$/.test(pub.code) ? pub.code : null
-    const res = await api.write.createTreehole({
-      title: pub.title || null,
-      content_html: normalizeContentHtml(pub.content_html),
-      code
-    })
-    pubResult.value = res.code
-    flyPlaying.value = true // 放飞纸飞机,动画结束后由 onFlyDone 复位
-    invalidateMe() // 我的树洞新增一篇,回「我的」时刷新
-  } catch {
-    /* 拦截器已提示 */
-  } finally {
-    pubSubmitting.value = false
-  }
-}
-
-function onFlyDone() {
-  flyPlaying.value = false
-}
-
-function copyResult() {
-  uni.setClipboardData({ data: pubResult.value })
-}
-
-function unlockResult() {
-  // 用刚生成的暗号直接解锁查看
-  code.value = pubResult.value
-  publishVisible.value = false
-  resetPub()
+function onUnlockFromCreate(c) {
+  // 创建后「立即查看」:复用页面的解锁动画
+  code.value = c
   onUnlock()
-}
-
-function resetPub() {
-  pub.title = ''
-  pub.content_html = ''
-  pub.code = ''
-  pubResult.value = ''
-}
-
-function openPublish() {
-  resetPub()
-  publishVisible.value = true
-}
-
-function closePublish() {
-  if (recording.value) {
-    recording.value = false
-    cancelRecord()
-  }
-  flyPlaying.value = false
-  publishVisible.value = false
 }
 </script>
 
@@ -690,198 +506,5 @@ function closePublish() {
   width: 52rpx;
   height: 52rpx;
   display: block;
-}
-
-/* 发布弹窗 */
-.mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.pub-modal {
-  width: 620rpx;
-  max-height: 86vh;
-  overflow-y: auto;
-  background: #1a1a24;
-  border-radius: 40rpx;
-  padding: 48rpx 40rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 16rpx 64rpx rgba(0, 0, 0, 0.5);
-}
-.pub-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32rpx;
-}
-.pub-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #e0e0e0;
-}
-.pub-close {
-  font-size: 40rpx;
-  color: #555568;
-  padding: 0 8rpx;
-}
-.pub-input {
-  width: 100%;
-  height: 80rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 2rpx solid #333348;
-  border-radius: 20rpx;
-  padding: 0 24rpx;
-  font-size: 30rpx;
-  color: #c8c8d8;
-  box-sizing: border-box;
-  margin-bottom: 20rpx;
-}
-.pub-textarea {
-  width: 100%;
-  min-height: 280rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 2rpx solid #333348;
-  border-radius: 20rpx;
-  padding: 24rpx;
-  font-size: 30rpx;
-  line-height: 1.7;
-  color: #c8c8d8;
-  box-sizing: border-box;
-}
-.pub-media {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin: 20rpx 0;
-}
-.pub-mbtn {
-  padding: 12rpx 24rpx;
-  background: rgba(123, 140, 196, 0.12);
-  color: #7b8cc4;
-  border-radius: 20rpx;
-  font-size: 26rpx;
-}
-.pub-up {
-  color: #7b8cc4;
-  font-size: 24rpx;
-}
-.pub-mbtn.rec {
-  background: rgba(224, 112, 112, 0.15);
-  color: #e07070;
-}
-.pub-rec {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-top: 16rpx;
-  padding: 16rpx 20rpx;
-  background: rgba(123, 140, 196, 0.08);
-  border-radius: 16rpx;
-}
-.pub-rec-dot {
-  color: #e07070;
-  font-size: 24rpx;
-  animation: recBlink 1s infinite;
-}
-@keyframes recBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-.pub-rec-time {
-  color: #c0c8e0;
-  font-size: 28rpx;
-  font-family: 'Menlo', monospace;
-}
-.pub-rec-tip {
-  color: #555568;
-  font-size: 22rpx;
-}
-.pub-code-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-bottom: 28rpx;
-}
-.pub-code-input {
-  flex: 1;
-  height: 80rpx;
-  background: rgba(255, 255, 255, 0.04);
-  border: 2rpx solid #333348;
-  border-radius: 20rpx;
-  padding: 0 24rpx;
-  font-size: 32rpx;
-  letter-spacing: 8rpx;
-  color: #c8c8d8;
-  box-sizing: border-box;
-}
-.pub-random {
-  width: 80rpx;
-  height: 80rpx;
-  background: rgba(123, 140, 196, 0.12);
-  border: 2rpx solid #333348;
-  border-radius: 20rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36rpx;
-}
-.pub-submit {
-  width: 100%;
-  height: 92rpx;
-  line-height: 92rpx;
-  background: linear-gradient(135deg, #3d4466 0%, #7b8cc4 100%);
-  color: #fff;
-  border-radius: 46rpx;
-  font-size: 32rpx;
-  font-weight: 600;
-  border: none;
-}
-.pub-submit::after {
-  border: none;
-}
-
-/* 发布成功 */
-.pub-result {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 24rpx 0;
-}
-.pub-result-tip {
-  color: #7b8cc4;
-  font-size: 28rpx;
-}
-.pub-result-code {
-  font-size: 88rpx;
-  font-weight: 700;
-  letter-spacing: 16rpx;
-  color: #c0c8e0;
-  font-family: 'Menlo', monospace;
-  margin: 24rpx 0 12rpx;
-}
-.pub-result-sub {
-  color: #555568;
-  font-size: 24rpx;
-  text-align: center;
-}
-.pub-result-actions {
-  display: flex;
-  gap: 24rpx;
-  margin-top: 40rpx;
-}
-.r-btn {
-  padding: 16rpx 48rpx;
-  border-radius: 36rpx;
-  font-size: 28rpx;
-  background: rgba(255, 255, 255, 0.06);
-  color: #c8c8d8;
-}
-.r-btn.primary {
-  background: linear-gradient(135deg, #3d4466 0%, #7b8cc4 100%);
-  color: #fff;
 }
 </style>
