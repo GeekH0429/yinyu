@@ -4,7 +4,7 @@
       <!-- 左侧信息 -->
       <view class="info-area">
         <!-- 有封面用封面,否则用音符占位 -->
-        <image
+        <CachedImage
           v-if="cover"
           class="cover"
           :src="cover"
@@ -45,6 +45,8 @@
 
 <script setup>
 import { ref, onUnmounted } from 'vue'
+import { getCachedResource } from '../utils/resourceCache'
+import CachedImage from './CachedImage.vue'
 
 const props = defineProps({
   src: { type: String, required: true },
@@ -65,10 +67,12 @@ const isSeeking = ref(false)
 let ctx = null
 let lastUiTick = 0
 
-function ensureContext() {
+async function ensureContext() {
   if (ctx) return ctx
   ctx = uni.createInnerAudioContext()
-  ctx.src = props.src
+  // 先取本地缓存路径(命中则秒开、弱网可用;getCachedResource 失败会回退远程)。
+  // props.src 已是 resourceUrl 拼好的完整远程 URL(audioCard.js 的 fullSrc)。
+  ctx.src = (await getCachedResource(props.src, 'audio')) || props.src
 
   ctx.onCanplay(() => {
     if (duration.value === 0 && ctx) duration.value = ctx.duration || 0
@@ -97,6 +101,10 @@ function ensureContext() {
   })
   ctx.onError((err) => {
     console.error('音频播放错误', err)
+    // 本地缓存文件读取失败:回退远程源,用户再次播放即可用远程(下次命中重新缓存)
+    if (ctx && ctx.src !== props.src) {
+      try { ctx.src = props.src } catch (e) { /* ignore */ }
+    }
     uni.showToast({ title: '音频加载失败', icon: 'none' })
     isPlaying.value = false
     loading.value = false
@@ -105,13 +113,16 @@ function ensureContext() {
 }
 
 function togglePlay() {
-  const c = ensureContext()
-  if (isPlaying.value) {
-    c.pause()
-  } else {
-    loading.value = true
-    c.play()
+  if (isPlaying.value && ctx) {
+    ctx.pause()
+    return
   }
+  loading.value = true
+  ensureContext()
+    .then((c) => c.play())
+    .catch(() => {
+      loading.value = false
+    })
 }
 
 function onSeek(e) {

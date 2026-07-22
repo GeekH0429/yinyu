@@ -31,9 +31,9 @@
         class="card"
         @tap="goRead(a.id)"
       >
-        <image
+        <CachedImage
           v-if="a.cover_url"
-          :src="resourceUrl(a.cover_url)"
+          :src="a.cover_url"
           class="cover"
           mode="aspectFill"
           lazy-load
@@ -71,35 +71,53 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { onShow, onReachBottom, onPullDownRefresh, onPageScroll } from '@dcloudio/uni-app'
 import { api } from '../../api'
-import { resourceUrl } from '../../config'
 import { formatDate } from '../../utils/format'
 import { isLoggedIn, refreshUser } from '../../store/user'
 import {
   articles, tags, activeTag, page, noMore, loading,
-  scrollTop, hydrated, dirty
+  scrollTop, hydrated, dirty, hydrateFeedFromSnap, persistFeedSnap
 } from '../../store/feed'
 import TabBar from '../../components/TabBar.vue'
+import CachedImage from '../../components/CachedImage.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const pageSize = 10
 
 onMounted(async () => {
   if (isLoggedIn()) refreshUser()
-  // reLaunch 重挂载:有缓存就还原滚动位置、不重载;无缓存或已失效才拉取
+  // ① reLaunch 重挂载、内存缓存命中:还原滚动、不重载
   if (hydrated.value && !dirty.value) {
     restoreScroll()
     return
   }
-  await Promise.all([loadTags(), loadArticles(true)])
+  // ② 冷启动:先从持久快照水合,立即展示上次内容
+  const hasSnap = hydrateFeedFromSnap()
+  restoreScroll()
+  if (hasSnap && !dirty.value) {
+    // 有快照、未失效:后台静默刷新(不显示"加载中"),成功覆盖快照,失败保留快照
+    backgroundRefresh()
+  } else {
+    // ③ 无快照或已失效:前台带 spinner 拉取
+    loading.value = true
+    await Promise.all([loadTags(), loadArticles(true)])
+    persistFeedSnap()
+  }
   hydrated.value = true
   dirty.value = false
 })
+
+/** 后台静默刷新(SWR revalidate):不显示 loading,成功后覆盖快照 */
+function backgroundRefresh() {
+  Promise.all([loadTags(), loadArticles(true, true)])
+    .then(() => persistFeedSnap())
+    .catch(() => {})
+}
 
 // navigateBack(write 发完帖返回)不重挂载页面,用 onShow 处理失效刷新
 onShow(() => {
   if (dirty.value) {
     dirty.value = false
-    loadArticles(true)
+    loadArticles(true).then(() => persistFeedSnap()).catch(() => {})
   }
 })
 
@@ -129,10 +147,10 @@ async function loadTags() {
   }
 }
 
-async function loadArticles(reset = false) {
+async function loadArticles(reset = false, silent = false) {
   if (loading.value) return
   if (noMore.value && !reset) return
-  loading.value = true
+  if (!silent) loading.value = true
   try {
     if (reset) {
       page.value = 1
@@ -149,7 +167,7 @@ async function loadArticles(reset = false) {
   } catch {
     /* ignore */
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 

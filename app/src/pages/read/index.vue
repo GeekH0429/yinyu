@@ -11,10 +11,10 @@
     <view class="content" v-if="article">
       <text class="title serif">{{ article.title }}</text>
       <view class="author">
-        <image
+        <CachedImage
           v-if="article.author && article.author.avatar_url"
           class="avatar"
-          :src="resourceUrl(article.author.avatar_url)"
+          :src="article.author.avatar_url"
           mode="aspectFill"
         />
         <view v-else class="avatar placeholder">
@@ -64,10 +64,12 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../api'
-import { resourceUrl, SERVER_ORIGIN } from '../../config'
+import { SERVER_ORIGIN } from '../../config'
 import { formatTime } from '../../utils/format'
 import { extractAudio } from '../../utils/audioCard'
+import { getArticleSnap, setArticleSnap } from '../../utils/articleCache'
 import AudioPlayer from '../../components/AudioPlayer.vue'
+import CachedImage from '../../components/CachedImage.vue'
 
 const serverOrigin = SERVER_ORIGIN
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
@@ -85,11 +87,21 @@ onLoad((opts) => {
 })
 
 async function load(id) {
-  loading.value = true
+  // 先读本地快照立即展示(SWR stale),再后台拉新覆盖
+  const snap = getArticleSnap(id)
+  if (snap) {
+    article.value = snap
+    loading.value = false
+  } else {
+    loading.value = true
+  }
   try {
-    article.value = await api.articles.get(id)
+    const fresh = await api.articles.get(id)
+    article.value = fresh
+    setArticleSnap(id, fresh)
   } catch {
-    uni.showToast({ title: '加载失败', icon: 'none' })
+    // 弱网:有快照则静默保留;无快照才提示失败
+    if (!snap) uni.showToast({ title: '加载失败', icon: 'none' })
   } finally {
     loading.value = false
   }

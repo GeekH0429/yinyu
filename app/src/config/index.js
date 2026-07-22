@@ -17,3 +17,8 @@ export function resourceUrl(p) {
   if (/^(blob:|wxfile:|file:|_doc|_www)/.test(p)) return p
   return SERVER_ORIGIN + (p.startsWith('/') ? p : '/' + p)
 }
+
+/** 是否为远程 URL(http/https 或协议相对 //)。供缓存层/CachedImage 判断是否需要走缓存。 */
+export function isRemoteUrl(p) {
+  return /^(https?:)?\/\//.test(p || '')
+}

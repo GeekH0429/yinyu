@@ -8,10 +8,10 @@
 
     <!-- 资料 -->
     <view class="card profile-card">
-      <image
+      <CachedImage
         v-if="user && user.avatar_url"
         class="avatar"
-        :src="resourceUrl(user.avatar_url)"
+        :src="user.avatar_url"
         mode="aspectFill"
       />
       <view v-else class="avatar placeholder">
@@ -75,11 +75,11 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
-import { resourceUrl } from '../../config'
 import { formatDate } from '../../utils/format'
 import { getUser, refreshUser, logout, isLoggedIn } from '../../store/user'
-import { articles, treeholes, hydrated, dirty } from '../../store/me'
+import { articles, treeholes, hydrated, dirty, hydrateMeFromSnap, persistMeSnap } from '../../store/me'
 import TabBar from '../../components/TabBar.vue'
+import CachedImage from '../../components/CachedImage.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const user = ref(getUser())
@@ -89,12 +89,23 @@ onShow(async () => {
   if (!isLoggedIn()) {
     return uni.reLaunch({ url: '/pages/login/index' })
   }
-  // 有缓存且未失效:直接还原,不全量重拉(切 tab 回来不闪烁)
+  // ① 内存缓存命中(切 tab 回来):直接还原,不重拉
   if (hydrated.value && !dirty.value) return
+  // ② 冷启动:先从持久快照水合,立即展示上次内容
+  const hasSnap = hydrateMeFromSnap()
   hydrated.value = true
   dirty.value = false
   user.value = await refreshUser()
-  await Promise.all([loadArticles(), loadTreeholes()])
+  if (hasSnap) {
+    // 有快照:后台静默刷新,成功覆盖快照
+    Promise.all([loadArticles(), loadTreeholes()])
+      .then(() => persistMeSnap())
+      .catch(() => {})
+  } else {
+    // ③ 无快照:前台拉取
+    await Promise.all([loadArticles(), loadTreeholes()])
+    persistMeSnap()
+  }
 })
 
 async function loadArticles() {
