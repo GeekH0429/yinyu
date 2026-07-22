@@ -22,6 +22,7 @@ Thumbs.db
 # ======================
 # Python 后端
 # ======================
+backend/_uploads/
 __pycache__/
 *.py[cod]
 *$py.class
