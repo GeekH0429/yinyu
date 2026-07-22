@@ -56,6 +56,7 @@ import { api } from '../../api'
 import { resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
 import { invalidateFeed } from '../../store/feed'
+import { invalidateMe } from '../../store/me'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const submitting = ref(false)
@@ -129,6 +130,7 @@ async function onSubmit() {
     })
     uni.showToast({ title: '已发布', icon: 'success' })
     invalidateFeed()
+    invalidateMe()
     setTimeout(() => uni.navigateBack(), 500)
   } catch {
     /* 拦截器已提示 */

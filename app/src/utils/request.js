@@ -48,6 +48,20 @@ function tryRefresh() {
   })
 }
 
+// 单飞:并发请求同时 401 时,只让第一个去刷新 token,其余入队等结果
+// (refresh_token 用过即轮换,并发刷新第二个必失败 → 误判登出)
+let refreshing = false
+let waitingQueue = []
+
+function notifyQueue(ok) {
+  const q = waitingQueue
+  waitingQueue = []
+  q.forEach(({ resolve, reject, options }) => {
+    if (ok) request({ ...options, __retried: true }).then(resolve).catch(reject)
+    else reject({ detail: '登录已过期' })
+  })
+}
+
 function request(options) {
   return new Promise((resolve, reject) => {
     const header = { 'Content-Type': 'application/json', ...(options.header || {}) }
@@ -65,15 +79,25 @@ function request(options) {
           resolve(res.data)
           return
         }
-        // 401:尝试续期后重放一次(登录/刷新接口自身 401 不重放)
+        // 401:单飞续期后重放一次(登录/刷新接口自身 401 不重放)
         const isAuthCall =
           options.url.startsWith('/auth/login') || options.url.startsWith('/auth/refresh')
         if (res.statusCode === 401 && !options.__retried && !isAuthCall) {
+          if (refreshing) {
+            // 已有刷新在进行,入队等结果,避免并发刷新把 refresh_token 用废
+            return new Promise((resolve2, reject2) => {
+              waitingQueue.push({ resolve: resolve2, reject: reject2, options })
+            })
+          }
+          refreshing = true
           const ok = await tryRefresh()
+          refreshing = false
           if (ok) {
+            notifyQueue(true)
             request({ ...options, __retried: true }).then(resolve).catch(reject)
             return
           }
+          notifyQueue(false)
           clearAuth()
           uni.reLaunch({ url: '/pages/login/index' })
           reject(res.data)

@@ -78,17 +78,21 @@ import { api } from '../../api'
 import { resourceUrl } from '../../config'
 import { formatDate } from '../../utils/format'
 import { getUser, refreshUser, logout, isLoggedIn } from '../../store/user'
+import { articles, treeholes, hydrated, dirty } from '../../store/me'
 import TabBar from '../../components/TabBar.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const user = ref(getUser())
-const articles = ref([])
-const treeholes = ref([])
 
 onShow(async () => {
+  user.value = getUser()
   if (!isLoggedIn()) {
     return uni.reLaunch({ url: '/pages/login/index' })
   }
+  // 有缓存且未失效:直接还原,不全量重拉(切 tab 回来不闪烁)
+  if (hydrated.value && !dirty.value) return
+  hydrated.value = true
+  dirty.value = false
   user.value = await refreshUser()
   await Promise.all([loadArticles(), loadTreeholes()])
 })

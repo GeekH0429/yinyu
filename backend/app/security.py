@@ -1,4 +1,9 @@
-"""密码哈希(pwdlib + bcrypt)与 JWT 编解码。"""
+"""密码哈希(pwdlib + bcrypt)与 JWT 编解码。
+
+bcrypt 是刻意慢的同步 CPU 密集操作,放到默认线程池执行,
+避免阻塞 asyncio 事件循环(一次登录/注册会卡住同时段的所有请求)。
+"""
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -15,13 +20,13 @@ TOKEN_TYPE_ACCESS = "access"
 TOKEN_TYPE_REFRESH = "refresh"
 
 
-def hash_password(plain: str) -> str:
-    return _pwd_hash.hash(plain)
+async def hash_password(plain: str) -> str:
+    return await asyncio.to_thread(_pwd_hash.hash, plain)
 
 
-def verify_password(plain: str, hashed: str) -> bool:
+async def verify_password(plain: str, hashed: str) -> bool:
     try:
-        return _pwd_hash.verify(plain, hashed)
+        return await asyncio.to_thread(_pwd_hash.verify, plain, hashed)
     except Exception:
         return False
 

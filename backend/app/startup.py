@@ -16,7 +16,7 @@ async def bootstrap() -> None:
         if admin is None:
             admin = User(
                 username=settings.superadmin_username,
-                password_hash=hash_password(settings.superadmin_password),
+                password_hash=await hash_password(settings.superadmin_password),
                 nickname="管理员",
                 role=ROLE_ADMIN,
             )

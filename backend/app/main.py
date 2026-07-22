@@ -1,4 +1,5 @@
 """FastAPI 应用入口。"""
+import asyncio
 import os
 from contextlib import asynccontextmanager
 
@@ -11,14 +12,29 @@ import app.models  # noqa: F401  (确保所有模型被注册到 Base.metadata)
 from app.api.router import api_router
 from app.config import settings
 from app.core.exceptions import AppException
+from app.database import AsyncSessionLocal
 from app.redis_client import redis
+from app.services.view_counter import flush_pending
 from app.startup import bootstrap
+
+
+async def _view_flusher():
+    """后台任务:每 30 秒把 Redis 中累积的浏览增量批量回写到 DB。"""
+    while True:
+        await asyncio.sleep(30)
+        try:
+            async with AsyncSessionLocal() as db:
+                await flush_pending(redis, db)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[view_flusher] {exc}")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     await bootstrap()
+    flusher = asyncio.create_task(_view_flusher())
     yield
+    flusher.cancel()
     await redis.aclose()
 
 

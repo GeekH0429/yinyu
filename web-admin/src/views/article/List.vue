@@ -108,6 +108,7 @@ async function loadData() {
   try {
     const params = { page: page.value, page_size: pageSize.value }
     if (statusFilter.value) params.status = statusFilter.value
+    if (keyword.value.trim()) params.keyword = keyword.value.trim()
     const res = auth.isAdmin
       ? await api.articles.adminList(params)
       : await api.me.myArticles(params)

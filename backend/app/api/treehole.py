@@ -25,6 +25,7 @@ from app.schemas.treehole import (
     TreeHoleUpdate,
 )
 from app.services.treehole_code import allocate_code, assert_unlock_allowed
+from app.services.view_counter import incr_view
 
 router = APIRouter(prefix="/treeholes", tags=["树洞"])
 
@@ -47,14 +48,8 @@ async def unlock(
         # 统一文案,不暴露存在性
         raise NotFound("暗号无效")
 
-    await db.execute(
-        update(TreeHole)
-        .where(TreeHole.id == th.id)
-        .values(view_count=TreeHole.view_count + 1)
-        .execution_options(synchronize_session=False)
-    )
-    await db.commit()
-    th.view_count = (th.view_count or 0) + 1  # 内存校正,与文章详情一致
+    await incr_view(redis, "treehole", th.id, "ip:" + client_ip)
+    th.view_count = (th.view_count or 0) + 1  # 内存校正(显示用),实际落库由后台回写
 
     return TreeHolePublicOut(
         id=th.id,

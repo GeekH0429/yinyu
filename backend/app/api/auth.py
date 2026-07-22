@@ -1,11 +1,13 @@
 """认证路由:注册(邀请码)、登录、刷新 token、改密、当前用户。"""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequest, Conflict, Unauthorized
 from app.database import get_db
 from app.deps import get_current_user
+from app.redis_client import get_redis
+from app.services.rate_limit import get_client_ip, sliding_limit
 from app.models.invite import InviteCode
 from app.models.user import ROLE_USER, User
 from app.schemas.auth import (
@@ -29,7 +31,16 @@ router = APIRouter(prefix="/auth", tags=["认证"])
 
 
 @router.post("/register", response_model=UserOut, status_code=201)
-async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
+async def register(
+    data: RegisterIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+):
+    await sliding_limit(
+        redis, f"auth:register:{get_client_ip(request)}",
+        max_attempts=10, window_seconds=60, lock_seconds=300,
+    )
     # 用户名唯一性
     existed = await db.scalar(select(User).where(User.username == data.username))
     if existed is not None:
@@ -44,7 +55,7 @@ async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
 
     user = User(
         username=data.username,
-        password_hash=hash_password(data.password),
+        password_hash=await hash_password(data.password),
         nickname=data.nickname or data.username,
         role=ROLE_USER,
     )
@@ -61,11 +72,20 @@ async def register(data: RegisterIn, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenOut)
-async def login(data: LoginIn, db: AsyncSession = Depends(get_db)):
+async def login(
+    data: LoginIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+):
+    await sliding_limit(
+        redis, f"auth:login:{get_client_ip(request)}",
+        max_attempts=10, window_seconds=60, lock_seconds=300,
+    )
     user = await db.scalar(
         select(User).where(or_(User.username == data.username, User.email == data.username))
     )
-    if user is None or not verify_password(data.password, user.password_hash):
+    if user is None or not await verify_password(data.password, user.password_hash):
         raise Unauthorized("用户名或密码错误")
     if not user.is_active:
         raise Unauthorized("账号已被禁用")
@@ -76,7 +96,16 @@ async def login(data: LoginIn, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokenOut)
-async def refresh(data: RefreshIn, db: AsyncSession = Depends(get_db)):
+async def refresh(
+    data: RefreshIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+):
+    await sliding_limit(
+        redis, f"auth:refresh:{get_client_ip(request)}",
+        max_attempts=20, window_seconds=60,
+    )
     try:
         payload = decode_token(data.refresh_token)
         if payload.get("type") != TOKEN_TYPE_REFRESH:
@@ -97,11 +126,17 @@ async def refresh(data: RefreshIn, db: AsyncSession = Depends(get_db)):
 @router.put("/password")
 async def change_password(
     data: ChangePasswordIn,
+    request: Request,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ):
-    if not verify_password(data.old_password, user.password_hash):
+    await sliding_limit(
+        redis, f"auth:pwd:{user.id}:{get_client_ip(request)}",
+        max_attempts=5, window_seconds=60, lock_seconds=300,
+    )
+    if not await verify_password(data.old_password, user.password_hash):
         raise BadRequest("原密码错误")
-    user.password_hash = hash_password(data.new_password)
+    user.password_hash = await hash_password(data.new_password)
     await db.commit()
     return {"detail": "密码已更新"}

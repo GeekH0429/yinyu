@@ -1,7 +1,7 @@
 """图文阅读路由(多用户共创:登录后均可发布)。"""
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,9 @@ from app.schemas.article import (
     to_out,
 )
 from app.schemas.common import Page, offset_of
+from app.redis_client import get_redis
+from app.services.rate_limit import get_client_ip
+from app.services.view_counter import incr_view
 
 router = APIRouter(prefix="/articles", tags=["图文阅读"])
 
@@ -67,10 +70,12 @@ async def list_tags(db: AsyncSession = Depends(get_db)):
 @router.get("/{article_id}", response_model=ArticleOut)
 async def get_article(
     article_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     user: User | None = Depends(get_current_user),
+    redis=Depends(get_redis),
 ):
-    """详情:草稿仅作者/管理员可见;浏览量原子自增。"""
+    """详情:草稿仅作者/管理员可见;浏览量由 Redis 累积、后台批量回写。"""
     row = await db.execute(
         select(Article, User).join(User, User.id == Article.author_id).where(Article.id == article_id)
     )
@@ -83,14 +88,9 @@ async def get_article(
         if user is None or (user.id != article.author_id and not user.is_admin()):
             raise NotFound("文章不存在")
 
-    await db.execute(
-        update(Article)
-        .where(Article.id == article_id)
-        .values(view_count=Article.view_count + 1)
-        .execution_options(synchronize_session=False)
-    )
-    await db.commit()
-    article.view_count = (article.view_count or 0) + 1  # 内存校正,避免再次 IO
+    viewer = str(user.id) if user else "ip:" + get_client_ip(request)
+    await incr_view(redis, "article", article_id, viewer)
+    article.view_count = (article.view_count or 0) + 1  # 内存校正(显示用),实际落库由后台回写
 
     return to_out(article, author)
 

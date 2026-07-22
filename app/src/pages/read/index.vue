@@ -63,6 +63,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { resourceUrl, SERVER_ORIGIN } from '../../config'
 import { formatTime } from '../../utils/format'
+import { extractAudio } from '../../utils/extractAudio'
 import AudioPlayer from '../../components/AudioPlayer.vue'
 
 const serverOrigin = SERVER_ORIGIN
@@ -71,42 +72,10 @@ const article = ref(null)
 const liked = ref(false)
 const loading = ref(true)
 
-// 解析音频列表
-const parsedAudioList = computed(() => {
-  if (!article.value?.content_html) return []
-
-  const audioList = []
-  const regex = /<audio[^>]*src=["']([^"']*)["'][^>]*>/gi
-  let match
-  let id = 0
-
-  while ((match = regex.exec(article.value.content_html)) !== null) {
-    const src = match[1]
-    // 转换为完整 URL
-    const fullSrc = resourceUrl(src)
-    audioList.push({
-      id: id++,
-      src: src,
-      fullSrc: fullSrc
-    })
-  }
-
-  return audioList
-})
-
-// 移除 audio 标签后的内容
-const parsedContent = computed(() => {
-  if (!article.value?.content_html) return ''
-
-  // 移除所有 audio 标签，但保留其周围的内容
-  return article.value.content_html.replace(/<audio[^>]*>.*?<\/audio>|<audio[^>]*\/>/gi, (match) => {
-    // 如果 audio 标签在 <p> 标签内，且没有其他内容，移除整个 <p> 标签
-    if (match.startsWith('<p>')) {
-      return ''
-    }
-    return match
-  }).replace(/<p>\s*<\/p>/gi, '') // 移除空的 p 标签
-})
+// 解析音频(提取出来交给 AudioPlayer,正文剥除 audio,避免 mp-html 与 AudioPlayer 双重渲染)
+const richParsed = computed(() => extractAudio(article.value?.content_html))
+const parsedAudioList = computed(() => richParsed.value.audioList)
+const parsedContent = computed(() => richParsed.value.html)
 
 onLoad((opts) => {
   if (opts.id) load(opts.id)

@@ -1,6 +1,6 @@
 """「我的」路由:个人资料、我发布的图文、我的树洞、我点赞的图文。"""
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import Conflict
@@ -42,6 +42,7 @@ async def update_profile(
 
 @router.get("/articles", response_model=Page[ArticleBrief])
 async def my_articles(
+    keyword: str | None = Query(None, description="标题/摘要关键词"),
     status: str | None = Query(None, description="draft/published"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -51,6 +52,9 @@ async def my_articles(
     conds = [Article.author_id == user.id]
     if status:
         conds.append(Article.status == status)
+    if keyword:
+        like = f"%{keyword}%"
+        conds.append(Article.title.ilike(like) | Article.summary.ilike(like))
     total = await db.scalar(select(func.count()).select_from(Article).where(*conds))
     rows = await db.execute(
         select(Article)

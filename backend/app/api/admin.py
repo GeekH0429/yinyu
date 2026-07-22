@@ -4,7 +4,7 @@
 不再重复 require_admin。
 """
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequest, Conflict, NotFound
@@ -124,6 +124,7 @@ async def patch_user(
 
 @router.get("/articles", response_model=Page[ArticleBrief])
 async def list_all_articles(
+    keyword: str | None = Query(None, description="标题/摘要关键词"),
     status: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -132,6 +133,9 @@ async def list_all_articles(
     conds = []
     if status:
         conds.append(Article.status == status)
+    if keyword:
+        like = f"%{keyword}%"
+        conds.append(Article.title.ilike(like) | Article.summary.ilike(like))
     total = await db.scalar(select(func.count()).select_from(Article).where(*conds))
     rows = await db.execute(
         select(Article, User)
