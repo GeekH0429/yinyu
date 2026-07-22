@@ -58,6 +58,7 @@ import { api } from '../../api'
 import { resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
 import { buildAudioCard } from '../../utils/audioCard'
+import { normalizeContentHtml } from '../../utils/content'
 import { invalidateFeed } from '../../store/feed'
 import { invalidateMe } from '../../store/me'
 import AudioInfoPopup from '../../components/AudioInfoPopup.vue'
@@ -138,7 +139,7 @@ async function onSubmit() {
       summary: form.summary || null,
       cover_url: form.cover_url || null,
       tags,
-      content_html: form.content_html,
+      content_html: normalizeContentHtml(form.content_html),
       status: 'published'
     })
     uni.showToast({ title: '已发布', icon: 'success' })

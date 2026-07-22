@@ -162,6 +162,7 @@ import { api } from '../../api'
 import { SERVER_ORIGIN, resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
 import { extractAudio, buildAudioCard } from '../../utils/audioCard'
+import { normalizeContentHtml } from '../../utils/content'
 import { invalidateMe } from '../../store/me'
 import { startRecord, stopRecord, cancelRecord } from '../../utils/recorder'
 import TabBar from '../../components/TabBar.vue'
@@ -342,7 +343,7 @@ async function pubSubmit() {
     const code = pub.code && /^\d{6}$/.test(pub.code) ? pub.code : null
     const res = await api.write.createTreehole({
       title: pub.title || null,
-      content_html: pub.content_html,
+      content_html: normalizeContentHtml(pub.content_html),
       code
     })
     pubResult.value = res.code
