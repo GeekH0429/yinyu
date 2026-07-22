@@ -32,11 +32,48 @@
       style="display: none"
       @change="onFile"
     />
+
+    <!-- 音频信息填写:名称 / 歌手 / 封面(均可选) -->
+    <el-dialog
+      v-model="audioDialog.visible"
+      title="音频信息"
+      width="420px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <el-form label-position="top" class="audio-form">
+        <el-form-item label="音频名称">
+          <el-input v-model="audioDialog.title" maxlength="100" placeholder="给这段音频起个名字(可选)" />
+        </el-form-item>
+        <el-form-item label="歌手 / 来源">
+          <el-input v-model="audioDialog.artist" maxlength="60" placeholder="谁的作品?(可选)" />
+        </el-form-item>
+        <el-form-item label="封面图">
+          <div class="cover-row">
+            <el-upload
+              :show-file-list="false"
+              :before-upload="onCoverUpload"
+              accept="image/*"
+            >
+              <div v-if="audioDialog.cover" class="cover-preview">
+                <img :src="audioDialog.cover" alt="cover" />
+              </div>
+              <el-button v-else :loading="coverUploading" size="small">上传封面</el-button>
+            </el-upload>
+            <el-button v-if="audioDialog.cover" link type="danger" size="small" @click="audioDialog.cover = ''">移除</el-button>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="audioDialog.visible = false">取消</el-button>
+        <el-button type="primary" @click="confirmAudio">插入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { ref, reactive, watch, onBeforeUnmount } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
@@ -110,7 +147,12 @@ async function onFile(e) {
     if (kind.value === 'image') {
       ed.chain().focus().setImage({ src: url }).run()
     } else if (kind.value === 'audio') {
-      ed.chain().focus().setAudio({ src: url }).run()
+      // 音频上传成功后,弹出信息填写(名称/歌手/封面),确认再插入卡片
+      audioDialog.src = url
+      audioDialog.title = ''
+      audioDialog.artist = ''
+      audioDialog.cover = ''
+      audioDialog.visible = true
     } else if (kind.value === 'video') {
       ed.chain().focus().setVideo({ src: url }).run()
     }
@@ -119,6 +161,44 @@ async function onFile(e) {
   } finally {
     uploading.value = false
   }
+}
+
+// ---- 音频信息弹窗 ----
+const audioDialog = reactive({
+  visible: false,
+  src: '',
+  title: '',
+  artist: '',
+  cover: ''
+})
+const coverUploading = ref(false)
+
+async function onCoverUpload(file) {
+  coverUploading.value = true
+  try {
+    const data = await api.upload(file)
+    audioDialog.cover = data.url
+  } catch {
+    ElMessage.error('封面上传失败')
+  } finally {
+    coverUploading.value = false
+  }
+  return false // 阻止 el-upload 自动上传
+}
+
+function confirmAudio() {
+  const ed = editor.value
+  if (!ed) {
+    audioDialog.visible = false
+    return
+  }
+  ed.chain().focus().setAudio({
+    src: audioDialog.src,
+    title: audioDialog.title.trim(),
+    artist: audioDialog.artist.trim(),
+    cover: audioDialog.cover || null
+  }).run()
+  audioDialog.visible = false
 }
 
 async function onLink() {
@@ -209,6 +289,10 @@ defineExpose({
 .t-content :deep(.ProseMirror) audio {
   width: 100%;
 }
+.t-content :deep(.ProseMirror) .yinyu-audio audio {
+  width: 100%;
+  margin-top: 2px;
+}
 .t-content :deep(.ProseMirror) video {
   max-width: 100%;
   border-radius: 4px;
@@ -246,5 +330,22 @@ defineExpose({
   color: #aaa;
   pointer-events: none;
   height: 0;
+}
+/* 音频信息弹窗 */
+.audio-form {
+  padding-bottom: 4px;
+}
+.cover-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cover-preview img {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  cursor: pointer;
 }
 </style>

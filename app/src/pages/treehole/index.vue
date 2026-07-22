@@ -58,6 +58,9 @@
             v-for="audio in parsedAudioList"
             :key="audio.id"
             :src="audio.fullSrc"
+            :title="audio.title"
+            :artist="audio.artist"
+            :cover="audio.fullCover"
           />
           <mp-html
             class="rich"
@@ -147,6 +150,9 @@
     <FlyAwayOverlay :playing="flyPlaying" @done="onFlyDone" />
 
     <TabBar />
+
+    <!-- 音频信息弹窗(z-index 2000,盖在发布弹窗 1000 之上) -->
+    <AudioInfoPopup v-model:visible="audioPopup.visible" :src="audioPopup.src" @confirm="onAudioConfirm" />
   </view>
 </template>
 
@@ -155,12 +161,13 @@ import { ref, reactive, computed } from 'vue'
 import { api } from '../../api'
 import { SERVER_ORIGIN, resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
-import { extractAudio } from '../../utils/extractAudio'
+import { extractAudio, buildAudioCard } from '../../utils/audioCard'
 import { invalidateMe } from '../../store/me'
 import { startRecord, stopRecord, cancelRecord } from '../../utils/recorder'
 import TabBar from '../../components/TabBar.vue'
 import AudioPlayer from '../../components/AudioPlayer.vue'
 import FlyAwayOverlay from '../../components/FlyAwayOverlay.vue'
+import AudioInfoPopup from '../../components/AudioInfoPopup.vue'
 
 const serverOrigin = SERVER_ORIGIN
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
@@ -243,6 +250,8 @@ const planeSvg = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg
 
 const publishVisible = ref(false)
 const pub = reactive({ title: '', content_html: '', code: '' })
+// 音频信息弹窗:选音频 / 录音上传后弹出,填写 名称/歌手/封面 再插入卡片
+const audioPopup = reactive({ visible: false, src: '' })
 const pubUploading = ref(false)
 const pubSubmitting = ref(false)
 const pubResult = ref('')
@@ -271,11 +280,17 @@ async function pubInsertImage() {
 async function pubInsertAudio() {
   try {
     const url = await uploadPicked(await pickAudio())
-    // 插入特殊标记，阅读页面会解析为音频播放器
-    pub.content_html += `<p><audio src="${url}" controls style="max-width:100%"></audio></p>`
+    // 上传成功后弹音频信息(名称/歌手/封面),确认再插入卡片
+    audioPopup.src = url
+    audioPopup.visible = true
   } catch {
     /* cancel / unsupported */
   }
+}
+
+function onAudioConfirm({ title, artist, cover }) {
+  pub.content_html += buildAudioCard({ src: audioPopup.src, title, artist, cover })
+  uni.showToast({ title: '已加入', icon: 'success' })
 }
 
 async function toggleRecord() {
@@ -289,15 +304,15 @@ async function toggleRecord() {
     }
     return
   }
-  // 停止 → 上传 → 插入
+  // 停止 → 上传 → 弹音频信息(名称/歌手/封面)→ 确认插入卡片
   recording.value = false
   try {
     const r = await stopRecord()
     if (!r.duration) return
     pubUploading.value = true
     const data = await api.uploadRecorded(r)
-    pub.content_html += `<p><audio controls src="${data.url}" style="max-width:100%"></audio></p>`
-    uni.showToast({ title: '录音已加入', icon: 'success' })
+    audioPopup.src = data.url
+    audioPopup.visible = true
   } catch {
     /* ignore */
   } finally {

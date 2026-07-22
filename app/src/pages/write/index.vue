@@ -47,6 +47,8 @@
         </view>
       </view>
     </view>
+
+    <AudioInfoPopup v-model:visible="audioPopup.visible" :src="audioPopup.src" @confirm="onAudioConfirm" />
   </view>
 </template>
 
@@ -55,8 +57,10 @@ import { ref, reactive } from 'vue'
 import { api } from '../../api'
 import { resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
+import { buildAudioCard } from '../../utils/audioCard'
 import { invalidateFeed } from '../../store/feed'
 import { invalidateMe } from '../../store/me'
+import AudioInfoPopup from '../../components/AudioInfoPopup.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const submitting = ref(false)
@@ -69,6 +73,9 @@ const form = reactive({
   summary: ''
 })
 const tagsText = ref('')
+
+// 音频信息弹窗:选完音频上传后弹出,填写 名称/歌手/封面 再插入卡片
+const audioPopup = reactive({ visible: false, src: '' })
 
 async function uploadPicked(path) {
   uploading.value = true
@@ -91,11 +98,17 @@ async function insertImage() {
 async function insertAudio() {
   try {
     const url = await uploadPicked(await pickAudio())
-    // 插入特殊标记，阅读页面会解析为音频播放器
-    form.content_html += `<p><audio src="${url}" controls style="max-width:100%"></audio></p>`
+    // 上传成功后弹音频信息(名称/歌手/封面),确认再插入卡片
+    audioPopup.src = url
+    audioPopup.visible = true
   } catch {
     /* user cancel / unsupported */
   }
+}
+
+function onAudioConfirm({ title, artist, cover }) {
+  form.content_html += buildAudioCard({ src: audioPopup.src, title, artist, cover })
+  uni.showToast({ title: '已加入', icon: 'success' })
 }
 
 async function chooseCover() {

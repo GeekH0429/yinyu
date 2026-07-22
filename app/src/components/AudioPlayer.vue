@@ -3,11 +3,19 @@
     <view class="player-card">
       <!-- 左侧信息 -->
       <view class="info-area">
-        <view class="icon-wrapper" :class="{ playing: isPlaying }">
+        <!-- 有封面用封面,否则用音符占位 -->
+        <image
+          v-if="cover"
+          class="cover"
+          :src="cover"
+          mode="aspectFill"
+        />
+        <view v-else class="icon-wrapper" :class="{ playing: isPlaying }">
           <text class="music-icon">{{ isPlaying ? '🎵' : '🎶' }}</text>
         </view>
         <view class="text-info">
-          <text class="audio-label">音频附件</text>
+          <text class="audio-label">{{ title || '音频附件' }}</text>
+          <text v-if="artist" class="audio-artist">{{ artist }}</text>
           <text class="time-display">{{ formatDuration(currentTime) }} / {{ formatDuration(duration) }}</text>
         </view>
       </view>
@@ -39,7 +47,10 @@
 import { ref, onUnmounted } from 'vue'
 
 const props = defineProps({
-  src: { type: String, required: true }
+  src: { type: String, required: true },
+  title: { type: String, default: '' },
+  artist: { type: String, default: '' },
+  cover: { type: String, default: '' }
 })
 
 const isPlaying = ref(false)
@@ -166,6 +177,14 @@ onUnmounted(() => {
   justify-content: center;
 }
 
+.cover {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 16rpx;
+  flex: 0 0 96rpx;
+  background: #f0eae0;
+}
+
 .icon-wrapper.playing {
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -195,6 +214,16 @@ onUnmounted(() => {
   color: #4A4A4A;
   font-weight: 500;
   margin-bottom: 4rpx;
+}
+
+.audio-artist {
+  font-size: 22rpx;
+  color: #AAA;
+  margin-bottom: 4rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 360rpx;
 }
 
 .time-display {

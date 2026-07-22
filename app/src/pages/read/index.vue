@@ -35,6 +35,9 @@
           v-for="audio in parsedAudioList"
           :key="audio.id"
           :src="audio.fullSrc"
+          :title="audio.title"
+          :artist="audio.artist"
+          :cover="audio.fullCover"
         />
         <mp-html
           :content="parsedContent"
@@ -63,7 +66,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { resourceUrl, SERVER_ORIGIN } from '../../config'
 import { formatTime } from '../../utils/format'
-import { extractAudio } from '../../utils/extractAudio'
+import { extractAudio } from '../../utils/audioCard'
 import AudioPlayer from '../../components/AudioPlayer.vue'
 
 const serverOrigin = SERVER_ORIGIN
