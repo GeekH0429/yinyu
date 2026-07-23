@@ -36,6 +36,12 @@ const routes = [
         meta: { admin: true }
       },
       {
+        path: 'comments',
+        name: 'comments',
+        component: () => import('@/views/comment/List.vue'),
+        meta: { admin: true }
+      },
+      {
         path: 'users',
         name: 'users',
         component: () => import('@/views/user/List.vue'),

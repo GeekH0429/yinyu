@@ -39,6 +39,7 @@ class ArticleBrief(BaseModel):
     status: str
     view_count: int
     like_count: int
+    comment_count: int = 0
     published_at: datetime | None = None
     created_at: datetime
     author: AuthorBrief
@@ -68,6 +69,7 @@ def to_brief(a: Article, author: User) -> ArticleBrief:
         status=a.status,
         view_count=a.view_count,
         like_count=a.like_count,
+        comment_count=a.comment_count,
         published_at=a.published_at,
         created_at=a.created_at,
         author=AuthorBrief.model_validate(author),

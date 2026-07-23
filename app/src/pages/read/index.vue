@@ -77,6 +77,13 @@
           <text :class="['like-text', { pop: likePulse }]">{{ article.like_count }}</text>
         </view>
       </view>
+
+      <CommentSection
+        v-if="article.id"
+        :article-id="article.id"
+        :article-author-id="article.author?.id"
+        :article-comment-count="article.comment_count"
+      />
     </view>
 
     <view class="read-skeleton" v-else-if="loading">
@@ -110,6 +117,7 @@ import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourc
 import AudioPlayer from '../../components/AudioPlayer.vue'
 import CachedImage from '../../components/CachedImage.vue'
 import StateView from '../../components/StateView.vue'
+import CommentSection from '../../components/CommentSection.vue'
 
 const serverOrigin = SERVER_ORIGIN
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)

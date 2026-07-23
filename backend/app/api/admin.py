@@ -4,18 +4,20 @@
 不再重复 require_admin。
 """
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequest, Conflict, NotFound
 from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models.article import Article
+from app.models.comment import Comment
 from app.models.daily_image import DailyImage
 from app.models.invite import InviteCode
 from app.models.treehole import TreeHole
 from app.models.user import User
 from app.schemas.article import ArticleBrief, to_brief
+from app.schemas.comment import CommentOut, to_comment_out
 from app.schemas.common import Page, offset_of
 from app.schemas.daily_image import (
     DailyImageCreate,
@@ -183,6 +185,59 @@ async def force_delete_treehole(
     await db.delete(th)
     await db.commit()
     return {"detail": "已删除"}
+
+
+# ---------- 评论管理 ----------
+
+
+@router.get("/comments", response_model=Page[CommentOut])
+async def admin_list_comments(
+    article_id: int | None = Query(None, description="按文章 id 过滤"),
+    keyword: str | None = Query(None, description="评论内容关键词"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """管理后台:全部评论,支持按文章/关键词过滤。"""
+    conds = []
+    if article_id:
+        conds.append(Comment.article_id == article_id)
+    if keyword:
+        conds.append(Comment.content.ilike(f"%{keyword}%"))
+    total = await db.scalar(
+        select(func.count()).select_from(Comment).where(*conds)
+    )
+    rows = await db.execute(
+        select(Comment, User)
+        .join(User, User.id == Comment.author_id)
+        .where(*conds)
+        .order_by(Comment.created_at.desc())
+        .offset(offset_of(page, page_size))
+        .limit(page_size)
+    )
+    items = [to_comment_out(c, u) for c, u in rows.all()]
+    return Page[CommentOut](items=items, total=total or 0, page=page, page_size=page_size)
+
+
+@router.delete("/comments/{comment_id}")
+async def admin_delete_comment(
+    comment_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """管理员强删(级联删子回复 / 点赞 / 关联通知)。"""
+    c = await db.get(Comment, comment_id)
+    if c is None:
+        raise NotFound("评论不存在")
+    article_id = c.article_id
+    await db.delete(c)
+    await db.execute(
+        sa_update(Article)
+        .where(Article.id == article_id, Article.comment_count > 0)
+        .values(comment_count=Article.comment_count - 1)
+        .execution_options(synchronize_session=False)
+    )
+    await db.commit()
+    return {"ok": True}
 
 
 # ---------- 每日一图 ----------

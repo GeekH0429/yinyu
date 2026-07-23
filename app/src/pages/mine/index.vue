@@ -4,8 +4,14 @@
 
     <view class="header">
       <text class="header-title serif">我的</text>
-      <view class="settings-icon" @tap="goSettings">
-        <text class="settings-gear">⚙</text>
+      <view class="header-actions">
+        <view class="header-action" @tap="goNotifications">
+          <text class="bell">🔔</text>
+          <view v-if="unreadCount > 0" class="badge-dot"></view>
+        </view>
+        <view class="header-action" @tap="goSettings">
+          <text class="settings-gear">⚙</text>
+        </view>
       </view>
     </view>
 
@@ -172,6 +178,7 @@ import TabBar from '../../components/TabBar.vue'
 import CachedImage from '../../components/CachedImage.vue'
 import TreeholeEditor from '../../components/TreeholeEditor.vue'
 import StateView from '../../components/StateView.vue'
+import { unreadCount, refreshUnread } from '../../store/notifications'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const user = ref(getUser())
@@ -204,6 +211,7 @@ onShow(async () => {
   if (!isLoggedIn()) {
     return uni.reLaunch({ url: '/pages/login/index' })
   }
+  refreshUnread() // 后台拉未读数,不打断现有加载逻辑
   // ① 内存缓存命中(切 tab 回来):数据+分页状态都在,直接还原
   if (hydrated.value && !dirty.value) return
   // ② 冷启动:从持久快照水合(含分页状态),立即展示
@@ -313,6 +321,10 @@ function goSettings() {
   uni.navigateTo({ url: '/pages/settings/index' })
 }
 
+function goNotifications() {
+  uni.navigateTo({ url: '/pages/notifications/index' })
+}
+
 function goDailyHistory() {
   uni.navigateTo({ url: '/pages/daily/history' })
 }
@@ -375,8 +387,29 @@ async function onRefreshTreeholes() {
   font-weight: 700;
   color: #c4a882;
 }
-.settings-icon {
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.header-action {
+  position: relative;
   padding: 12rpx;
+}
+.bell {
+  font-size: 42rpx;
+  color: #c4a882;
+}
+.badge-dot {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  min-width: 16rpx;
+  height: 16rpx;
+  padding: 0 4rpx;
+  border-radius: 8rpx;
+  background: #e0a8b0;
+  border: 2rpx solid #fdfbf7;
 }
 .settings-gear {
   font-size: 48rpx;

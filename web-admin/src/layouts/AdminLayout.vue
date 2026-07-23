@@ -24,6 +24,9 @@
           <el-menu-item index="/treeholes" :icon="ChatDotRound">
             <span>树洞管理</span>
           </el-menu-item>
+          <el-menu-item index="/comments" :icon="ChatLineSquare">
+            <span>评论管理</span>
+          </el-menu-item>
           <el-menu-item index="/users" :icon="User">
             <span>用户管理</span>
           </el-menu-item>
@@ -77,6 +80,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   Document,
   ChatDotRound,
+  ChatLineSquare,
   User,
   Ticket,
   Picture,

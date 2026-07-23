@@ -14,6 +14,24 @@ export const api = {
     like: (id) => http.post('/articles/' + id + '/like')
   },
 
+  comments: {
+    list: (articleId, params) => http.get('/articles/' + articleId + '/comments', params),
+    create: (articleId, data) => http.post('/articles/' + articleId + '/comments', data),
+    like: (commentId) => http.post('/comments/' + commentId + '/like'),
+    remove: (commentId) => http.delete('/comments/' + commentId)
+  },
+
+  notifications: {
+    list: (params) => http.get('/notifications', params),
+    unreadCount: () => http.get('/notifications/unread-count'),
+    markRead: (id) => http.post('/notifications/' + id + '/read'),
+    markAllRead: () => http.post('/notifications/read-all')
+  },
+
+  users: {
+    search: (q) => http.get('/users/search', { q })
+  },
+
   treeholes: {
     unlock: (code) => http.post('/treeholes/unlock', { code }),
     create: (data) => http.post('/treeholes', data),

@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     treehole_attempt_window_seconds: int = 60
     treehole_lock_seconds: int = 1800
 
+    # ---- 评论限流 ----
+    comment_max_attempts: int = 5
+    comment_attempt_window_seconds: int = 60
+    comment_lock_seconds: int = 300
+
     # ---- 初始超管 ----
     superadmin_username: str = "admin"
     superadmin_password: str = "change-me"

@@ -41,6 +41,7 @@ class Article(TimestampMixin, Base):
 
     view_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     like_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    comment_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
 
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
