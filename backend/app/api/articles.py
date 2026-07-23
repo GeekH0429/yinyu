@@ -42,7 +42,8 @@ async def list_published(
         conds.append(Article.tags.any(tag))  # tag = ANY(tags)
     if keyword:
         like = f"%{keyword}%"
-        conds.append(or_(Article.title.ilike(like), Article.summary.ilike(like)))
+        # 标题/摘要模糊匹配 + 标签精确匹配(任一标签等于关键词)
+        conds.append(or_(Article.title.ilike(like), Article.summary.ilike(like), Article.tags.any(keyword)))
 
     total = await db.scalar(select(func.count()).select_from(Article).where(*conds))
     rows = await db.execute(

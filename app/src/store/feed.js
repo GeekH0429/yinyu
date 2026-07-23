@@ -15,8 +15,7 @@ import { SNAP, readSnap, writeSnapDebounced as writeSnap } from '../utils/snap'
  * 先填上次内容立即展示,页面再后台静默刷新覆盖。hydrated/dirty 语义不变。
  */
 export const articles = ref([])
-export const tags = ref([])
-export const activeTag = ref('')
+export const keyword = ref('')
 export const page = ref(1)
 export const noMore = ref(false)
 export const loading = ref(false)
@@ -33,8 +32,7 @@ export function invalidateFeed() {
 /** 重置全部 feed 状态(登出换号时调用,避免看到上一账号的列表残留)。 */
 export function resetFeed() {
   articles.value = []
-  tags.value = []
-  activeTag.value = ''
+  keyword.value = ''
   page.value = 1
   noMore.value = false
   loading.value = false
@@ -48,8 +46,7 @@ export function hydrateFeedFromSnap() {
   const s = readSnap(SNAP.FEED)
   if (!s) return false
   articles.value = s.data.articles || []
-  tags.value = s.data.tags || []
-  activeTag.value = s.data.activeTag || ''
+  keyword.value = s.data.keyword || ''
   return true
 }
 
@@ -57,7 +54,6 @@ export function hydrateFeedFromSnap() {
 export function persistFeedSnap() {
   writeSnap(SNAP.FEED, {
     articles: articles.value,
-    tags: tags.value,
-    activeTag: activeTag.value
+    keyword: keyword.value
   })
 }

@@ -13,6 +13,7 @@
     { "path": "pages/mine/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/notifications/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/daily/history", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/my-works/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/settings/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/login/index", "style": { "navigationStyle": "custom" } }
   ],
