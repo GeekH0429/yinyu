@@ -1,5 +1,10 @@
 <template>
-  <view v-if="visible" class="daily-overlay" @tap="close">
+  <view
+    v-if="visible"
+    class="daily-overlay"
+    :style="{ paddingTop: (statusBarHeight + 20) + 'px' }"
+    @tap="close"
+  >
     <!-- 暖色渐变背景 -->
     <view class="daily-bg"></view>
 
@@ -60,7 +65,11 @@ function preview() {
 </script>
 
 <style scoped>
-/* 覆盖层:盖过 TabBar(999)与 FAB(998) */
+/* 覆盖层:盖过 TabBar(999)与 FAB(998)。
+   - paddingTop 由 template 动态注入(statusBarHeight + 20px),精确避开系统状态栏,
+     与关闭按钮同一套方案(env(safe-area-inset-top) 在 App/小程序里不可靠)。
+   - flex-direction: column + 子项 margin:auto 0 实现「短则居中、长则贴顶」,
+     避免长图时 flex 居中把卡片顶部顶到状态栏后面。 */
 .daily-overlay {
   position: fixed;
   top: 0;
@@ -69,10 +78,11 @@ function preview() {
   bottom: 0;
   z-index: 2000;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 64rpx 48rpx;
+  padding: 0 48rpx 64rpx;
   box-sizing: border-box;
+  overflow-y: auto;
   animation: dailyFadeIn 0.35s ease-out both;
 }
 .daily-bg {
@@ -103,6 +113,9 @@ function preview() {
 .daily-card {
   width: 100%;
   max-width: 640rpx;
+  /* margin:auto 0 在 column flex 里:有剩余空间时上下均分(垂直居中);
+     卡片高于容器(长图)时 auto 降为 0,卡片贴顶不再溢出到状态栏后。 */
+  margin: auto 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -121,11 +134,9 @@ function preview() {
 
 .daily-image-wrap {
   width: 100%;
-  /* max-width: 640rpx; */
-  /* 固定高度容器:限制卡片总高,避免长图把卡片撑出屏幕、
-     flex 居中时顶部钻到状态栏后面被遮挡。
-     aspectFit 保持原图比例不裁剪,留白处用暖色兜底融入整体氛围。 */
-  margin-top: 80rpx;
+  /* 固定高度容器:限制卡片总高,aspectFit 保持原图比例不裁剪,
+     留白处用暖色兜底融入整体氛围。
+     高度用 vh 留出标题/描述/日期的空间;overlay 的动态 paddingTop 负责避开状态栏。 */
   height: 80vh;
   border-radius: 32rpx;
   overflow: hidden;
@@ -167,16 +178,16 @@ function preview() {
 .daily-close {
   position: absolute;
   right: 48rpx;
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 36rpx;
+  width: 46rpx;
+  height: 46rpx;
+  border-radius: 28rpx;
   background: rgba(255, 255, 255, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .daily-close-icon {
-  font-size: 56rpx;
+  font-size: 36rpx;
   color: #8d8d8d;
 }
 
