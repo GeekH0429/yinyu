@@ -24,7 +24,7 @@
     </view>
 
     <!-- 底部轻提示 -->
-    <text class="daily-hint">轻点图片可查看大图,点空白处关闭 ✦</text>
+<!--    <text class="daily-hint">轻点图片可查看大图,点空白处关闭 ✦</text>-->
   </view>
 </template>
 
@@ -121,11 +121,12 @@ function preview() {
 
 .daily-image-wrap {
   width: 100%;
-  max-width: 640rpx;
+  /* max-width: 640rpx; */
   /* 固定高度容器:限制卡片总高,避免长图把卡片撑出屏幕、
      flex 居中时顶部钻到状态栏后面被遮挡。
      aspectFit 保持原图比例不裁剪,留白处用暖色兜底融入整体氛围。 */
-  height: 66vh;
+  margin-top: 80rpx;
+  height: 80vh;
   border-radius: 32rpx;
   overflow: hidden;
   background: rgba(196, 168, 130, 0.1);
