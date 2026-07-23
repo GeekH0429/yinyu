@@ -43,7 +43,11 @@ export const api = {
     dailyList: (params) => request.get('/admin/daily-images', { params }),
     dailyCreate: (data) => request.post('/admin/daily-images', data),
     dailyUpdate: (id, data) => request.put(`/admin/daily-images/${id}`, data),
-    dailyRemove: (id) => request.delete(`/admin/daily-images/${id}`)
+    dailyRemove: (id) => request.delete(`/admin/daily-images/${id}`),
+    statsOverview: (params) => request.get('/stats/overview', { params }),
+    statsTrends: (params) => request.get('/stats/trends', { params }),
+    statsTopArticles: (params) => request.get('/stats/top-articles', { params }),
+    statsActiveUsers: (params) => request.get('/stats/active-users', { params })
   },
 
   upload: (file) => {

@@ -1,5 +1,5 @@
 <template>
-  <div class="tiptap-wrap">
+  <div class="tiptap-wrap" :class="{ 'is-dragover': isDragover }">
     <div v-if="editor" class="t-toolbar">
       <button type="button" class="tb" :class="{ active: editor.isActive('bold') }" @click="editor.chain().focus().toggleBold().run()" title="加粗"><b>B</b></button>
       <button type="button" class="tb" :class="{ active: editor.isActive('italic') }" @click="editor.chain().focus().toggleItalic().run()" title="斜体"><i>I</i></button>
@@ -15,7 +15,7 @@
       <button type="button" class="tb" :class="{ active: editor.isActive('blockquote') }" @click="editor.chain().focus().toggleBlockquote().run()" title="引用">❝ 引用</button>
       <button type="button" class="tb" @click="onLink" title="链接">🔗 链接</button>
       <span class="sep"></span>
-      <button type="button" class="tb" @click="pickFile('image')" title="上传图片">🖼 图片</button>
+      <button type="button" class="tb" :class="{ uploading: uploadingCount > 0 }" @click="pickFile('image')" :title="uploadingCount > 0 ? `正在上传 ${uploadingCount} 张图片` : '上传图片（也可直接拖入）'">🖼 图片<span v-if="uploadingCount > 0" class="count">({{ uploadingCount }})</span></button>
       <button type="button" class="tb" :class="{ uploading: kind === 'audio' && uploading }" @click="pickFile('audio')" title="上传音频">🎵 音频</button>
       <button type="button" class="tb" @click="pickFile('video')" title="上传视频">🎬 视频</button>
       <span class="grow"></span>
@@ -23,7 +23,7 @@
       <button type="button" class="tb" @click="editor.chain().focus().redo().run()" :disabled="!editor.can().redo()" title="重做">↷</button>
     </div>
 
-    <EditorContent v-if="editor" :editor="editor" class="t-content" />
+    <EditorContent v-if="editor" :editor="editor" class="t-content" @dragleave="onDragLeave" />
 
     <input
       ref="fileInput"
@@ -49,7 +49,7 @@
           <el-input v-model="audioDialog.artist" maxlength="60" placeholder="谁的作品?(可选)" />
         </el-form-item>
         <el-form-item label="封面图">
-          <div class="cover-row">
+          <div class="cover-row upload-zone" ref="audioCoverZoneRef" :class="{ 'is-dragover': audioCoverDrag }">
             <el-upload
               :show-file-list="false"
               :before-upload="onCoverUpload"
@@ -82,6 +82,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import Audio from './tiptap/Audio'
 import Video from './tiptap/Video'
 import { api } from '@/api'
+import { collectImages, useImageDropPaste } from '@/composables/useImageDropPaste'
 
 const props = defineProps({
   modelValue: { type: String, default: '' }
@@ -100,6 +101,32 @@ const editor = useEditor({
     Audio,
     Video
   ],
+  editorProps: {
+    handleDrop: (view, event) => {
+      const files = collectImages(event.dataTransfer)
+      if (files.length === 0) return false // 非图片交给默认处理（节点拖动等）
+      event.preventDefault()
+      const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? view.state.selection.to
+      uploadImagesAt(files, pos)
+      isDragover.value = false
+      return true
+    },
+    handlePaste: (view, event) => {
+      const files = collectImages(event.clipboardData)
+      if (files.length === 0) return false // 非图片(纯文本等)交给默认粘贴
+      event.preventDefault()
+      uploadImagesAt(files, view.state.selection.to)
+      return true
+    },
+    handleDragOver: (view, event) => {
+      const items = Array.from(event.dataTransfer?.items || [])
+      const hasImage = items.some(i => i.kind === 'file' && i.type.startsWith('image/'))
+      if (hasImage) {
+        event.preventDefault() // 允许 drop,否则不会触发 handleDrop
+        isDragover.value = true
+      }
+    }
+  },
   onUpdate: ({ editor }) => {
     emit('update:modelValue', editor.getHTML())
   }
@@ -127,6 +154,8 @@ const acceptMap = {
 }
 const kind = ref('image')
 const uploading = ref(false)
+const uploadingCount = ref(0) // 拖入并发上传计数,工具栏显示进度
+const isDragover = ref(false) // 拖入高亮
 const fileInput = ref()
 
 function pickFile(k) {
@@ -163,6 +192,34 @@ async function onFile(e) {
   }
 }
 
+// 拖入多图:把光标移到 drop 位置,逐张上传依次插入
+async function uploadImagesAt(files, startPos) {
+  const ed = editor.value
+  if (!ed) return
+  ed.chain().setTextSelection(startPos).run()
+  for (const file of files) {
+    uploadingCount.value++
+    try {
+      const data = await api.upload(file)
+      const cur = editor.value
+      if (!cur) return
+      cur.chain().focus().setImage({ src: data.url }).run()
+    } catch {
+      ElMessage.error(`图片 "${file.name}" 上传失败`)
+    } finally {
+      uploadingCount.value = Math.max(0, uploadingCount.value - 1)
+    }
+  }
+}
+
+// dragleave 在子元素间切换也会触发,只有真正离开 wrapper 才清除高亮
+function onDragLeave(e) {
+  const wrapper = e.currentTarget
+  if (!wrapper || !wrapper.contains(e.relatedTarget)) {
+    isDragover.value = false
+  }
+}
+
 // ---- 音频信息弹窗 ----
 const audioDialog = reactive({
   visible: false,
@@ -173,7 +230,7 @@ const audioDialog = reactive({
 })
 const coverUploading = ref(false)
 
-async function onCoverUpload(file) {
+async function uploadAudioCover(file) {
   coverUploading.value = true
   try {
     const data = await api.upload(file)
@@ -183,8 +240,20 @@ async function onCoverUpload(file) {
   } finally {
     coverUploading.value = false
   }
+}
+
+function onCoverUpload(file) {
+  uploadAudioCover(file)
   return false // 阻止 el-upload 自动上传
 }
+
+// 音频封面:支持拖拽/粘贴上传(仅弹窗打开期间)
+const audioCoverZoneRef = ref()
+const { isDragover: audioCoverDrag } = useImageDropPaste(
+  audioCoverZoneRef,
+  uploadAudioCover,
+  { enabled: () => audioDialog.visible }
+)
 
 function confirmAudio() {
   const ed = editor.value
@@ -229,6 +298,18 @@ defineExpose({
   border: 1px solid #dcdfe6;
   border-radius: 6px;
   overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.tiptap-wrap.is-dragover {
+  border-color: #e67aa3;
+  box-shadow: 0 0 0 2px rgba(230, 122, 163, 0.25);
+}
+.tiptap-wrap.is-dragover .t-content {
+  background: #fff8fb;
+}
+.tb .count {
+  margin-left: 2px;
+  font-size: 12px;
 }
 .t-toolbar {
   display: flex;
@@ -334,6 +415,14 @@ defineExpose({
 /* 音频信息弹窗 */
 .audio-form {
   padding-bottom: 4px;
+}
+.upload-zone {
+  border-radius: 6px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.upload-zone.is-dragover {
+  background: #fff8fb;
+  box-shadow: 0 0 0 2px rgba(230, 122, 163, 0.25);
 }
 .cover-row {
   display: flex;

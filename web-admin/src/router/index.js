@@ -54,6 +54,12 @@ const routes = [
         meta: { admin: true }
       },
       {
+        path: 'stats',
+        name: 'stats',
+        component: () => import('@/views/stats/Dashboard.vue'),
+        meta: { admin: true }
+      },
+      {
         path: 'profile',
         name: 'profile',
         component: () => import('@/views/Profile.vue')

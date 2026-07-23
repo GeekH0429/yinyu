@@ -18,6 +18,9 @@
           <span>图文管理</span>
         </el-menu-item>
         <template v-if="auth.isAdmin">
+          <el-menu-item index="/stats" :icon="DataAnalysis">
+            <span>数据统计</span>
+          </el-menu-item>
           <el-menu-item index="/treeholes" :icon="ChatDotRound">
             <span>树洞管理</span>
           </el-menu-item>
@@ -79,7 +82,8 @@ import {
   Picture,
   Setting,
   Fold,
-  Expand
+  Expand,
+  DataAnalysis
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 

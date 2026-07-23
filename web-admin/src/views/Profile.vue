@@ -4,7 +4,7 @@
       <h2 class="title">个人资料</h2>
       <el-form :model="form" label-width="100px" v-loading="loading" style="max-width: 560px">
         <el-form-item label="头像">
-          <div class="avatar-row">
+          <div class="avatar-row upload-zone" ref="avatarZoneRef" :class="{ 'is-dragover': avatarDrag }">
             <el-avatar :size="72" :src="form.avatar_url">
               {{ (form.nickname || '?').slice(0, 1) }}
             </el-avatar>
@@ -56,11 +56,13 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { api } from '@/api'
 import { useAuthStore } from '@/stores/auth'
+import { useImageDropPaste } from '@/composables/useImageDropPaste'
 
 const auth = useAuthStore()
 const loading = ref(false)
 const saving = ref(false)
 const avatarUploading = ref(false)
+const avatarZoneRef = ref()
 
 const form = reactive({ nickname: '', email: '', bio: '', avatar_url: '' })
 const pwd = reactive({ old: '', new1: '', new2: '' })
@@ -83,11 +85,16 @@ async function onAvatar(file) {
   try {
     const data = await api.upload(file)
     form.avatar_url = data.url
+  } catch {
+    ElMessage.error('头像上传失败')
   } finally {
     avatarUploading.value = false
   }
   return false
 }
+
+// 支持拖拽 / 粘贴上传头像
+const { isDragover: avatarDrag } = useImageDropPaste(avatarZoneRef, onAvatar)
 
 async function onSaveProfile() {
   saving.value = true
@@ -131,5 +138,12 @@ onMounted(loadProfile)
   display: flex;
   align-items: center;
   gap: 16px;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.avatar-row.is-dragover {
+  background: #fff8fb;
+  box-shadow: 0 0 0 2px rgba(230, 122, 163, 0.25);
 }
 </style>

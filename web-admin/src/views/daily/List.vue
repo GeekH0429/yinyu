@@ -58,17 +58,19 @@
           />
         </el-form-item>
         <el-form-item label="图片" prop="image_url">
-          <el-upload
-            :show-file-list="false"
-            :before-upload="onImageUpload"
-            accept="image/*"
-          >
-            <div v-if="form.image_url" class="img-preview">
-              <img :src="form.image_url" alt="daily" />
-            </div>
-            <el-button v-else :icon="Picture" :loading="uploading">上传图片</el-button>
-          </el-upload>
-          <el-button v-if="form.image_url" link type="danger" @click="form.image_url = ''">移除</el-button>
+          <div class="image-zone upload-zone" ref="imageZoneRef" :class="{ 'is-dragover': imageDrag }">
+            <el-upload
+              :show-file-list="false"
+              :before-upload="onImageUpload"
+              accept="image/*"
+            >
+              <div v-if="form.image_url" class="img-preview">
+                <img :src="form.image_url" alt="daily" />
+              </div>
+              <el-button v-else :icon="Picture" :loading="uploading">上传图片</el-button>
+            </el-upload>
+            <el-button v-if="form.image_url" link type="danger" @click="form.image_url = ''">移除</el-button>
+          </div>
         </el-form-item>
         <el-form-item label="标题" prop="title">
           <el-input v-model="form.title" maxlength="200" show-word-limit placeholder="给这张图起个名字" />
@@ -97,6 +99,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { Plus, Picture } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/api'
+import { useImageDropPaste } from '@/composables/useImageDropPaste'
 
 const loading = ref(false)
 const rows = ref([])
@@ -108,6 +111,7 @@ const dialogVisible = ref(false)
 const editingId = ref(null)
 const saving = ref(false)
 const uploading = ref(false)
+const imageZoneRef = ref()
 const formRef = ref()
 const form = reactive({
   publish_date: '',
@@ -185,6 +189,11 @@ async function onImageUpload(file) {
   return false // 阻止 el-upload 自动上传
 }
 
+// 支持拖拽 / 粘贴上传(仅弹窗打开期间)
+const { isDragover: imageDrag } = useImageDropPaste(imageZoneRef, onImageUpload, {
+  enabled: () => dialogVisible.value
+})
+
 async function onSave() {
   await formRef.value.validate().catch(() => {})
   if (!form.publish_date || !form.image_url || !form.title) return
@@ -226,6 +235,18 @@ onMounted(loadData)
 .title {
   margin: 0;
   font-size: 18px;
+}
+.image-zone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.image-zone.is-dragover {
+  background: #fff8fb;
+  box-shadow: 0 0 0 2px rgba(230, 122, 163, 0.25);
 }
 .img-preview img {
   width: 220px;

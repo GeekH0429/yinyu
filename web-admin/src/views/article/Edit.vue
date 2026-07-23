@@ -29,17 +29,19 @@
       </el-form-item>
 
       <el-form-item label="封面">
-        <el-upload
-          :show-file-list="false"
-          :before-upload="onCoverUpload"
-          accept="image/*"
-        >
-          <div v-if="form.cover_url" class="cover-preview">
-            <img :src="form.cover_url" alt="cover" />
-          </div>
-          <el-button v-else :icon="Picture" :loading="coverUploading">上传封面</el-button>
-        </el-upload>
-        <el-button v-if="form.cover_url" link type="danger" @click="form.cover_url = ''">移除</el-button>
+        <div class="cover-zone upload-zone" ref="coverZoneRef" :class="{ 'is-dragover': coverDrag }">
+          <el-upload
+            :show-file-list="false"
+            :before-upload="onCoverUpload"
+            accept="image/*"
+          >
+            <div v-if="form.cover_url" class="cover-preview">
+              <img :src="form.cover_url" alt="cover" />
+            </div>
+            <el-button v-else :icon="Picture" :loading="coverUploading">上传封面</el-button>
+          </el-upload>
+          <el-button v-if="form.cover_url" link type="danger" @click="form.cover_url = ''">移除</el-button>
+        </div>
       </el-form-item>
 
       <el-form-item label="标签">
@@ -84,6 +86,7 @@ import { Picture } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import RichEditor from '@/components/RichEditor.vue'
 import { api } from '@/api'
+import { useImageDropPaste } from '@/composables/useImageDropPaste'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,6 +95,7 @@ const isEdit = computed(() => !!route.params.id)
 const loading = ref(false)
 const saving = ref(false)
 const coverUploading = ref(false)
+const coverZoneRef = ref()
 const editorRef = ref()
 const formRef = ref()
 const tagOptions = ref([])
@@ -146,6 +150,9 @@ async function onCoverUpload(file) {
   return false
 }
 
+// 支持拖拽 / 粘贴上传封面
+const { isDragover: coverDrag } = useImageDropPaste(coverZoneRef, onCoverUpload)
+
 async function onSave() {
   await formRef.value.validate().catch(() => {})
   if (!form.title) return
@@ -182,6 +189,18 @@ onMounted(() => {
 .title {
   margin: 0;
   font-size: 18px;
+}
+.cover-zone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.cover-zone.is-dragover {
+  background: #fff8fb;
+  box-shadow: 0 0 0 2px rgba(230, 122, 163, 0.25);
 }
 .cover-preview img {
   width: 220px;
