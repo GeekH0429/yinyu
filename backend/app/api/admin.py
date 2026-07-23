@@ -11,11 +11,17 @@ from app.core.exceptions import BadRequest, Conflict, NotFound
 from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models.article import Article
+from app.models.daily_image import DailyImage
 from app.models.invite import InviteCode
 from app.models.treehole import TreeHole
 from app.models.user import User
 from app.schemas.article import ArticleBrief, to_brief
 from app.schemas.common import Page, offset_of
+from app.schemas.daily_image import (
+    DailyImageCreate,
+    DailyImageOut,
+    DailyImageUpdate,
+)
 from app.schemas.invite import InviteCodeBatch, InviteCodeCreate, InviteCodeOut
 from app.schemas.treehole import TreeHoleOut
 from app.schemas.user import AdminUserPatch, UserOut
@@ -175,5 +181,93 @@ async def force_delete_treehole(
     if th is None:
         raise NotFound("树洞不存在")
     await db.delete(th)
+    await db.commit()
+    return {"detail": "已删除"}
+
+
+# ---------- 每日一图 ----------
+
+
+@router.get("/daily-images", response_model=Page[DailyImageOut])
+async def list_daily_images(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """管理后台用:含未来排期,按排期日期倒序。"""
+    total = await db.scalar(select(func.count()).select_from(DailyImage))
+    rows = await db.execute(
+        select(DailyImage)
+        .order_by(DailyImage.publish_date.desc(), DailyImage.id.desc())
+        .offset(offset_of(page, page_size))
+        .limit(page_size)
+    )
+    items = [DailyImageOut.model_validate(d) for d in rows.scalars().all()]
+    return Page[DailyImageOut](
+        items=items, total=total or 0, page=page, page_size=page_size
+    )
+
+
+@router.post("/daily-images", response_model=DailyImageOut, status_code=201)
+async def create_daily_image(
+    data: DailyImageCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # 唯一性预检:给出友好 409,而不是依赖 IntegrityError
+    existed = await db.scalar(
+        select(DailyImage.id).where(DailyImage.publish_date == data.publish_date)
+    )
+    if existed is not None:
+        raise Conflict(f"{data.publish_date} 已排期,请先删除或修改原有记录")
+    di = DailyImage(
+        publish_date=data.publish_date,
+        image_url=data.image_url,
+        title=data.title,
+        description=data.description,
+    )
+    db.add(di)
+    await db.commit()
+    await db.refresh(di)
+    return di
+
+
+@router.put("/daily-images/{daily_id}", response_model=DailyImageOut)
+async def update_daily_image(
+    daily_id: int,
+    data: DailyImageUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    di = await db.get(DailyImage, daily_id)
+    if di is None:
+        raise NotFound("每日一图不存在")
+    payload = data.model_dump(exclude_unset=True)
+    # 改 publish_date 时再做唯一性预检(排除自身)
+    if "publish_date" in payload and payload["publish_date"] != di.publish_date:
+        dup = await db.scalar(
+            select(DailyImage.id).where(
+                DailyImage.publish_date == payload["publish_date"],
+                DailyImage.id != daily_id,
+            )
+        )
+        if dup is not None:
+            raise Conflict(f"{payload['publish_date']} 已排期")
+    for k, v in payload.items():
+        setattr(di, k, v)
+    await db.commit()
+    await db.refresh(di)
+    return di
+
+
+@router.delete("/daily-images/{daily_id}")
+async def delete_daily_image(
+    daily_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    di = await db.get(DailyImage, daily_id)
+    if di is None:
+        raise NotFound("每日一图不存在")
+    await db.delete(di)
     await db.commit()
     return {"detail": "已删除"}

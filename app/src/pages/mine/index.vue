@@ -27,6 +27,15 @@
       </view>
     </view>
 
+    <!-- 每日一图·回忆入口 -->
+    <view class="card daily-entry" @tap="goDailyHistory">
+      <view class="daily-entry-left">
+        <text class="daily-entry-title">每日一图 · 回忆</text>
+        <text class="daily-entry-sub">看看过去的每一天</text>
+      </view>
+      <text class="daily-entry-arrow">›</text>
+    </view>
+
     <!-- Tab 切换 -->
     <view class="tabs-wrapper">
       <view class="tabs-header">
@@ -304,6 +313,10 @@ function goSettings() {
   uni.navigateTo({ url: '/pages/settings/index' })
 }
 
+function goDailyHistory() {
+  uni.navigateTo({ url: '/pages/daily/history' })
+}
+
 // Tab 切换
 function switchTab(key) {
   currentTab.value = key
@@ -373,6 +386,32 @@ async function onRefreshTreeholes() {
   margin: 24rpx 32rpx;
   display: flex;
   align-items: center;
+}
+/* 每日一图·回忆入口 */
+.daily-entry {
+  margin: 0 32rpx 24rpx;
+  padding: 32rpx 36rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.daily-entry-left {
+  display: flex;
+  flex-direction: column;
+}
+.daily-entry-title {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #4a4a4a;
+}
+.daily-entry-sub {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #b8b8b8;
+}
+.daily-entry-arrow {
+  font-size: 48rpx;
+  color: #c4a882;
 }
 .avatar {
   width: 120rpx;

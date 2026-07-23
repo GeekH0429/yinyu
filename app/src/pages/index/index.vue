@@ -91,6 +91,13 @@
       <text class="fab-icon">✎</text>
     </view>
 
+    <!-- 每日一图:启动后首次 onShow 触发,当天只弹一次 -->
+    <DailyImageOverlay
+      :visible="dailyOverlayVisible"
+      :image="todayImage"
+      @close="onCloseDaily"
+    />
+
     <TabBar />
   </view>
 </template>
@@ -108,11 +115,14 @@ import {
 import TabBar from '../../components/TabBar.vue'
 import CachedImage from '../../components/CachedImage.vue'
 import StateView from '../../components/StateView.vue'
+import DailyImageOverlay from '../../components/DailyImageOverlay.vue'
+import { todayImage, todayLoaded } from '../../store/dailyImage'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const pageSize = 10
 const feedError = ref(false) // 首次加载失败且无数据时,展示错误占位 + 重试
 const offlineStale = ref(false) // SWR:后台刷新失败但本地有数据时,顶部轻提示
+const dailyOverlayVisible = ref(false) // 每日一图弹层显隐
 
 // 标签切换:防抖 + reqId race 防护(连续点按不同标签只发最后一次请求,过期响应丢弃)
 let tagDebounce = null
@@ -164,7 +174,30 @@ onShow(() => {
     dirty.value = false
     loadArticles(true).then(() => persistFeedSnap()).catch(() => {})
   }
+  // 每日一图:今日首次打开触发弹层
+  maybeShowDaily()
 })
+
+/** 每日一图:每次 App 启动进入首页时弹一次(本次会话内不重复弹,避免 onShow 反复触发)。
+ *  不做"当天只弹一次"的限制 —— 用户每次打开 App 都能看到今日图。 */
+async function maybeShowDaily() {
+  // 本次会话已弹过:跳过(切 tab/返回子页触发的 onShow 不再重复弹)
+  if (todayLoaded.value) return
+  try {
+    const res = await api.daily.today()
+    todayImage.value = res
+    dailyOverlayVisible.value = true
+  } catch {
+    // 404 今日未排期:静默
+    todayImage.value = null
+  } finally {
+    todayLoaded.value = true
+  }
+}
+
+function onCloseDaily() {
+  dailyOverlayVisible.value = false
+}
 
 onPageScroll((e) => {
   scrollTop.value = e.scrollTop

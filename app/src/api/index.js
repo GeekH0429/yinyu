@@ -29,6 +29,11 @@ export const api = {
     myLikes: (params) => http.get('/me/likes', params)
   },
 
+  daily: {
+    today: () => http.get('/daily-images/today'),
+    history: (params) => http.get('/daily-images/history', params)
+  },
+
   write: {
     createArticle: (data) => http.post('/articles', data),
     updateArticle: (id, data) => http.put('/articles/' + id, data),

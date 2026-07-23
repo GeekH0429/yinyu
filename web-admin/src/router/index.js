@@ -48,6 +48,12 @@ const routes = [
         meta: { admin: true }
       },
       {
+        path: 'daily-images',
+        name: 'daily-images',
+        component: () => import('@/views/daily/List.vue'),
+        meta: { admin: true }
+      },
+      {
         path: 'profile',
         name: 'profile',
         component: () => import('@/views/Profile.vue')

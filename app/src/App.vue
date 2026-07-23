@@ -74,6 +74,23 @@ page {
   width: 100%;
 }
 
+/* 顶部状态栏占位:custom navigationStyle 下,系统状态栏会盖在 y=0 上,
+   此元素撑出与状态栏等高的空白避免内容被遮。
+   sticky + 不透明背景(继承各页面根容器底色):滚动时粘在顶部,
+   防止正文"穿过"状态栏区域被系统 UI 视觉遮挡。
+   - 大多数页面继承 .home/.mine/.read 等的 #FDFBF7
+   - 树洞页继承 .hole 的 #0d0d12
+   - 暗色模式下,各页面根容器会重写 background,这里跟着继承 */
+.status-bar {
+  width: 100%;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background-color: inherit;
+}
+
 /* 公共工具类 */
 .container {
   padding: 0 48rpx;

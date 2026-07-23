@@ -27,6 +27,9 @@
           <el-menu-item index="/invites" :icon="Ticket">
             <span>邀请码</span>
           </el-menu-item>
+          <el-menu-item index="/daily-images" :icon="Picture">
+            <span>每日一图</span>
+          </el-menu-item>
         </template>
         <el-menu-item index="/profile" :icon="Setting">
           <span>个人资料</span>
@@ -73,6 +76,7 @@ import {
   ChatDotRound,
   User,
   Ticket,
+  Picture,
   Setting,
   Fold,
   Expand

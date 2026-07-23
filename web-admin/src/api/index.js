@@ -39,7 +39,11 @@ export const api = {
     inviteCreate: (data) => request.post('/admin/invite-codes', data),
     inviteList: (params) => request.get('/admin/invite-codes', { params }),
     users: (params) => request.get('/admin/users', { params }),
-    patchUser: (id, data) => request.patch(`/admin/users/${id}`, data)
+    patchUser: (id, data) => request.patch(`/admin/users/${id}`, data),
+    dailyList: (params) => request.get('/admin/daily-images', { params }),
+    dailyCreate: (data) => request.post('/admin/daily-images', data),
+    dailyUpdate: (id, data) => request.put(`/admin/daily-images/${id}`, data),
+    dailyRemove: (id) => request.delete(`/admin/daily-images/${id}`)
   },
 
   upload: (file) => {
