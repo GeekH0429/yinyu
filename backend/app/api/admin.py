@@ -4,7 +4,7 @@
 不再重复 require_admin。
 """
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, or_, select, update as sa_update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequest, Conflict, NotFound
@@ -38,29 +38,33 @@ async def create_invite_codes(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    seen: set[str] = set()
-    created: list[InviteCode] = []
-    for _ in range(data.count):
-        # 保证库内 + 本批次内唯一(seen 集合避免 O(N²) 重建)
-        for _retry in range(30):
-            code = generate_invite_code()
-            if code in seen:
-                continue
-            exists = await db.scalar(select(InviteCode.id).where(InviteCode.code == code))
-            if exists is None:
-                break
-        else:
-            raise Conflict("邀请码生成失败,请重试")
-        seen.add(code)
-        created.append(
-            InviteCode(
-                code=code,
-                created_by=user.id,
-                max_uses=data.max_uses,
-                remark=data.remark,
-                expires_at=data.expires_at,
-            )
+    # 一次性拉取所有已存在的 code 到内存 set,避免 N×30 次逐条 SELECT。
+    # 邀请码总量通常不过百千级,全量加载代价远低于循环查库。
+    existing_rows = await db.execute(select(InviteCode.code))
+    taken: set[str] = {r[0] for r in existing_rows.all()}
+
+    generated: list[str] = []
+    retries = 0
+    max_retries = data.count * 30 + 30  # 充分重试空间,防极端碰撞
+    while len(generated) < data.count and retries <= max_retries:
+        code = generate_invite_code()
+        if code in taken or code in generated:
+            retries += 1
+            continue
+        generated.append(code)
+    if len(generated) < data.count:
+        raise Conflict("邀请码生成失败,请重试")
+
+    created = [
+        InviteCode(
+            code=code,
+            created_by=user.id,
+            max_uses=data.max_uses,
+            remark=data.remark,
+            expires_at=data.expires_at,
         )
+        for code in generated
+    ]
     db.add_all(created)
     await db.commit()
     # 一次批量取回(带 server_default 字段),替代逐条 refresh
@@ -237,7 +241,7 @@ async def admin_delete_comment(
     await db.delete(c)
     delta = 1 + child_count
     await db.execute(
-        sa_update(Article)
+        update(Article)
         .where(Article.id == article_id, Article.comment_count >= delta)
         .values(comment_count=Article.comment_count - delta)
         .execution_options(synchronize_session=False)

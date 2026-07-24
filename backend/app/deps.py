@@ -1,4 +1,4 @@
-"""FastAPI 依赖:数据库、当前用户、管理员守卫、Redis。"""
+"""FastAPI 依赖:数据库、当前用户、管理员守卫。"""
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +7,6 @@ from app.config import settings
 from app.core.exceptions import Forbidden, Unauthorized
 from app.database import get_db
 from app.models.user import User
-from app.redis_client import get_redis
 from app.security import TOKEN_TYPE_ACCESS, decode_token
 
 oauth2_scheme = OAuth2PasswordBearer(

@@ -47,6 +47,14 @@
     />
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑排期' : '新增排期'" width="480px">
+      <el-alert
+        v-if="formError"
+        :title="formError"
+        type="error"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 16px"
+      />
       <el-form :model="form" label-width="80px" :rules="rules" ref="formRef">
         <el-form-item label="日期" prop="publish_date">
           <el-date-picker
@@ -95,7 +103,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { Plus, Picture } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/api'
@@ -113,6 +121,21 @@ const saving = ref(false)
 const uploading = ref(false)
 const imageZoneRef = ref()
 const formRef = ref()
+const formError = ref('')
+let formErrorTimer = null
+function setFormError(msg) {
+  clearTimeout(formErrorTimer)
+  formError.value = msg
+  // 5 秒后自动消失,不常驻;再次报错会刷新计时器
+  formErrorTimer = setTimeout(() => {
+    formError.value = ''
+  }, 5000)
+}
+function clearFormError() {
+  clearTimeout(formErrorTimer)
+  formError.value = ''
+}
+onBeforeUnmount(clearFormError)
 const form = reactive({
   publish_date: '',
   image_url: '',
@@ -164,6 +187,7 @@ function resetForm() {
 function openCreate() {
   editingId.value = null
   resetForm()
+  clearFormError()
   dialogVisible.value = true
 }
 
@@ -173,6 +197,7 @@ function openEdit(row) {
   form.image_url = row.image_url
   form.title = row.title
   form.description = row.description || ''
+  clearFormError()
   dialogVisible.value = true
 }
 
@@ -198,6 +223,7 @@ async function onSave() {
   await formRef.value.validate().catch(() => {})
   if (!form.publish_date || !form.image_url || !form.title) return
   saving.value = true
+  clearFormError()
   try {
     const payload = {
       publish_date: form.publish_date,
@@ -206,26 +232,39 @@ async function onSave() {
       description: form.description || null
     }
     if (editingId.value) {
-      await api.admin.dailyUpdate(editingId.value, payload)
+      await api.admin.dailyUpdate(editingId.value, payload, { __silent: true })
       ElMessage.success('已保存')
     } else {
-      await api.admin.dailyCreate(payload)
+      await api.admin.dailyCreate(payload, { __silent: true })
       ElMessage.success('已创建')
     }
     dialogVisible.value = false
     loadData()
+  } catch (e) {
+    const detail = e?.response?.data?.detail
+    // 409 一般是日期冲突,把后端的可读信息直接放到表单顶部
+    setFormError(detail ? `保存失败:${detail}` : '保存失败,请稍后重试')
   } finally {
     saving.value = false
   }
 }
 
 async function onRemove(row) {
-  await ElMessageBox.confirm(`确定删除 ${row.publish_date} 的每日一图?`, '提示', {
-    type: 'warning'
-  })
-  await api.admin.dailyRemove(row.id)
-  ElMessage.success('已删除')
-  loadData()
+  try {
+    await ElMessageBox.confirm(`确定删除 ${row.publish_date} 的每日一图?`, '提示', {
+      type: 'warning'
+    })
+  } catch {
+    return // 用户取消
+  }
+  try {
+    await api.admin.dailyRemove(row.id, { __silent: true })
+    ElMessage.success('已删除')
+    loadData()
+  } catch (e) {
+    const detail = e?.response?.data?.detail
+    ElMessage.error(detail ? `删除失败:${detail}` : '删除失败,请稍后重试')
+  }
 }
 
 onMounted(loadData)

@@ -88,14 +88,27 @@ async def get_article(
     user: User | None = Depends(get_current_user),
     redis=Depends(get_redis),
 ):
-    """详情:草稿仅作者/管理员可见;浏览量由 Redis 累积、后台批量回写。"""
+    """详情:草稿仅作者/管理员可见;浏览量由 Redis 累积、后台批量回写。
+
+    单次 LEFT JOIN 同时取 article + author + 当前用户点赞状态,
+    替代原本的「主查询 + 再查一次点赞」两次 RTT。
+    """
+    # 未登录时用 -1 作为 user_id 条件,outerjoin 永不命中 → like_id 恒为 NULL
+    uid = user.id if user else -1
     row = await db.execute(
-        select(Article, User).join(User, User.id == Article.author_id).where(Article.id == article_id)
+        select(Article, User, ArticleLike.id.label("like_id"))
+        .join(User, User.id == Article.author_id)
+        .outerjoin(
+            ArticleLike,
+            (ArticleLike.user_id == uid) & (ArticleLike.article_id == Article.id),
+        )
+        .where(Article.id == article_id)
     )
-    pair = row.first()
-    if pair is None:
+    triple = row.first()
+    if triple is None:
         raise NotFound("文章不存在")
-    article, author = pair
+    article, author, like_id = triple
+    liked_by_me = like_id is not None
 
     if article.status != STATUS_PUBLISHED:
         if user is None or (user.id != article.author_id and not user.is_admin()):
@@ -105,13 +118,6 @@ async def get_article(
     await incr_view(redis, "article", article_id, viewer)
     article.view_count = (article.view_count or 0) + 1  # 内存校正(显示用),实际落库由后台回写
 
-    liked_by_me = False
-    if user:
-        liked_by_me = await db.scalar(
-            select(ArticleLike.id).where(
-                ArticleLike.user_id == user.id, ArticleLike.article_id == article_id
-            )
-        ) is not None
     return to_out(article, author, liked_by_me=liked_by_me)
 
 

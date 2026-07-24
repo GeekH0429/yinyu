@@ -22,7 +22,11 @@ export async function login(username, password) {
   return me
 }
 
-/** 刷新本地用户信息(token 失效会自动登出)。 */
+/**
+ * 刷新本地用户信息。
+ * 注意:非鉴权错误(5xx / 网络抖动)不应触发 logout —— request.js 拦截器已
+ * 在 refresh token 失败时统一跳登录,这里再 logout 会把暂时性故障误判为登出。
+ */
 export async function refreshUser() {
   if (!isLoggedIn()) return null
   try {
@@ -30,7 +34,6 @@ export async function refreshUser() {
     uni.setStorageSync('userInfo', me)
     return me
   } catch {
-    logout()
     return null
   }
 }

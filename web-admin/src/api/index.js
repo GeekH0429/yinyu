@@ -5,7 +5,6 @@ export const api = {
     login: (username, password) =>
       request.post('/auth/login', { username, password }),
     register: (payload) => request.post('/auth/register', payload),
-    me: () => request.get('/me'),
     changePassword: (old_password, new_password) =>
       request.put('/auth/password', { old_password, new_password })
   },
@@ -41,9 +40,9 @@ export const api = {
     users: (params) => request.get('/admin/users', { params }),
     patchUser: (id, data) => request.patch(`/admin/users/${id}`, data),
     dailyList: (params) => request.get('/admin/daily-images', { params }),
-    dailyCreate: (data) => request.post('/admin/daily-images', data),
-    dailyUpdate: (id, data) => request.put(`/admin/daily-images/${id}`, data),
-    dailyRemove: (id) => request.delete(`/admin/daily-images/${id}`),
+    dailyCreate: (data, opts) => request.post('/admin/daily-images', data, opts),
+    dailyUpdate: (id, data, opts) => request.put(`/admin/daily-images/${id}`, data, opts),
+    dailyRemove: (id, opts) => request.delete(`/admin/daily-images/${id}`, opts),
     commentList: (params) => request.get('/admin/comments', { params }),
     commentRemove: (id) => request.delete(`/admin/comments/${id}`),
     statsOverview: (params) => request.get('/stats/overview', { params }),
