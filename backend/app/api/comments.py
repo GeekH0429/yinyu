@@ -149,17 +149,25 @@ async def create_comment(
     parent: Comment | None = None
     parent_author: User | None = None
     if data.parent_id is not None:
-        parent = await db.get(Comment, data.parent_id)
-        if parent is None or parent.article_id != article_id:
+        # JOIN 合并 parent + 其作者(1 RTT 替代 db.get(Comment)+db.get(User) 两次往返)
+        row = await db.execute(
+            select(Comment, User)
+            .join(User, User.id == Comment.author_id)
+            .where(Comment.id == data.parent_id)
+        )
+        pair = row.first()
+        if pair is None:
+            raise BadRequest("回复目标评论不存在")
+        parent, parent_author = pair
+        if parent.article_id != article_id:
             raise BadRequest("回复目标评论不存在")
         if parent.parent_id is not None:
             raise BadRequest("只支持一层回复")
-        parent_author = await db.get(User, parent.author_id)
-        # reply_to_user_id 校验
+        # reply_to_user_id 校验:仅当与 parent.author 不同才额外拉
+        # (回复楼主是默认场景,此时省 1 RTT)
         rt = data.reply_to_user_id
         if rt is not None and rt != parent.author_id:
-            rt_user = await db.get(User, rt)
-            if rt_user is None:
+            if await db.get(User, rt) is None:
                 raise BadRequest("被回复用户不存在")
 
     comment = Comment(
