@@ -13,26 +13,31 @@
         <view class="portal-glow"></view>
         <text class="portal-desc">树洞无形&nbsp;&nbsp;&nbsp;回声共鸣</text>
 
-        <view class="pin-group" :class="{ confirm: unlocking, shake: pinShake }" @tap="focusInput">
-          <view
-            v-for="(d, i) in pinDigits"
-            :key="i"
-            :class="['pin-box', { filled: d !== '' }]"
-          >
-            <text v-if="d !== ''" class="pin-char">{{ d }}</text>
+        <view class="pin-field" @tap="focusInput">
+          <view class="pin-group" :class="{ confirm: unlocking, shake: pinShake }">
+            <view
+              v-for="(d, i) in pinDigits"
+              :key="i"
+              :class="['pin-box', { filled: d !== '' }]"
+            >
+              <text v-if="d !== ''" class="pin-char">{{ d }}</text>
+            </view>
           </view>
-        </view>
 
-        <input
-          class="hidden-input"
-          v-model="code"
-          type="number"
-          :maxlength="6"
-          :focus="focused"
-          @input="onInput"
-          @focus="focused = true"
-          @blur="focused = false"
-        />
+          <!-- 真实尺寸 + 透明文字/光标,叠在 pin-group 上方接收输入。
+               不能用 width:0/height:0/opacity:0:App 原生 input 几何尺寸为 0 时光标会乱跳,
+               表现为「后输入的数字排到前面」。这里给 input 实际尺寸,只把文字与光标做透明。 -->
+          <input
+            class="pin-input"
+            :value="code"
+            type="number"
+            :maxlength="6"
+            :focus="focused"
+            @input="onInput"
+            @focus="focused = true"
+            @blur="focused = false"
+          />
+        </view>
 
         <view class="portal-bottom">
           <text v-if="loading" class="loading-text">正在解锁…</text>
@@ -155,8 +160,14 @@ function focusInput() {
   focused.value = true
 }
 
-function onInput() {
-  code.value = code.value.replace(/\D/g, '').slice(0, 6)
+function onInput(e) {
+  // 不用 v-model:App 原生下 v-model 的双向绑定会让每次按键都重渲染 input,光标重置到 0 位,
+  // 下一个字符被插到最前面,最终 6 位数字完全反转(H5 不受影响)。
+  // 这里改成 :value 单向绑定 + 用事件 payload 写回,且只在过滤后值变化时才赋值。
+  const v = (e?.detail?.value ?? '').toString().replace(/\D/g, '').slice(0, 6)
+  if (v !== code.value) {
+    code.value = v
+  }
   if (code.value.length === 6) onUnlock()
 }
 
@@ -313,13 +324,15 @@ function onImgTap(e) {
   position: relative;
   z-index: 1;
 }
+.pin-field {
+  position: relative;
+  margin-bottom: 48rpx;
+  z-index: 1;
+}
 .pin-group {
   display: flex;
   justify-content: center;
   gap: 24rpx;
-  margin-bottom: 48rpx;
-  position: relative;
-  z-index: 1;
 }
 .pin-box {
   width: 88rpx;
@@ -364,11 +377,19 @@ function onImgTap(e) {
   color: #c0c8e0;
   font-weight: 600;
 }
-.hidden-input {
+.pin-input {
   position: absolute;
-  opacity: 0;
-  height: 0;
-  width: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 110rpx;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  border: none;
+  z-index: 2;
 }
 .portal-bottom {
   position: relative;
