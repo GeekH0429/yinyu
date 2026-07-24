@@ -49,9 +49,9 @@ const planePathD = 'M1007.9 7.2C1001.8 3 994.8.8 987.2.8c-6.6 0-12.6 1.7-18.3 5.
 const flySvg = `
 <svg class="fly-trail" viewBox="0 0 750 1400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <path id="flyPath" d="M 375 1148 C 800 1100 700 350 780 40" />
+    <path id="flyPath" d="M 225 1148 C 400 600 650 30 780 40" />
   </defs>
-  <path class="fly-trail-path" pathLength="100" d="M 375 1148 C 800 1100 700 350 780 40" />
+  <path class="fly-trail-path" pathLength="100" d="M 225 1148 C 400 600 650 30 780 40" />
   <g class="fly-plane-group">
     <g class="fly-plane-scale">
       <g transform="rotate(45) translate(-512 -512)">
@@ -134,7 +134,7 @@ onUnmounted(() => clearTimeout(timer))
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
   filter: drop-shadow(0 0 4px rgba(140, 165, 220, 0.7));
-  animation: drawTrail 1.5s 0.1s ease-out both,
+  animation: drawTrail 1.5s 0.15s ease-out both,
              fadeTrail 0.4s 1.7s ease-out both;
 }
 @keyframes drawTrail {
@@ -173,7 +173,7 @@ onUnmounted(() => clearTimeout(timer))
 /* ---- 起飞点光点粒子 ---- */
 .fly-particles {
   position: absolute;
-  left: 50%;
+  left: 30%;
   bottom: 18%;
   width: 0;
   height: 0;
