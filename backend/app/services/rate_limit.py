@@ -5,16 +5,33 @@
 """
 from fastapi import Request
 
+from app.config import settings
 from app.core.exceptions import TooManyRequests
 from redis.asyncio import Redis
 
 
 def get_client_ip(request: Request) -> str:
-    """取真实客户端 IP。生产经 Nginx 反代,信任 X-Forwarded-For 首段。"""
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        return xff.split(",")[0].strip()
-    return (request.client.host if request.client else "unknown") or "unknown"
+    """取真实客户端 IP。
+
+    生产经 Nginx 反代时,X-Forwarded-For 格式为 `client, proxy1, proxy2`,
+    最右侧是直接连给我们的代理(可信),最左侧是原始客户端(攻击者可伪造)。
+    从右向左跳过 TRUSTED_PROXIES 内的 IP,第一个非可信即真实客户端。
+
+    若直接信任 XFF 首段,任何人都能 `curl -H 'X-Forwarded-For: 1.2.3.4'`
+    绕过限流;本实现只信任由可信反代追加的 XFF。
+    """
+    xff = request.headers.get("x-forwarded-for", "")
+    parts = [p.strip() for p in xff.split(",") if p.strip()]
+    trusted = set(settings.trusted_proxies)
+
+    # 从右向左剥可信代理。空 XFF / 全可信 → 回退 request.client.host。
+    for ip in reversed(parts):
+        if ip in trusted:
+            continue
+        return ip
+
+    host = request.client.host if request.client else "unknown"
+    return host or "unknown"
 
 
 async def sliding_limit(

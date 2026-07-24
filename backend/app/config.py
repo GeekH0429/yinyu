@@ -22,6 +22,9 @@ class Settings(BaseSettings):
         "http://localhost:5173",
         "http://localhost:3000",
     ]
+    # 信任的反代 IP(逗号分隔)。get_client_ip 从 X-Forwarded-For 最右开始
+    # 跳过这些 IP,第一个非可信即真实客户端。默认只信任本机回环(单 Nginx 部署)。
+    trusted_proxies: Annotated[List[str], NoDecode] = ["127.0.0.1", "::1"]
 
     # ---- 数据库 ----
     database_url: str
@@ -68,7 +71,7 @@ class Settings(BaseSettings):
     superadmin_username: str = "admin"
     superadmin_password: str = "change-me"
 
-    @field_validator("cors_origins", "allowed_mimes", mode="before")
+    @field_validator("cors_origins", "allowed_mimes", "trusted_proxies", mode="before")
     @classmethod
     def _split_comma(cls, v):
         if isinstance(v, str):

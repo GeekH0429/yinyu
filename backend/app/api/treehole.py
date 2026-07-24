@@ -25,7 +25,7 @@ from app.schemas.treehole import (
     TreeHoleUnlockIn,
     TreeHoleUpdate,
 )
-from app.services.rate_limit import sliding_limit
+from app.services.rate_limit import get_client_ip, sliding_limit
 from app.services.treehole_code import allocate_code, assert_unlock_allowed
 from app.services.view_counter import incr_view
 
@@ -40,7 +40,7 @@ async def unlock(
     redis=Depends(get_redis),
 ):
     """凭 6 位暗号解锁单篇。无论暗号对错都计入限流,且不回显"存在/不存在"差异。"""
-    client_ip = (request.client.host if request.client else "unknown") or "unknown"
+    client_ip = get_client_ip(request)
     await assert_unlock_allowed(redis, client_ip)
 
     th = await db.scalar(
