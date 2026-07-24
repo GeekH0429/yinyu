@@ -1,13 +1,29 @@
 """自定义异常与统一错误响应。"""
+import logging
+
 from fastapi import HTTPException, status
+
+_logger = logging.getLogger("yinyu.exceptions")
 
 
 class AppException(HTTPException):
-    """业务异常基类,携带可读 code。"""
+    """业务异常基类,携带可读 code。
+
+    抛出时记录 WARNING 级日志(4xx 量大,不上 ERROR,避免噪音)。
+    子类调用 super().__init__ 即可受益,无需重复 logging。
+    """
 
     def __init__(self, status_code: int, detail: str, code: str = "error"):
         super().__init__(status_code=status_code, detail=detail)
         self.code = code
+        _logger.warning(
+            "app_exception",
+            extra={
+                "status_code": status_code,
+                "code": code,
+                "detail": detail,
+            },
+        )
 
 
 class BadRequest(AppException):

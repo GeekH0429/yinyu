@@ -25,6 +25,17 @@
 
     <EditorContent v-if="editor" :editor="editor" class="t-content" @dragleave="onDragLeave" />
 
+    <!-- 大文件(音/视频)上传进度条;图片通常很快,不显示 -->
+    <div v-if="uploadProgress.percent > 0 && uploadProgress.percent < 100" class="t-progress">
+      <span class="t-progress-label">{{ uploadProgress.label }}</span>
+      <el-progress
+        :percentage="uploadProgress.percent"
+        :stroke-width="6"
+        :show-text="false"
+        status="success"
+      />
+    </div>
+
     <input
       ref="fileInput"
       type="file"
@@ -157,6 +168,9 @@ const uploading = ref(false)
 const uploadingCount = ref(0) // 拖入并发上传计数,工具栏显示进度
 const isDragover = ref(false) // 拖入高亮
 const fileInput = ref()
+// 单文件上传进度(图片几乎瞬时,主要为音视频显示)。批量拖入图片不显示进度。
+const uploadProgress = reactive({ percent: 0, label: '' })
+const KIND_LABEL = { image: '图片', audio: '音频', video: '视频' }
 
 function pickFile(k) {
   kind.value = k
@@ -168,8 +182,20 @@ async function onFile(e) {
   const file = e.target.files?.[0]
   if (!file) return
   uploading.value = true
+  // 大于 500KB 才显示进度条(图片通常很快)
+  const showProgress = file.size > 500 * 1024
+  if (showProgress) {
+    uploadProgress.label = `${KIND_LABEL[kind.value] || '文件'}上传中`
+    uploadProgress.percent = 1
+  }
   try {
-    const data = await api.upload(file)
+    const data = await api.upload(file, {
+      onProgress: showProgress
+        ? (p) => {
+            uploadProgress.percent = p
+          }
+        : undefined
+    })
     const url = data.url
     const ed = editor.value
     if (!ed) return
@@ -189,6 +215,8 @@ async function onFile(e) {
     ElMessage.error('上传失败')
   } finally {
     uploading.value = false
+    uploadProgress.percent = 0
+    uploadProgress.label = ''
   }
 }
 
@@ -357,6 +385,23 @@ defineExpose({
 .t-content {
   padding: 4px 0;
   background: #fff;
+}
+.t-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: #fafafa;
+  border-top: 1px solid #ececec;
+  font-size: 12px;
+  color: #888;
+}
+.t-progress-label {
+  flex-shrink: 0;
+}
+.t-progress :deep(.el-progress) {
+  flex: 1;
+  max-width: 220px;
 }
 .t-content :deep(.ProseMirror) {
   min-height: 420px;

@@ -2,12 +2,12 @@
   <view class="login-page">
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
-    <view class="brand">
+    <view class="brand anim-rise">
       <text class="brand-title serif">隐语</text>
       <text class="brand-sub">温暖治愈的精神角落</text>
     </view>
 
-    <view class="card form-card">
+    <view class="card form-card anim-rise delay-2">
       <view class="tabs">
         <text :class="['tab', { active: mode === 'login' }]" @tap="mode = 'login'">登录</text>
         <text :class="['tab', { active: mode === 'register' }]" @tap="mode = 'register'">注册</text>
@@ -48,7 +48,7 @@
       </view>
     </view>
 
-    <text class="footer-tip">治愈,从一句悄悄话开始。</text>
+    <text class="footer-tip anim-fade delay-4">治愈,从一句悄悄话开始。</text>
   </view>
 </template>
 

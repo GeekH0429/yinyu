@@ -48,9 +48,9 @@
         </view>
       </view>
       <view
-        v-for="a in articles"
+        v-for="(a, i) in articles"
         :key="a.id"
-        class="card"
+        :class="['card', 'pressable', i < 6 ? 'anim-rise delay-' + (i + 1) : '']"
         @tap="goRead(a.id)"
       >
         <CachedImage
@@ -473,6 +473,12 @@ function goWrite() {
   align-items: center;
   justify-content: center;
   z-index: 998;
+  transition: transform var(--t-fast, 0.2s) var(--ease-healing, cubic-bezier(0.34, 1.56, 0.64, 1)),
+              box-shadow 0.2s ease;
+}
+.fab:active {
+  transform: scale(0.88);
+  box-shadow: 0 4rpx 16rpx rgba(196, 168, 130, 0.4);
 }
 .fab-icon {
   color: #fff;

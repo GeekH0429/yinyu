@@ -51,11 +51,18 @@ class Settings(BaseSettings):
     treehole_max_attempts: int = 10
     treehole_attempt_window_seconds: int = 60
     treehole_lock_seconds: int = 1800
+    # 树洞换暗号限流(防止自动化刷占暗号空间)
+    treehole_change_code_max_attempts: int = 10
+    treehole_change_code_window_seconds: int = 60
+    treehole_change_code_lock_seconds: int = 60
 
     # ---- 评论限流 ----
     comment_max_attempts: int = 5
     comment_attempt_window_seconds: int = 60
     comment_lock_seconds: int = 300
+
+    # ---- 统计缓存 ----
+    stats_cache_ttl_seconds: int = 300
 
     # ---- 初始超管 ----
     superadmin_username: str = "admin"

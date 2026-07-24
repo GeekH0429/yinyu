@@ -43,7 +43,12 @@
             @scrolltolower="onReachArticles"
             :lower-threshold="120"
           >
-            <view class="card mini-card" v-for="a in articles" :key="a.id" @tap="goRead(a.id)">
+            <view
+              v-for="(a, i) in articles"
+              :key="a.id"
+              :class="['card', 'mini-card', 'pressable', i < 6 ? 'anim-rise delay-' + (i + 1) : '']"
+              @tap="goRead(a.id)"
+            >
               <text class="mini-title">{{ a.title }}</text>
               <view class="mini-meta">
                 <text>{{ a.status === 'published' ? '已发布' : '草稿' }} · ♡ {{ a.like_count }}</text>
@@ -86,7 +91,11 @@
             @scrolltolower="onReachTreeholes"
             :lower-threshold="120"
           >
-            <view class="card mini-card" v-for="t in treeholes" :key="t.id">
+            <view
+              v-for="(t, i) in treeholes"
+              :key="t.id"
+              :class="['card', 'mini-card', i < 6 ? 'anim-rise delay-' + (i + 1) : '']"
+            >
               <view class="th-top">
                 <text class="mini-title">{{ t.title || '无题的悄悄话' }}</text>
                 <text :class="['th-status', { off: !t.is_active }]">{{ t.is_active ? '有效' : '已停用' }}</text>

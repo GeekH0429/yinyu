@@ -19,9 +19,9 @@
       :lower-threshold="120"
     >
       <view
-        v-for="n in items"
+        v-for="(n, i) in items"
         :key="n.id"
-        :class="['noti-item', { unread: !n.is_read }]"
+        :class="['noti-item', 'pressable', { unread: !n.is_read }, i < 6 ? 'anim-rise delay-' + (i + 1) : '']"
         @tap="onTap(n)"
       >
         <view class="dot-wrap">

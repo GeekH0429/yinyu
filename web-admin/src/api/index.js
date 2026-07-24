@@ -52,11 +52,18 @@ export const api = {
     statsActiveUsers: (params) => request.get('/stats/active-users', { params })
   },
 
-  upload: (file) => {
+  upload: (file, { onProgress } = {}) => {
     const form = new FormData()
     form.append('file', file)
     return request.post('/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress
+        ? (e) => {
+            // e.loaded / e.total(字节);axios 不直接给百分比
+            const percent = e.total ? Math.round((e.loaded / e.total) * 100) : 0
+            onProgress(percent, e)
+          }
+        : undefined
     })
   }
 }

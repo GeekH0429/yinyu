@@ -40,6 +40,7 @@ class ArticleBrief(BaseModel):
     view_count: int
     like_count: int
     comment_count: int = 0
+    liked_by_me: bool = False
     published_at: datetime | None = None
     created_at: datetime
     author: AuthorBrief
@@ -58,8 +59,12 @@ class TagsOut(BaseModel):
     tags: list[str]
 
 
-def to_brief(a: Article, author: User) -> ArticleBrief:
-    """Article + 作者 → ArticleBrief 的唯一映射,供所有路由复用。"""
+def to_brief(a: Article, author: User, *, liked_by_me: bool = False) -> ArticleBrief:
+    """Article + 作者 → ArticleBrief 的唯一映射,供所有路由复用。
+
+    `liked_by_me` 为关键字参数(默认 False),由调用方按当前 viewer 计算后传入;
+    未登录场景或不关心点赞状态的接口(admin 列表)直接用默认值即可。
+    """
     return ArticleBrief(
         id=a.id,
         title=a.title,
@@ -70,15 +75,16 @@ def to_brief(a: Article, author: User) -> ArticleBrief:
         view_count=a.view_count,
         like_count=a.like_count,
         comment_count=a.comment_count,
+        liked_by_me=liked_by_me,
         published_at=a.published_at,
         created_at=a.created_at,
         author=AuthorBrief.model_validate(author),
     )
 
 
-def to_out(a: Article, author: User) -> ArticleOut:
+def to_out(a: Article, author: User, *, liked_by_me: bool = False) -> ArticleOut:
     return ArticleOut(
-        **to_brief(a, author).model_dump(),
+        **to_brief(a, author, liked_by_me=liked_by_me).model_dump(),
         content_html=a.content_html,
         updated_at=a.updated_at,
     )

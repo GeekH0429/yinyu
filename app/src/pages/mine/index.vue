@@ -16,7 +16,7 @@
     </view>
 
     <!-- 资料 -->
-    <view class="card profile-card">
+    <view class="card profile-card anim-rise">
       <CachedImage
         v-if="user && user.avatar_url"
         class="avatar"
@@ -34,7 +34,7 @@
     </view>
 
     <!-- 每日一图·回忆入口 -->
-    <view class="card entry-card" @tap="goDailyHistory">
+    <view class="card entry-card pressable anim-rise delay-1" @tap="goDailyHistory">
       <view class="entry-left">
         <text class="entry-title">每日一图 · 回忆</text>
         <text class="entry-sub">看看过去的每一天</text>
@@ -43,7 +43,7 @@
     </view>
 
     <!-- 我的作品入口(图文与树洞,内含 Tab) -->
-    <view class="card entry-card" @tap="goMyWorks">
+    <view class="card entry-card pressable anim-rise delay-2" @tap="goMyWorks">
       <view class="entry-left">
         <text class="entry-title">我的作品</text>
         <text class="entry-sub">图文与树洞</text>

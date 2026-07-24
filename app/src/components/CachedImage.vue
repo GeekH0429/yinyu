@@ -3,18 +3,21 @@
     :src="displaySrc"
     :lazy-load="lazyLoad"
     :style="ratioStyle"
-    class="cached-img"
+    :class="['cached-img', { loaded: loaded }]"
+    @load="onLoad"
     @error="onErr"
   />
 </template>
 
 <script setup>
 /**
- * 透明替换 <image>:套一层本地资源缓存(仅 App 真机生效) + 加载占位/失败兜底。
+ * 透明替换 <image>:套一层本地资源缓存(仅 App 真机生效) + 加载占位/失败兜底 + 加载完成淡入。
  *
  * 首屏先用远程 src 渲染(不阻塞),后台异步解析到本地路径后切换;
  * 缓存命中后,二次进入/冷启动即用本地。@error 兜底:本地失联回退远程并重缓存;
  * 远程仍失败则切透明占位,露出暖色 background 作为兜底块(避免破图)。
+ *
+ * 加载完成淡入:图片 @load 后才 opacity:1,避免突兀出现;300ms 柔和过渡。
  *
  * 保持 <image> 为单根节点:mode / class / style 仍自动透传。
  * lazy-load 默认开(列表场景必备);首屏可见的大图可显式 :lazy-load="false"。
@@ -37,6 +40,7 @@ const TRANSPARENT =
 
 const localPath = ref('')
 const failed = ref(false)
+const loaded = ref(false)
 // 远程完整 URL:相对路径补全,已是 http(或协议相对)的原样
 const remote = computed(() => {
   const s = props.src
@@ -69,11 +73,16 @@ watch(
   () => {
     localPath.value = ''
     failed.value = false
+    loaded.value = false
     resolve()
   }
 )
 
 onMounted(resolve)
+
+function onLoad() {
+  loaded.value = true
+}
 
 function onErr() {
   // 本地文件读取失败兜底:回退远程,并后台重缓存(下次命中)
@@ -90,5 +99,11 @@ function onErr() {
 <style scoped>
 .cached-img {
   background: #efe9df;
+  /* 初始透明,加载完成后淡入 */
+  opacity: 0;
+  transition: opacity 0.3s var(--ease-soft, cubic-bezier(0.25, 0.46, 0.45, 0.94));
+}
+.cached-img.loaded {
+  opacity: 1;
 }
 </style>

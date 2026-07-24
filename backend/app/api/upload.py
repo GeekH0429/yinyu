@@ -29,13 +29,18 @@ _MAX_BYTES = settings.max_upload_mb * 1024 * 1024
 _CHUNK = 1024 * 1024  # 1MB / 块,流式读写,避免整文件入内存 + 阻塞事件循环
 
 
-def _save_image(data: bytes, save_dir: str, mime: str) -> tuple[str, int, str]:
-    """图片压缩为 webp(最大边 1280 / 质量 82)落盘;gif 或处理失败则原样保留。"""
+def _save_image(src: io.BytesIO, save_dir: str, mime: str) -> tuple[str, int, str]:
+    """图片压缩为 webp(最大边 1280 / 质量 82)落盘;gif 或处理失败则原样保留。
+
+    接收已做完大小检查的 BytesIO,内部按需 seek(0) 二次读取
+    (Pillow 失败时 fallback 路径需重新读全量字节)。
+    """
     stem = uuid.uuid4().hex
     try:
         if mime == "image/gif":
             raise ValueError("gif 保留原样")
-        img = Image.open(io.BytesIO(data))
+        src.seek(0)
+        img = Image.open(src)
         img.load()
         img = img.convert("RGBA")
         if max(img.size) > 1280:
@@ -45,6 +50,8 @@ def _save_image(data: bytes, save_dir: str, mime: str) -> tuple[str, int, str]:
         return name, os.path.getsize(os.path.join(save_dir, name)), "image/webp"
     except Exception:
         # gif(避免丢动画)/ 损坏图 / 不支持的图:原样落盘,保留原格式
+        src.seek(0)
+        data = src.read()
         name = f"{stem}{MIME_TO_EXT.get(mime, '')}"
         with open(os.path.join(save_dir, name), "wb") as f:
             f.write(data)
@@ -69,13 +76,25 @@ async def upload_file(
     os.makedirs(save_dir, exist_ok=True)
 
     if mime.startswith("image/"):
-        # 图片:全量读 → Pillow 压缩为 webp(省带宽);gif 或处理失败降级原样落盘
-        data = await file.read()
-        if not data:
+        # 图片:分块流式读到 BytesIO,边读边累计,超限即拒
+        # (不在循环外 await file.read() 整文件入内存 —— CLAUDE.md 明令禁止)
+        buf = io.BytesIO()
+        size = 0
+        oversize = False
+        while True:
+            chunk = await file.read(_CHUNK)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > _MAX_BYTES:
+                oversize = True
+                break
+            buf.write(chunk)
+        if size == 0:
             raise BadRequest("文件为空")
-        if len(data) > _MAX_BYTES:
+        if oversize:
             raise BadRequest(f"文件过大,最大 {settings.max_upload_mb}MB")
-        name, size, mime = await asyncio.to_thread(_save_image, data, save_dir, mime)
+        name, size, mime = await asyncio.to_thread(_save_image, buf, save_dir, mime)
     else:
         # 音视频:分块流式落盘,边写边累计大小,超限即终止并清理
         name = f"{uuid.uuid4().hex}{MIME_TO_EXT.get(mime, '')}"

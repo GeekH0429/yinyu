@@ -35,6 +35,7 @@ async def list_published(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    user: User | None = Depends(get_current_user),
 ):
     """公共 feed:仅已发布,按发布时间倒序。"""
     conds = [Article.status == STATUS_PUBLISHED]
@@ -54,7 +55,18 @@ async def list_published(
         .offset(offset_of(page, page_size))
         .limit(page_size)
     )
-    items = [to_brief(a, u) for a, u in rows.all()]
+    pairs = rows.all()
+    # 批量查询当前用户对当页文章的点赞状态(1 次 IN 查询,避免 N+1)
+    liked_ids: set[int] = set()
+    if user and pairs:
+        liked_rows = await db.execute(
+            select(ArticleLike.article_id).where(
+                ArticleLike.user_id == user.id,
+                ArticleLike.article_id.in_([a.id for a, _ in pairs]),
+            )
+        )
+        liked_ids = {r[0] for r in liked_rows.all()}
+    items = [to_brief(a, u, liked_by_me=a.id in liked_ids) for a, u in pairs]
     return Page[ArticleBrief](items=items, total=total or 0, page=page, page_size=page_size)
 
 
@@ -93,7 +105,14 @@ async def get_article(
     await incr_view(redis, "article", article_id, viewer)
     article.view_count = (article.view_count or 0) + 1  # 内存校正(显示用),实际落库由后台回写
 
-    return to_out(article, author)
+    liked_by_me = False
+    if user:
+        liked_by_me = await db.scalar(
+            select(ArticleLike.id).where(
+                ArticleLike.user_id == user.id, ArticleLike.article_id == article_id
+            )
+        ) is not None
+    return to_out(article, author, liked_by_me=liked_by_me)
 
 
 @router.post("", response_model=ArticleOut, status_code=201)
@@ -137,7 +156,12 @@ async def update_article(
     await db.commit()
     await db.refresh(article)
     author = await db.get(User, article.author_id)
-    return to_out(article, author)
+    liked_by_me = await db.scalar(
+        select(ArticleLike.id).where(
+            ArticleLike.user_id == user.id, ArticleLike.article_id == article_id
+        )
+    ) is not None
+    return to_out(article, author, liked_by_me=liked_by_me)
 
 
 @router.delete("/{article_id}")

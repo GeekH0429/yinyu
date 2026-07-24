@@ -12,8 +12,8 @@
     </view>
 
     <!-- 个人资料分组 -->
-    <text class="group-title">个人资料</text>
-    <view class="card group">
+    <text class="group-title anim-rise">个人资料</text>
+    <view class="card group anim-rise delay-1">
       <!-- 头像 -->
       <view class="row" @tap="changeAvatar">
         <text class="row-label">头像</text>
@@ -57,8 +57,8 @@
     </view>
 
     <!-- 账号与安全分组 -->
-    <text class="group-title">账号与安全</text>
-    <view class="card group">
+    <text class="group-title anim-rise">账号与安全</text>
+    <view class="card group anim-rise delay-1">
       <view class="row" @tap="openPwd">
         <text class="row-label">修改密码</text>
         <view class="row-value">
@@ -68,8 +68,8 @@
     </view>
 
     <!-- 显示分组:主题 + 字号 + 缓存 -->
-    <text class="group-title">显示与缓存</text>
-    <view class="card group">
+    <text class="group-title anim-rise">显示与缓存</text>
+    <view class="card group anim-rise delay-1">
       <view class="row" @tap="cycleTheme">
         <text class="row-label">主题</text>
         <view class="row-value">
@@ -118,8 +118,8 @@
     </view>
 
     <!-- 关于分组 -->
-    <text class="group-title">关于</text>
-    <view class="card group">
+    <text class="group-title anim-rise">关于</text>
+    <view class="card group anim-rise delay-1">
       <view class="row">
         <text class="row-label">当前账号</text>
         <view class="row-value">
@@ -141,7 +141,7 @@
     </view>
 
     <!-- 退出登录 -->
-    <view class="logout-btn" @tap="onLogout">
+    <view class="logout-btn pressable anim-rise" @tap="onLogout">
       <text>退出登录</text>
     </view>
 

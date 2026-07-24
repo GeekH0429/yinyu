@@ -105,8 +105,8 @@
           <h3>活跃用户 (Top {{ activeUsers.length }})</h3>
           <el-table :data="activeUsers" stripe size="small">
             <el-table-column type="index" label="排名" width="60" />
-            <el-table-column prop="title" label="用户" min-width="150" />
-            <el-table-column prop="like_count" label="文章数" width="80" align="right" />
+            <el-table-column prop="nickname" label="用户" min-width="150" />
+            <el-table-column prop="article_count" label="文章数" width="80" align="right" />
           </el-table>
         </div>
       </el-col>
@@ -168,37 +168,42 @@ const userTrendOption = computed(() => ({
 }))
 
 // 内容发布趋势配置
-const contentTrendOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  legend: { data: ['文章', '树洞'] },
-  xAxis: {
-    type: 'category',
-    data: [...new Set([
-      ...trendData.value.articles.map(p => p.date),
-      ...trendData.value.treeholes.map(p => p.date)
-    ])].sort()
-  },
-  yAxis: { type: 'value' },
-  series: [
-    {
-      name: '文章',
-      type: 'line',
-      data: trendData.value.articles.map(p => ({
-        value: p.count,
-        name: p.date
-      })),
-      smooth: true,
-      itemStyle: { color: '#67C23A' }
+const contentTrendOption = computed(() => {
+  // 以并集日期作为 x 轴,通过 Map 对齐两个 series,缺失日期补 0
+  // (旧实现用 .map(p => p.count) 按索引对齐,某天只有 treehole 没 article
+  //   时 article 线会整体左移错位)
+  const dates = [...new Set([
+    ...trendData.value.articles.map(p => p.date),
+    ...trendData.value.treeholes.map(p => p.date)
+  ])].sort()
+  const am = new Map(trendData.value.articles.map(p => [p.date, p.count]))
+  const tm = new Map(trendData.value.treeholes.map(p => [p.date, p.count]))
+  return {
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['文章', '树洞'] },
+    xAxis: {
+      type: 'category',
+      data: dates
     },
-    {
-      name: '树洞',
-      type: 'line',
-      data: trendData.value.treeholes.map(p => p.count),
-      smooth: true,
-      itemStyle: { color: '#E6A23C' }
-    }
-  ]
-}))
+    yAxis: { type: 'value' },
+    series: [
+      {
+        name: '文章',
+        type: 'line',
+        data: dates.map(d => am.get(d) ?? 0),
+        smooth: true,
+        itemStyle: { color: '#67C23A' }
+      },
+      {
+        name: '树洞',
+        type: 'line',
+        data: dates.map(d => tm.get(d) ?? 0),
+        smooth: true,
+        itemStyle: { color: '#E6A23C' }
+      }
+    ]
+  }
+})
 
 async function loadOverview() {
   try {

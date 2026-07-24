@@ -3,12 +3,12 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
-      <text class="back" @tap="goBack">‹ 取消</text>
+      <text class="back pressable" @tap="goBack">‹ 取消</text>
       <text class="topbar-title serif">{{ isEdit ? '编辑图文' : '写图文' }}</text>
-      <text class="publish" @tap="onSubmit">{{ submitting ? '…' : isEdit ? '保存' : '发布' }}</text>
+      <text class="publish pressable" @tap="onSubmit">{{ submitting ? '…' : isEdit ? '保存' : '发布' }}</text>
     </view>
 
-    <view class="form" v-if="!loadingDetail">
+    <view class="form anim-fade" v-if="!loadingDetail">
       <input class="title-input serif" v-model="form.title" placeholder="标题" @input="markDirty" />
 
       <textarea
@@ -23,8 +23,8 @@
       />
 
       <view class="media-bar">
-        <text class="media-btn" @tap="insertImage">🖼 插入图片</text>
-        <text class="media-btn" @tap="insertAudio">🎵 插入音频</text>
+        <text class="media-btn pressable" @tap="insertImage">🖼 插入图片</text>
+        <text class="media-btn pressable" @tap="insertAudio">🎵 插入音频</text>
         <text v-if="uploading" class="media-tip">上传中…</text>
       </view>
 
@@ -38,7 +38,7 @@
             mode="aspectFill"
             @tap="chooseCover"
           />
-          <text v-else class="cover-add" @tap="chooseCover">+ 选择封面</text>
+          <text v-else class="cover-add pressable" @tap="chooseCover">+ 选择封面</text>
         </view>
         <view class="row">
           <text class="row-label">摘要</text>
@@ -293,6 +293,11 @@ onUnmounted(() => {
   font-weight: 700;
   color: #4a4a4a;
   padding: 12rpx 0;
+  border-bottom: 2rpx solid transparent;
+  transition: border-color var(--t-fast, 0.2s) var(--ease-soft, cubic-bezier(0.25, 0.46, 0.45, 0.94));
+}
+.title-input:focus {
+  border-bottom-color: rgba(196, 168, 130, 0.4);
 }
 .content-input {
   width: 100%;

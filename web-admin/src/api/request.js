@@ -41,21 +41,27 @@ request.interceptors.response.use(
           const r = await axios.post('/api/v1/auth/refresh', { refresh_token: refreshToken })
           localStorage.setItem('token', r.data.access_token)
           localStorage.setItem('refresh', r.data.refresh_token)
-          refreshing = false
-          waitingQueue.forEach((cb) => cb())
+          const queue = waitingQueue
           waitingQueue = []
+          refreshing = false
+          // 重放所有排队请求(新 token 由请求拦截器从 localStorage 注入)
+          queue.forEach(({ resolve, config: cfg }) => resolve(request(cfg)))
           config.headers.Authorization = `Bearer ${r.data.access_token}`
           config.__retried = true
           return request(config)
         } catch (e) {
-          refreshing = false
+          const queue = waitingQueue
           waitingQueue = []
+          refreshing = false
+          // 必须显式 reject 排队的 Promise,否则它们会永久挂死
+          queue.forEach(({ reject }) => reject(e))
           redirectToLogin()
           return Promise.reject(e)
         }
       } else if (refreshing) {
-        return new Promise((resolve) => {
-          waitingQueue.push(() => resolve(request(config)))
+        // 排队:同时保留 resolve 与 reject,确保 refresh 失败时也能正确 reject
+        return new Promise((resolve, reject) => {
+          waitingQueue.push({ resolve, reject, config })
         })
       } else {
         redirectToLogin()

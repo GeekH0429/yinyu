@@ -87,8 +87,14 @@ function onSearch() {
 }
 
 async function onRoleChange(row) {
-  await api.admin.patchUser(row.id, { role: row.role })
-  ElMessage.success('角色已更新')
+  const old = row.role === 'admin' ? 'user' : 'admin'
+  try {
+    await api.admin.patchUser(row.id, { role: row.role })
+    ElMessage.success('角色已更新')
+  } catch {
+    row.role = old
+    // 错误 toast 由 request.js 拦截器统一处理
+  }
 }
 async function onActiveChange(row) {
   try {

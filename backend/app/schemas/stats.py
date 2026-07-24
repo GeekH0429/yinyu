@@ -43,3 +43,10 @@ class ContentRankItem(BaseModel):
     like_count: int
     view_count: int
     published_at: datetime | None = None
+
+
+class ActiveUserItem(BaseModel):
+    """活跃用户排行项(按文章数)。"""
+    user_id: int
+    nickname: str
+    article_count: int

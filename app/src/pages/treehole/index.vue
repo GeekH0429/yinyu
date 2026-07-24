@@ -535,6 +535,12 @@ function onImgTap(e) {
   align-items: center;
   justify-content: center;
   z-index: 998;
+  transition: transform var(--t-fast, 0.2s) var(--ease-healing, cubic-bezier(0.34, 1.56, 0.64, 1)),
+              box-shadow 0.2s ease;
+}
+.fab:active {
+  transform: scale(0.88);
+  box-shadow: 0 4rpx 16rpx rgba(123, 140, 196, 0.35);
 }
 .fab-icon {
   width: 52rpx;

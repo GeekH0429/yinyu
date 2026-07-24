@@ -73,12 +73,20 @@ function onTap(pagePath) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  /* 点击反馈:按下时图标整体轻微缩 */
+  transition: transform var(--t-fast, 0.2s) var(--ease-healing, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+.tab-item:active {
+  transform: scale(0.88);
 }
 .svg-icon {
   width: 44rpx;
   height: 44rpx;
   color: #bdb5a8;
   margin-bottom: 4rpx;
+  /* 选中状态切换时颜色变化走 transition */
+  transition: transform var(--t-fast, 0.2s) var(--ease-healing, cubic-bezier(0.34, 1.56, 0.64, 1)),
+              color 0.25s ease;
 }
 .svg-icon :deep(svg) {
   width: 44rpx;
@@ -88,9 +96,12 @@ function onTap(pagePath) {
 .tab-text {
   font-size: 22rpx;
   color: #8d8d8d;
+  transition: color 0.25s ease;
 }
 .tab-item.active .svg-icon {
   color: #c4a882;
+  /* 选中时图标轻微弹跳,呼应"被选中"的反馈 */
+  transform: scale(1.08);
 }
 .tab-item.active .tab-text {
   color: #c4a882;

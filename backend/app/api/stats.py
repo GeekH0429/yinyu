@@ -1,4 +1,6 @@
 """统计数据路由。"""
+import json
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
@@ -6,13 +8,16 @@ from sqlalchemy import Date, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.articles import STATUS_PUBLISHED
+from app.config import settings
 from app.database import get_db
 from app.deps import require_admin
 from app.models.article import Article
 from app.models.media import Media
 from app.models.treehole import TreeHole
 from app.models.user import User
+from app.redis_client import get_redis
 from app.schemas.stats import (
+    ActiveUserItem,
     ContentRankItem,
     OverviewOut,
     TrendOut,
@@ -24,6 +29,8 @@ router = APIRouter(
     tags=["统计数据"],
     dependencies=[Depends(require_admin)],
 )
+
+logger = logging.getLogger("yinyu.stats")
 
 # 北京时区
 CN_TZ = timezone(timedelta(hours=8))
@@ -43,68 +50,110 @@ def _parse_date_range(days: int) -> tuple[datetime, datetime]:
     return start_utc, now_utc
 
 
+async def _fetch_overview(db: AsyncSession, range_key: str) -> OverviewOut:
+    """从 DB 查询 overview(聚合后 5-6 次查询,替代原 11 次)。"""
+    days_map = {"7d": 7, "30d": 30, "90d": 90}
+    days = days_map.get(range_key, 30)
+    start_utc, _now_utc = _parse_date_range(days)
+
+    # articles:COUNT(*) + COUNT(*) FILTER(published) + SUM(view/like)
+    art_row = await db.execute(
+        select(
+            func.count().label("total"),
+            func.count().filter(Article.status == STATUS_PUBLISHED).label("published"),
+            func.coalesce(func.sum(Article.view_count), 0).label("views"),
+            func.coalesce(func.sum(Article.like_count), 0).label("likes"),
+        ).select_from(Article)
+    )
+    art = art_row.one()
+    total_articles = art.total or 0
+    total_published = art.published or 0
+    total_views = int(art.views or 0)
+    total_likes = int(art.likes or 0)
+
+    # articles 时间范围内新增
+    new_articles = await db.scalar(
+        select(func.count()).select_from(Article).where(Article.created_at >= start_utc)
+    )
+
+    # users:总数 + 时间范围内新增
+    user_row = await db.execute(
+        select(
+            func.count().label("total"),
+            func.count().filter(User.created_at >= start_utc).label("new"),
+        ).select_from(User)
+    )
+    u = user_row.one()
+    total_users = u.total or 0
+    new_users = u.new or 0
+
+    # treeholes:总数 + 时间范围内新增
+    th_row = await db.execute(
+        select(
+            func.count().label("total"),
+            func.count().filter(TreeHole.created_at >= start_utc).label("new"),
+        ).select_from(TreeHole)
+    )
+    t = th_row.one()
+    total_treeholes = t.total or 0
+    new_treeholes = t.new or 0
+
+    # media:总数 + 存储字节
+    media_row = await db.execute(
+        select(
+            func.count().label("total"),
+            func.coalesce(func.sum(Media.size_bytes), 0).label("bytes"),
+        ).select_from(Media)
+    )
+    m = media_row.one()
+    total_media = m.total or 0
+    total_storage = int(m.bytes or 0)
+
+    return OverviewOut(
+        total_users=total_users,
+        total_articles=total_articles,
+        total_published=total_published,
+        total_treeholes=total_treeholes,
+        total_media=total_media,
+        new_users=new_users,
+        new_articles=new_articles or 0,
+        new_treeholes=new_treeholes,
+        total_views=total_views,
+        total_likes=total_likes,
+        total_storage_bytes=total_storage,
+    )
+
+
 @router.get("/overview", response_model=OverviewOut)
 async def get_overview(
     range: StatsRange = Query("30d", description="时间范围"),
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ):
-    """总体概览:用户数/文章数/树洞数等关键指标。"""
-    days_map = {"7d": 7, "30d": 30, "90d": 90}
-    days = days_map.get(range, 30)
-    start_utc, now_utc = _parse_date_range(days)
+    """总体概览:用户数/文章数/树洞数等关键指标。
 
-    # 总数统计
-    total_users = await db.scalar(select(func.count()).select_from(User))
-    total_articles = await db.scalar(select(func.count()).select_from(Article))
-    total_published = await db.scalar(
-        select(func.count())
-        .select_from(Article)
-        .where(Article.status == STATUS_PUBLISHED)
-    )
-    total_treeholes = await db.scalar(select(func.count()).select_from(TreeHole))
-    total_media = await db.scalar(select(func.count()).select_from(Media))
+    Redis 缓存(TTL 由 `stats_cache_ttl_seconds` 控制,默认 300s)。
+    缓存 key 必须带 range 维度,否则 7d/30d/90d 会串数据。
+    Redis 不可用时回退 DB。
+    """
+    # 命中缓存则直接返回
+    cache_key = f"stats:overview:{range}"
+    try:
+        cached = await redis.get(cache_key)
+        if cached:
+            return OverviewOut.model_validate_json(cached)
+    except Exception:  # noqa: BLE001
+        logger.warning("stats overview cache read failed, fallback to DB", exc_info=True)
 
-    # 时间范围内新增
-    new_users = await db.scalar(
-        select(func.count()).select_from(User).where(User.created_at >= start_utc)
-    )
-    new_articles = await db.scalar(
-        select(func.count())
-        .select_from(Article)
-        .where(Article.created_at >= start_utc)
-    )
-    new_treeholes = await db.scalar(
-        select(func.count())
-        .select_from(TreeHole)
-        .where(TreeHole.created_at >= start_utc)
-    )
+    out = await _fetch_overview(db, range)
 
-    # 内容互动总量(浏览/点赞)
-    total_views = await db.scalar(
-        select(func.coalesce(func.sum(Article.view_count), 0)).select_from(Article)
-    )
-    total_likes = await db.scalar(
-        select(func.coalesce(func.sum(Article.like_count), 0)).select_from(Article)
-    )
+    # 写缓存(失败不阻塞响应)
+    try:
+        await redis.set(cache_key, out.model_dump_json(), ex=settings.stats_cache_ttl_seconds)
+    except Exception:  # noqa: BLE001
+        logger.warning("stats overview cache write failed", exc_info=True)
 
-    # 存储统计
-    total_storage = await db.scalar(
-        select(func.coalesce(func.sum(Media.size_bytes), 0)).select_from(Media)
-    )
-
-    return OverviewOut(
-        total_users=total_users or 0,
-        total_articles=total_articles or 0,
-        total_published=total_published or 0,
-        total_treeholes=total_treeholes or 0,
-        total_media=total_media or 0,
-        new_users=new_users or 0,
-        new_articles=new_articles or 0,
-        new_treeholes=new_treeholes or 0,
-        total_views=total_views or 0,
-        total_likes=total_likes or 0,
-        total_storage_bytes=total_storage or 0,
-    )
+    return out
 
 
 @router.get("/trends", response_model=TrendOut)
@@ -207,7 +256,7 @@ async def get_top_articles(
     ]
 
 
-@router.get("/active-users", response_model=list[ContentRankItem])
+@router.get("/active-users", response_model=list[ActiveUserItem])
 async def get_active_users(
     range: StatsRange = Query("30d", description="时间范围"),
     limit: int = Query(10, ge=1, le=50, description="返回数量"),
@@ -232,13 +281,10 @@ async def get_active_users(
     )
 
     return [
-        ContentRankItem(
-            id=r.id,
-            title=r.nickname,
-            author_name=r.nickname,
-            like_count=r.article_count,
-            view_count=0,
-            published_at=None,
+        ActiveUserItem(
+            user_id=r.id,
+            nickname=r.nickname,
+            article_count=r.article_count,
         )
         for r in rows.all()
     ]

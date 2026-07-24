@@ -20,6 +20,12 @@ class Article(TimestampMixin, Base):
             "id",
             postgresql_where=text("status = 'published'"),
         ),
+        # 标签筛选:WHERE 'tag' = ANY(tags) 加速
+        Index(
+            "ix_articles_tags_gin",
+            "tags",
+            postgresql_using="gin",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

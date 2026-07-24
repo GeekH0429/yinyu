@@ -65,7 +65,18 @@ async def my_articles(
         .offset(offset_of(page, page_size))
         .limit(page_size)
     )
-    items = [to_brief(a, user) for a in rows.scalars().all()]
+    articles = rows.scalars().all()
+    # 批量查询当前用户对当页文章的点赞状态
+    liked_ids: set[int] = set()
+    if articles:
+        liked_rows = await db.execute(
+            select(ArticleLike.article_id).where(
+                ArticleLike.user_id == user.id,
+                ArticleLike.article_id.in_([a.id for a in articles]),
+            )
+        )
+        liked_ids = {r[0] for r in liked_rows.all()}
+    items = [to_brief(a, user, liked_by_me=a.id in liked_ids) for a in articles]
     return Page[ArticleBrief](items=items, total=total or 0, page=page, page_size=page_size)
 
 
@@ -108,7 +119,7 @@ async def my_liked_articles(
         .offset(offset_of(page, page_size))
         .limit(page_size)
     )
-    items = [to_brief(a, u) for a, u in rows.all()]
+    items = [to_brief(a, u, liked_by_me=True) for a, u in rows.all()]
     return Page[ArticleBrief](items=items, total=total or 0, page=page, page_size=page_size)
 
 

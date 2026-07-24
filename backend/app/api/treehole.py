@@ -14,6 +14,7 @@ from app.core.exceptions import NotFound
 from app.core.ownership import get_owned
 from app.database import get_db
 from app.deps import get_current_user
+from app.config import settings
 from app.models.treehole import TreeHole
 from app.redis_client import get_redis
 from app.schemas.treehole import (
@@ -24,6 +25,7 @@ from app.schemas.treehole import (
     TreeHoleUnlockIn,
     TreeHoleUpdate,
 )
+from app.services.rate_limit import sliding_limit
 from app.services.treehole_code import allocate_code, assert_unlock_allowed
 from app.services.view_counter import incr_view
 
@@ -101,8 +103,20 @@ async def change_code(
     data: CodeUpdate,
     user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
 ):
-    """刷新随机暗号(data.code=None)或自定义暗号(data.code="123456")。"""
+    """刷新随机暗号(data.code=None)或自定义暗号(data.code="123456")。
+
+    带限流:同用户 60s 内最多 10 次,超限锁 60s(防自动化刷占暗号空间)。
+    """
+    await sliding_limit(
+        redis,
+        f"th:chg:{user.id}",
+        max_attempts=settings.treehole_change_code_max_attempts,
+        window_seconds=settings.treehole_change_code_window_seconds,
+        lock_seconds=settings.treehole_change_code_lock_seconds,
+        message="换暗号过于频繁,请稍后再试",
+    )
     th = await get_owned(db, TreeHole, treehole_id, user, not_found="树洞不存在", forbidden="只能操作自己的树洞")
     th.code = await allocate_code(db, preferred=data.code, exclude_id=th.id)
     await db.commit()

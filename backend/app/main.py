@@ -1,21 +1,27 @@
 """FastAPI 应用入口。"""
 import asyncio
+import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text as sa_text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.models  # noqa: F401  (确保所有模型被注册到 Base.metadata)
 from app.api.router import api_router
 from app.config import settings
 from app.core.exceptions import AppException
-from app.database import AsyncSessionLocal
+from app.database import AsyncSessionLocal, get_db
+from app.logging_config import LOG_NAMESPACE, setup_logging
 from app.redis_client import redis
 from app.services.view_counter import flush_pending
 from app.startup import bootstrap
+
+logger = logging.getLogger(f"{LOG_NAMESPACE}.main")
 
 
 async def _view_flusher():
@@ -25,17 +31,20 @@ async def _view_flusher():
         try:
             async with AsyncSessionLocal() as db:
                 await flush_pending(redis, db)
-        except Exception as exc:  # noqa: BLE001
-            print(f"[view_flusher] {exc}")
+        except Exception:  # noqa: BLE001
+            logger.exception("view_flusher failed")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    setup_logging()
+    logger.info("app starting", extra={"env": settings.app_env})
     await bootstrap()
     flusher = asyncio.create_task(_view_flusher())
     yield
     flusher.cancel()
     await redis.aclose()
+    logger.info("app stopped")
 
 
 app = FastAPI(
@@ -78,8 +87,31 @@ if settings.is_dev:
 
 
 @app.get("/health", tags=["运维"])
-async def health():
+@app.get("/health/live", tags=["运维"])
+async def health_live():
+    """存活探活(LB 最浅探活):恒 200,不查 DB/Redis。"""
     return {"status": "ok", "env": settings.app_env}
+
+
+@app.get("/health/ready", tags=["运维"])
+async def health_ready(db: AsyncSession = Depends(get_db)):
+    """就绪探活:DB + Redis 实际探测,失败返回 503。
+
+    供宝塔 LB / 监控系统使用;若探活过于频繁(1s 一次)需注意 DB 压力,
+    可在前端加短缓存或降低探活频率。
+    """
+    try:
+        await db.execute(sa_text("SELECT 1"))
+    except Exception:
+        logger.exception("health ready: DB down")
+        return JSONResponse(status_code=503, content={"status": "db_down"})
+    try:
+        if not await redis.ping():
+            raise RuntimeError("redis ping returned falsy")
+    except Exception:
+        logger.exception("health ready: Redis down")
+        return JSONResponse(status_code=503, content={"status": "redis_down"})
+    return {"status": "ready"}
 
 
 @app.get("/", tags=["运维"])

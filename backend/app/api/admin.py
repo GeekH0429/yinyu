@@ -229,11 +229,17 @@ async def admin_delete_comment(
     if c is None:
         raise NotFound("评论不存在")
     article_id = c.article_id
+    # 删前先数直接子评论(yinyu 只支持一层回复,parent_id 有 ON DELETE CASCADE
+    # 会自动级联删除子评论,但 Article.comment_count 需要手动减去对应数量)
+    child_count = await db.scalar(
+        select(func.count()).select_from(Comment).where(Comment.parent_id == comment_id)
+    ) or 0
     await db.delete(c)
+    delta = 1 + child_count
     await db.execute(
         sa_update(Article)
-        .where(Article.id == article_id, Article.comment_count > 0)
-        .values(comment_count=Article.comment_count - 1)
+        .where(Article.id == article_id, Article.comment_count >= delta)
+        .values(comment_count=Article.comment_count - delta)
         .execution_options(synchronize_session=False)
     )
     await db.commit()
