@@ -49,9 +49,9 @@ const planePathD = 'M1007.9 7.2C1001.8 3 994.8.8 987.2.8c-6.6 0-12.6 1.7-18.3 5.
 const flySvg = `
 <svg class="fly-trail" viewBox="0 0 750 1400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <path id="flyPath" d="M 375 1148 C 470 880 600 520 780 40" />
+    <path id="flyPath" d="M 375 1148 C 800 1100 700 350 780 40" />
   </defs>
-  <path class="fly-trail-path" pathLength="100" d="M 375 1148 C 470 880 600 520 780 40" />
+  <path class="fly-trail-path" pathLength="100" d="M 375 1148 C 800 1100 700 350 780 40" />
   <g class="fly-plane-group">
     <g class="fly-plane-scale">
       <g transform="rotate(45) translate(-512 -512)">
@@ -59,7 +59,8 @@ const flySvg = `
       </g>
     </g>
     <animateMotion dur="1.5s" begin="0.15s" fill="freeze" rotate="auto"
-                   calcMode="spline" keyTimes="0;1" keyPoints="0;1" keySplines="0.22 0.61 0.36 1">
+                   calcMode="spline" keyTimes="0;1" keyPoints="0;1"
+                   keySplines="0 0 0.58 1">
       <mpath href="#flyPath" />
     </animateMotion>
   </g>
@@ -121,7 +122,10 @@ onUnmounted(() => clearTimeout(timer))
 }
 /* 光迹:加粗 + drop-shadow 发光。
    原值 stroke-width:2.5 + rgba alpha:0.55 在手机 webview 上几乎看不见 ——
-   手机 webview 的抗锯齿比桌面 Chrome 弱,细+半透明的线条会被吃掉。 */
+   手机 webview 的抗锯齿比桌面 Chrome 弱,细+半透明的线条会被吃掉。
+   drawTrail 的 timing 与飞机 animateMotion 完全对齐(都是 1.5s 0.15s ease-out),
+   缓动曲线也一致(SMIL keySplines="0 0 0.58 1" 等价于 CSS ease-out),
+   这样飞机始终贴在光迹"绘制前端",视觉上像飞机边飞边画出航线。 */
 .fly-trail-wrap :deep(.fly-trail-path) {
   fill: none;
   stroke: rgba(180, 200, 255, 0.9);
@@ -130,8 +134,8 @@ onUnmounted(() => clearTimeout(timer))
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
   filter: drop-shadow(0 0 4px rgba(140, 165, 220, 0.7));
-  animation: drawTrail 1.2s 0.25s ease-out both,
-             fadeTrail 0.4s 1.3s ease-out both;
+  animation: drawTrail 1.5s 0.1s ease-out both,
+             fadeTrail 0.4s 1.7s ease-out both;
 }
 @keyframes drawTrail {
   to { stroke-dashoffset: 0; }
