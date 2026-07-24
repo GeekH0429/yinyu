@@ -26,6 +26,8 @@ class Article(TimestampMixin, Base):
             "tags",
             postgresql_using="gin",
         ),
+        # stats 趋势/概览热路径:WHERE created_at >= ? / GROUP BY created_at
+        Index("ix_articles_created_at", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

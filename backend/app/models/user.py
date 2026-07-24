@@ -4,7 +4,7 @@
     - ROLE_USER  普通用户(可发布图文 / 树洞)
     - ROLE_ADMIN 管理员(可管理全部内容 + 后台)
 """
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -15,6 +15,10 @@ ROLE_ADMIN = "admin"
 
 class User(TimestampMixin, Base):
     __tablename__ = "users"
+    __table_args__ = (
+        # stats 趋势/概览热路径:WHERE created_at >= ? / GROUP BY created_at
+        Index("ix_users_created_at", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(40), unique=True, index=True, nullable=False)

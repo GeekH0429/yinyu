@@ -5,7 +5,7 @@
     - code 全局唯一;默认系统生成,可刷新,可自定义。
     - 暗号读者读不到 author_id(接口层不回传作者信息)。
 """
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -15,6 +15,10 @@ CODE_LENGTH = 6
 
 class TreeHole(TimestampMixin, Base):
     __tablename__ = "treeholes"
+    __table_args__ = (
+        # stats 趋势/概览热路径:WHERE created_at >= ? / GROUP BY created_at
+        Index("ix_treeholes_created_at", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # 仅作者本人 / 管理员可在"我的"里看到自己写的;暗号读者看不到
