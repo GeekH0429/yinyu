@@ -1,4 +1,5 @@
 """统计数据路由。"""
+import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, timezone
@@ -68,10 +69,15 @@ async def _cache_get_or_set(
     model: Type[_T],
     ttl: int,
 ) -> _T:
-    """缓存读穿:命中则反序列化返回;未命中跑 loader、写缓存后返回。
+    """缓存读穿 + 单飞(single-flight)防击穿。
 
-    Redis 异常一律降级到 DB(不让缓存挂掉统计接口)。
+    - 命中:反序列化返回。
+    - 未命中:SETNX 抢短锁(10s),抢到的跑 loader 写缓存;未抢到的轮询等结果。
+    - Redis 异常一律降级到 DB(不让缓存挂掉统计接口)。
+
+    单飞避免 TTL 到期瞬间 N 个并发 admin 请求同时打 DB(缓存击穿)。
     """
+    # 1. 先读缓存
     try:
         cached = await redis.get(cache_key)
         if cached:
@@ -79,12 +85,42 @@ async def _cache_get_or_set(
     except Exception:  # noqa: BLE001
         logger.warning("stats cache read failed, fallback to DB", exc_info=True)
 
-    out = await loader()
+    # 2. SETNX 抢锁
+    lock_key = f"{cache_key}:lock"
+    got_lock = False
     try:
-        await redis.set(cache_key, out.model_dump_json(), ex=ttl)
+        got_lock = await redis.set(lock_key, "1", nx=True, ex=10)
     except Exception:  # noqa: BLE001
-        logger.warning("stats cache write failed", exc_info=True)
-    return out
+        # Redis 异常:直接跑 loader 兜底(不走单飞)
+        return await loader()
+
+    if got_lock:
+        try:
+            out = await loader()
+            try:
+                await redis.set(cache_key, out.model_dump_json(), ex=ttl)
+            except Exception:  # noqa: BLE001
+                logger.warning("stats cache write failed", exc_info=True)
+            return out
+        finally:
+            try:
+                await redis.delete(lock_key)
+            except Exception:  # noqa: BLE001
+                pass
+
+    # 3. 没抢到锁:轮询等抢锁者写入缓存(最多 ~5s)
+    for _ in range(10):
+        await asyncio.sleep(0.5)
+        try:
+            cached = await redis.get(cache_key)
+            if cached:
+                return model.model_validate_json(cached)
+        except Exception:  # noqa: BLE001
+            break
+
+    # 4. 超时(loader 卡死或 Redis 抖动):直接兜底,宁可重复查询也不让接口卡住
+    logger.warning("stats single-flight wait timeout, fallback to direct load: %s", cache_key)
+    return await loader()
 
 
 async def _fetch_overview(db: AsyncSession, range_key: str) -> OverviewOut:

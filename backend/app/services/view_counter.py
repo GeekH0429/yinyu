@@ -14,6 +14,10 @@ from app.models.treehole import TreeHole
 
 _KIND_MODEL = {"article": Article, "treehole": TreeHole}
 
+# dirty set:有计数变更的 (kind, item_id) 集合。flusher 用 SMEMBERS 精准取,
+# 替代早期 SCAN 全库扫描(O(N) 随业务增长)。
+_DIRTY_KEY = "view:dirty"
+
 
 async def incr_view(redis: Redis, kind: str, item_id: int, viewer: str) -> None:
     """记一次浏览。同一 viewer 当天对同一对象只计一次。"""
@@ -23,20 +27,29 @@ async def incr_view(redis: Redis, kind: str, item_id: int, viewer: str) -> None:
     )
     if not dedup:
         return  # 今日已计
-    await redis.incr(f"view:cnt:{kind}:{item_id}")
+    # pipeline:累加计数 + 标记 dirty,让 flusher 不必 SCAN 全库
+    pipe = redis.pipeline()
+    pipe.incr(f"view:cnt:{kind}:{item_id}")
+    pipe.sadd(_DIRTY_KEY, f"{kind}:{item_id}")
+    await pipe.execute()
 
 
 async def flush_pending(redis: Redis, db: AsyncSession) -> None:
     """把 Redis 中累积的浏览增量批量回写 DB,然后清零。"""
+    members = await redis.smembers(_DIRTY_KEY)
+    if not members:
+        return
+    # 只移除本次取到的成员;期间新 sadd 的成员留给下一轮(不会丢计数)。
+    await redis.srem(_DIRTY_KEY, *members)
+
     deltas: dict[str, dict[int, int]] = {k: {} for k in _KIND_MODEL}
-    async for key in redis.scan_iter(match="view:cnt:*", count=500):
-        parts = key.split(":")
-        if len(parts) != 4:
+    for member in members:
+        if isinstance(member, bytes):
+            member = member.decode("utf-8", "ignore")
+        kind, _, item_id_str = member.partition(":")
+        if kind not in _KIND_MODEL or not item_id_str.isdigit():
             continue
-        _, _, kind, item_id_str = parts
-        if kind not in _KIND_MODEL:
-            continue
-        val = await redis.getdel(key)
+        val = await redis.getdel(f"view:cnt:{kind}:{item_id_str}")
         if not val:
             continue
         item_id = int(item_id_str)
