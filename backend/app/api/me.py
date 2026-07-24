@@ -1,6 +1,7 @@
 """「我的」路由:个人资料、我发布的图文、我的树洞、我点赞的图文、我的评论。"""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import Conflict
@@ -37,7 +38,12 @@ async def update_profile(
     payload = data.model_dump(exclude_unset=True)
     for k, v in payload.items():
         setattr(user, k, v)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # 并发改邮箱:查重通过但 commit 时另一事务已抢注同一邮箱
+        await db.rollback()
+        raise Conflict("邮箱已被占用")
     await db.refresh(user)
     return user
 

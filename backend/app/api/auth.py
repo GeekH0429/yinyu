@@ -1,6 +1,7 @@
 """认证路由:注册(邀请码)、登录、刷新 token、改密、当前用户。"""
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequest, Conflict, Unauthorized
@@ -60,7 +61,12 @@ async def register(
         role=ROLE_USER,
     )
     db.add(user)
-    await db.flush()  # 拿到 user.id
+    try:
+        await db.flush()  # 拿到 user.id
+    except IntegrityError:
+        # 并发注册场景:查重通过但 INSERT 时另一事务已抢注同一用户名
+        await db.rollback()
+        raise Conflict("用户名已被占用")
 
     invite.used_count += 1
     if invite.used_count >= invite.max_uses:
