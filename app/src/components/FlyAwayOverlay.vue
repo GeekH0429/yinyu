@@ -1,18 +1,9 @@
 <template>
   <view v-if="playing" class="fly-overlay" @tap.stop>
-    <!-- 光迹航线:SVG 绘出,纸飞机寄出的"航线" -->
-    <view class="fly-trail-wrap">
-      <svg class="fly-trail" viewBox="0 0 750 1400" preserveAspectRatio="xMidYMid slice">
-        <path
-          class="fly-trail-path"
-          pathLength="100"
-          d="M 375 1148 C 470 880 600 520 780 40"
-        />
-      </svg>
-    </view>
-
-    <!-- 纸飞机本体(复用树洞页 FAB 同款 SVG) -->
-    <view class="fly-plane" v-html="planeSvg"></view>
+    <!-- 光迹航线 + 纸飞机:整个 SVG 用 v-html 注入。
+         飞机用 SMIL <animateMotion> 沿真实贝塞尔 path 飞行 ——
+         单一缓动函数跑完整段,无 CSS keyframes 那种"段间 timing-function 重启"的卡顿。 -->
+    <view class="fly-trail-wrap" v-html="flySvg"></view>
 
     <!-- 起飞点微光粒子 -->
     <view class="fly-particles">
@@ -32,8 +23,48 @@ const props = defineProps({
 })
 const emit = defineEmits(['done'])
 
-// 复用树洞页 FAB 同款纸飞机 SVG(currentColor),保证视觉统一
-const planeSvg = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="display:block"><path d="M1007.9 7.2C1001.8 3 994.8.8 987.2.8c-6.6 0-12.6 1.7-18.3 5.2L18.9 554.1C5.9 561.4-.2 572.6.6 587.9c1 15.7 8.7 26.2 22.8 31.5l216.4 88.8c5.6 2.3 12 1.2 16.5-2.7L859.2 184.6 380.3 771.6c-9.3 11.4-14.4 25.7-14.4 40.5v176.3c0 7.7 2.3 14.6 6.7 20.9 4.3 6.4 10.2 10.7 17.4 13.4 3.6 1.5 7.8 2.3 12.7 2.3 11.8 0 21.1-4.2 28-13.1l115.5-141.3c8.9-10.9 23.8-14.6 36.8-9.3l236.7 96.8c4.9 1.9 9.5 2.9 13.7 2.9 6.4 0 12.4-1.7 17.7-4.9 8.9-5.2 14.3-13.1 16.4-23.2L1023.7 49.4c3.4-17.1-1.3-31.5-15.8-42.2z" fill="currentColor"/></svg>`
+// 飞机 path 数据(原 viewBox 0 0 1024 1024,机头朝右上方)
+const planePathD = 'M1007.9 7.2C1001.8 3 994.8.8 987.2.8c-6.6 0-12.6 1.7-18.3 5.2L18.9 554.1C5.9 561.4-.2 572.6.6 587.9c1 15.7 8.7 26.2 22.8 31.5l216.4 88.8c5.6 2.3 12 1.2 16.5-2.7L859.2 184.6 380.3 771.6c-9.3 11.4-14.4 25.7-14.4 40.5v176.3c0 7.7 2.3 14.6 6.7 20.9 4.3 6.4 10.2 10.7 17.4 13.4 3.6 1.5 7.8 2.3 12.7 2.3 11.8 0 21.1-4.2 28-13.1l115.5-141.3c8.9-10.9 23.8-14.6 36.8-9.3l236.7 96.8c4.9 1.9 9.5 2.9 13.7 2.9 6.4 0 12.4-1.7 17.7-4.9 8.9-5.2 14.3-13.1 16.4-23.2L1023.7 49.4c3.4-17.1-1.3-31.5-15.8-42.2z'
+
+// SVG 整体:光迹 + 飞机(沿 path 飞行)。设计要点(都是踩过的坑,改时注意):
+// 1. <animateMotion> 让飞机沿真实贝塞尔 path 移动 —— 单一缓动跑整段,
+//    不会有 CSS keyframes "每段 timing-function 重启" 造成的卡顿。
+// 2. 外层 <g class="fly-plane-group"> 的 transform 由 animateMotion 接管(translate + rotate auto)。
+// 3. **嵌套顺序极其重要** —— 必须 scale 在外、translate 在内:
+//      <g class="fly-plane-scale">              ← 外:CSS scale
+//        <g transform="rotate(45) translate(-512 -512)">  ← 内:SVG attribute
+//          <path />
+//    SVG transform 从内向外复合:先 translate 把中心 (512,512) 移到 (0,0),
+//    再 rotate(45) 把机头从朝右上(-45°)扳到正右(0°),
+//    最后外层 CSS scale 以 (0,0) 为不动点缩小 —— 飞机中心保持在 (0,0),
+//    animateMotion 才能把 (0,0) 准确对齐到 path 当前点。
+//    (反过来 scale 在内的话,scale 先把中心缩成 (61,61),translate(-512,-512) 再推到 (-451,-451),
+//     飞机就完全脱离光迹了 —— 上次飞机乱飞就是这个原因)
+// 4. rotate(45) 预校正机头朝向:飞机原 SVG 机头朝右上方约 -45°,rotate(45) 让机头朝正右(0°),
+//    这样 animateMotion 的 rotate="auto" 才能让机头严格沿切线方向(否则会偏上 45°,像侧飞)。
+// 5. <path class="fly-plane-icon"> 用 CSS animation 控制 opacity 渐显渐隐。
+// 6. 光迹 stroke 加粗 + drop-shadow 发光 —— App webview 抗锯齿弱,原 stroke-width:2.5 在手机上几乎看不见。
+// 注:path 终点 (780, 40) 在 viewBox 750×1400 中略微超出右边(780>750),
+//     配合 preserveAspectRatio="xMidYMid slice" 飞机会"飞出屏幕"消失,符合预期。
+const flySvg = `
+<svg class="fly-trail" viewBox="0 0 750 1400" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <path id="flyPath" d="M 375 1148 C 470 880 600 520 780 40" />
+  </defs>
+  <path class="fly-trail-path" pathLength="100" d="M 375 1148 C 470 880 600 520 780 40" />
+  <g class="fly-plane-group">
+    <g class="fly-plane-scale">
+      <g transform="rotate(45) translate(-512 -512)">
+        <path class="fly-plane-icon" d="${planePathD}" />
+      </g>
+    </g>
+    <animateMotion dur="1.5s" begin="0.15s" fill="freeze" rotate="auto"
+                   calcMode="spline" keyTimes="0;1" keyPoints="0;1" keySplines="0.22 0.61 0.36 1">
+      <mpath href="#flyPath" />
+    </animateMotion>
+  </g>
+</svg>
+`.trim()
 
 // 动画总时长约 2.05s,留余量到 2.1s 通知父组件收尾
 const FLY_MS = 2100
@@ -74,7 +105,7 @@ onUnmounted(() => clearTimeout(timer))
   to { opacity: 0; }
 }
 
-/* ---- 光迹航线 ---- */
+/* ---- SVG 容器(SVG 通过 v-html 注入,内部元素需 :deep 匹配 scoped 样式) ---- */
 .fly-trail-wrap {
   position: absolute;
   top: 0;
@@ -83,17 +114,22 @@ onUnmounted(() => clearTimeout(timer))
   height: 100%;
   pointer-events: none;
 }
-.fly-trail {
+.fly-trail-wrap :deep(.fly-trail) {
   width: 100%;
   height: 100%;
+  display: block;
 }
-.fly-trail-path {
+/* 光迹:加粗 + drop-shadow 发光。
+   原值 stroke-width:2.5 + rgba alpha:0.55 在手机 webview 上几乎看不见 ——
+   手机 webview 的抗锯齿比桌面 Chrome 弱,细+半透明的线条会被吃掉。 */
+.fly-trail-wrap :deep(.fly-trail-path) {
   fill: none;
-  stroke: rgba(123, 140, 196, 0.55);
-  stroke-width: 2.5;
+  stroke: rgba(180, 200, 255, 0.9);
+  stroke-width: 5;
   stroke-linecap: round;
   stroke-dasharray: 100;
   stroke-dashoffset: 100;
+  filter: drop-shadow(0 0 4px rgba(140, 165, 220, 0.7));
   animation: drawTrail 1.2s 0.25s ease-out both,
              fadeTrail 0.4s 1.3s ease-out both;
 }
@@ -104,55 +140,30 @@ onUnmounted(() => clearTimeout(timer))
   to { opacity: 0; }
 }
 
-/* ---- 纸飞机 ---- */
-.fly-plane {
-  position: absolute;
-  left: 50%;
-  bottom: 18%;
-  width: 96rpx;
-  height: 96rpx;
-  margin-left: -48rpx;
-  color: #e0e0e0;
-  font-size: 0;
-  line-height: 0;
-  animation: flyAway 1.5s 0.15s cubic-bezier(0.45, 0.05, 0.7, 1) both;
-  will-change: transform, opacity;
+/* ---- 飞机大小:CSS animation 控制 scale(位置和旋转由 SMIL animateMotion 接管) ---- */
+.fly-trail-wrap :deep(.fly-plane-scale) {
+  /* SVG 元素 CSS transform-origin 默认 (0,0),配合外层 translate(-512 -512)
+     后飞机中心位于 (0,0),scale 以飞机中心为不动点 —— 正是要的效果。 */
+  animation: planeScale 1.5s 0.15s cubic-bezier(0.34, 1.2, 0.5, 1) both;
 }
-.fly-plane :deep(svg) {
-  width: 100%;
-  height: 100%;
-  display: block;
+@keyframes planeScale {
+  0%   { transform: scale(0.001); }   /* 起飞前不可见 */
+  16%  { transform: scale(0.12); }    /* 起飞弹出,略带 overshoot */
+  28%  { transform: scale(0.1); }     /* 回到正常大小 (96 SVG 单位 ≈ 96rpx) */
+  100% { transform: scale(0.014); }   /* 远去缩小到几乎不可见 */
 }
-/* 沿右上弧线飞远:位移递增、缩小、随切线偏转、末段淡出 */
-@keyframes flyAway {
-  0% {
-    transform: translate(0, 60rpx) scale(0.2) rotate(-18deg);
-    opacity: 0;
-  }
-  14% {
-    transform: translate(0, 0) scale(1.08) rotate(-18deg);
-    opacity: 1;
-  }
-  20% {
-    transform: translate(10rpx, -30rpx) scale(1) rotate(-20deg);
-    opacity: 1;
-  }
-  40% {
-    transform: translate(95rpx, -250rpx) scale(0.82) rotate(-26deg);
-    opacity: 1;
-  }
-  64% {
-    transform: translate(225rpx, -540rpx) scale(0.58) rotate(-32deg);
-    opacity: 0.92;
-  }
-  84% {
-    transform: translate(360rpx, -830rpx) scale(0.34) rotate(-37deg);
-    opacity: 0.4;
-  }
-  100% {
-    transform: translate(445rpx, -1040rpx) scale(0.14) rotate(-41deg);
-    opacity: 0;
-  }
+
+/* ---- 飞机透明度渐显渐隐 ---- */
+.fly-trail-wrap :deep(.fly-plane-icon) {
+  fill: #e8e8ec;
+  opacity: 0;
+  animation: planeOpacity 1.5s 0.15s ease-out both;
+}
+@keyframes planeOpacity {
+  0%   { opacity: 0; }
+  16%  { opacity: 1; }
+  75%  { opacity: 0.6; }
+  100% { opacity: 0; }
 }
 
 /* ---- 起飞点光点粒子 ---- */
