@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFound
@@ -38,23 +38,43 @@ async def list_published(
     user: User | None = Depends(get_current_user),
 ):
     """公共 feed:仅已发布,按发布时间倒序。"""
-    conds = [Article.status == STATUS_PUBLISHED]
+    base_conds = [Article.status == STATUS_PUBLISHED]
     if tag:
-        conds.append(Article.tags.any(tag))  # tag = ANY(tags)
-    if keyword:
-        like = f"%{keyword}%"
-        # 标题/摘要模糊匹配 + 标签精确匹配(任一标签等于关键词)
-        conds.append(or_(Article.title.ilike(like), Article.summary.ilike(like), Article.tags.any(keyword)))
+        base_conds.append(Article.tags.any(tag))  # tag = ANY(tags)
 
-    total = await db.scalar(select(func.count()).select_from(Article).where(*conds))
-    rows = await db.execute(
-        select(Article, User)
-        .join(User, User.id == Article.author_id)
-        .where(*conds)
-        .order_by(Article.published_at.desc(), Article.id.desc())
-        .offset(offset_of(page, page_size))
-        .limit(page_size)
-    )
+    if keyword:
+        # OR → UNION:让 tags.any 分支独立走 GIN 索引,
+        # title/summary 走 status BTree + ILIKE 过滤。
+        # 原 OR 因 title/summary 无可用索引(前导通配 ILIKE 不能用 BTree),
+        # 被规划器整体降级 Seq Scan,GIN 也跟着用不上。
+        like = f"%{keyword}%"
+        match_ids = (
+            select(Article.id)
+            .where(*base_conds, Article.title.ilike(like))
+            .union(
+                select(Article.id).where(*base_conds, Article.summary.ilike(like)),
+                select(Article.id).where(*base_conds, Article.tags.any(keyword)),
+            )
+        ).subquery()
+        total = await db.scalar(select(func.count()).select_from(match_ids))
+        rows = await db.execute(
+            select(Article, User)
+            .join(match_ids, match_ids.c.id == Article.id)
+            .join(User, User.id == Article.author_id)
+            .order_by(Article.published_at.desc(), Article.id.desc())
+            .offset(offset_of(page, page_size))
+            .limit(page_size)
+        )
+    else:
+        total = await db.scalar(select(func.count()).select_from(Article).where(*base_conds))
+        rows = await db.execute(
+            select(Article, User)
+            .join(User, User.id == Article.author_id)
+            .where(*base_conds)
+            .order_by(Article.published_at.desc(), Article.id.desc())
+            .offset(offset_of(page, page_size))
+            .limit(page_size)
+        )
     pairs = rows.all()
     # 批量查询当前用户对当页文章的点赞状态(1 次 IN 查询,避免 N+1)
     liked_ids: set[int] = set()
