@@ -1,5 +1,5 @@
 <template>
-  <view class="mine">
+  <view class="mine" :data-theme="effectiveTheme">
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="header">
@@ -59,6 +59,7 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { getUser, refreshUser, isLoggedIn } from '../../store/user'
+import { effectiveTheme } from '../../store/theme'
 import { unreadCount, refreshUnread } from '../../store/notifications'
 import TabBar from '../../components/TabBar.vue'
 import CachedImage from '../../components/CachedImage.vue'

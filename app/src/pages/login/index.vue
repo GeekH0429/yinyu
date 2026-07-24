@@ -1,5 +1,5 @@
 <template>
-  <view class="login-page">
+  <view class="login-page" :data-theme="effectiveTheme">
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="brand anim-rise">
@@ -56,6 +56,7 @@
 import { ref, reactive } from 'vue'
 import { login } from '../../store/user'
 import { api } from '../../api'
+import { effectiveTheme } from '../../store/theme'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const mode = ref('login')

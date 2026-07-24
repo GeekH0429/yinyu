@@ -1,5 +1,5 @@
 <template>
-  <view class="home">
+  <view class="home" :data-theme="effectiveTheme">
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="header">
@@ -113,6 +113,7 @@ import { onShow, onReachBottom, onPullDownRefresh, onPageScroll } from '@dcloudi
 import { api } from '../../api'
 import { formatDate } from '../../utils/format'
 import { isLoggedIn, refreshUser } from '../../store/user'
+import { effectiveTheme } from '../../store/theme'
 import {
   articles, keyword, page, noMore, loading,
   scrollTop, hydrated, dirty, hydrateFeedFromSnap, persistFeedSnap

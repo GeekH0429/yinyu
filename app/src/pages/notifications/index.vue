@@ -1,5 +1,5 @@
 <template>
-  <view class="noti">
+  <view class="noti" :data-theme="effectiveTheme">
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
@@ -71,6 +71,7 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
+import { effectiveTheme } from '../../store/theme'
 import { formatRelative } from '../../utils/format'
 import { setUnread, decUnread } from '../../store/notifications'
 import StateView from '../../components/StateView.vue'

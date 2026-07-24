@@ -1,5 +1,5 @@
 <template>
-  <view class="read">
+  <view class="read" :data-theme="effectiveTheme">
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
@@ -109,6 +109,7 @@
 import { ref, computed, nextTick } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
+import { effectiveTheme } from '../../store/theme'
 import { SERVER_ORIGIN, resourceUrl, isRemoteUrl } from '../../config'
 import { formatTime } from '../../utils/format'
 import { extractAudio } from '../../utils/audioCard'

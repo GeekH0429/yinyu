@@ -1,5 +1,5 @@
 <template>
-  <view class="settings">
+  <view class="settings" :data-theme="effectiveTheme">
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <!-- 自定义导航栏 -->
@@ -166,7 +166,7 @@ import { ref, reactive, computed } from 'vue'
 import { onShow, onLoad, onUnload } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { getUser, logout } from '../../store/user'
-import { themePref, setTheme, THEME_OPTIONS, animationsEnabled, setAnimationsEnabled } from '../../store/theme'
+import { themePref, setTheme, THEME_OPTIONS, animationsEnabled, setAnimationsEnabled, effectiveTheme } from '../../store/theme'
 import { FONT_LEVELS, fontIdx, fontLevel, setFontIdxLive, setFontIdxCommit } from '../../store/readFont'
 import { clearAllResourceCache, getCacheSize } from '../../utils/resourceCache'
 import { clearArticleSnaps } from '../../utils/articleCache'

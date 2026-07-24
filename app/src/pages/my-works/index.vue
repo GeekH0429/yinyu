@@ -1,5 +1,5 @@
 <template>
-  <view class="my-works">
+  <view class="my-works" :data-theme="effectiveTheme">
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="nav">
@@ -142,6 +142,7 @@
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
+import { effectiveTheme } from '../../store/theme'
 import { formatDate } from '../../utils/format'
 import { isLoggedIn } from '../../store/user'
 import {

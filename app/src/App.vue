@@ -43,10 +43,14 @@ page {
 }
 
 /* 暗色模式:复用树洞页深夜蓝色板
-   - H5:由 store/theme.js 在 <html>(:root) 上设 data-theme="dark",CSS 变量向下继承
-   - App/小程序:setAttribute 无效,降级为浅色(各页面可用 effectiveTheme ref 自行绑 :class)
+   - H5:store/theme.js 在 <html>(:root) 上设 data-theme="dark",CSS 变量向下继承
+   - App/小程序:各页面根 view 绑定 :data-theme="effectiveTheme",变量在同一 view 及其后代上生效
+   - 选择器同时写 [data-theme="dark"] 与 :root[data-theme="dark"] 两种形态:
+     · 后代形([data-theme="dark"] .home)覆盖 H5 下 html>...>.home 的链路
+     · 自身形([data-theme="dark"].home)覆盖 App/小程序下根 view 同时带 class+attr 的情况
    - 树洞页固定深色,不受全局主题影响 */
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+[data-theme="dark"] {
   --warm-white: #14141a;
   --warm-surface: #1f1f28;
   --warm-surface-2: #2a2a36;
@@ -65,7 +69,17 @@ page {
 :root[data-theme="dark"] .read,
 :root[data-theme="dark"] .write,
 :root[data-theme="dark"] .settings,
-:root[data-theme="dark"] .login {
+:root[data-theme="dark"] .login-page,
+:root[data-theme="dark"] .noti,
+:root[data-theme="dark"] .my-works,
+[data-theme="dark"].home,
+[data-theme="dark"].mine,
+[data-theme="dark"].read,
+[data-theme="dark"].write,
+[data-theme="dark"].settings,
+[data-theme="dark"].login-page,
+[data-theme="dark"].noti,
+[data-theme="dark"].my-works {
   background-color: #14141a !important;
   color: #D8D8E0 !important;
 }
@@ -217,14 +231,21 @@ textarea {
 }
 
 /* 暗色模式穿透覆盖:scoped style 里硬编码的颜色,通过高特异性选择器穿透覆盖。
-   折中:不为每个页面全面 CSS 变量化,而是用 :root[data-theme=dark] 前缀穿透 scoped。
-   仅 H5 端完全生效;App/小程序 scoped style 不被 :root 选择器穿透,降级为浅色。 */
+   折中:不为每个页面全面 CSS 变量化,而是用 [data-theme="dark"] 前缀穿透 scoped。
+   - H5:<html data-theme="dark"> 是所有页面的祖先,后代选择器命中
+   - App/小程序:页面根 view 带上 data-theme="dark",scoped 的 .card/.ftag 等仍是其后代,同样命中 */
 :root[data-theme="dark"] .card,
 :root[data-theme="dark"] .ftag,
 :root[data-theme="dark"] .like-btn,
 :root[data-theme="dark"] .tab-item,
 :root[data-theme="dark"] .dialog,
-:root[data-theme="dark"] .logout-btn {
+:root[data-theme="dark"] .logout-btn,
+[data-theme="dark"] .card,
+[data-theme="dark"] .ftag,
+[data-theme="dark"] .like-btn,
+[data-theme="dark"] .tab-item,
+[data-theme="dark"] .dialog,
+[data-theme="dark"] .logout-btn {
   background: #1f1f28 !important;
   color: #D8D8E0 !important;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.4) !important;
@@ -236,7 +257,15 @@ textarea {
 :root[data-theme="dark"] .nickname,
 :root[data-theme="dark"] .row-label,
 :root[data-theme="dark"] .mini-title,
-:root[data-theme="dark"] .dialog-title {
+:root[data-theme="dark"] .dialog-title,
+[data-theme="dark"] .title,
+[data-theme="dark"] .topbar-title,
+[data-theme="dark"] .header-title,
+[data-theme="dark"] .nav-title,
+[data-theme="dark"] .nickname,
+[data-theme="dark"] .row-label,
+[data-theme="dark"] .mini-title,
+[data-theme="dark"] .dialog-title {
   color: #E8E8F0 !important;
 }
 :root[data-theme="dark"] .desc,
@@ -245,16 +274,28 @@ textarea {
 :root[data-theme="dark"] .header-sub,
 :root[data-theme="dark"] .row-text,
 :root[data-theme="dark"] .author-time,
-:root[data-theme="dark"] .mini-time {
+:root[data-theme="dark"] .mini-time,
+[data-theme="dark"] .desc,
+[data-theme="dark"] .meta,
+[data-theme="dark"] .bio,
+[data-theme="dark"] .header-sub,
+[data-theme="dark"] .row-text,
+[data-theme="dark"] .author-time,
+[data-theme="dark"] .mini-time {
   color: #8888A0 !important;
 }
 :root[data-theme="dark"] .row,
-:root[data-theme="dark"] .media-bar {
+:root[data-theme="dark"] .media-bar,
+[data-theme="dark"] .row,
+[data-theme="dark"] .media-bar {
   border-bottom-color: rgba(255, 255, 255, 0.08) !important;
 }
 :root[data-theme="dark"] .dialog-input,
 :root[data-theme="dark"] .media-btn,
-:root[data-theme="dark"] .th-btn {
+:root[data-theme="dark"] .th-btn,
+[data-theme="dark"] .dialog-input,
+[data-theme="dark"] .media-btn,
+[data-theme="dark"] .th-btn {
   background: #2a2a36 !important;
   color: #C0C0D0 !important;
 }

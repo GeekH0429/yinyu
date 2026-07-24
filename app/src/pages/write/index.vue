@@ -1,5 +1,5 @@
 <template>
-  <view class="write">
+  <view class="write" :data-theme="effectiveTheme">
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
@@ -63,6 +63,7 @@
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { onLoad, onBackPress } from '@dcloudio/uni-app'
 import { api } from '../../api'
+import { effectiveTheme } from '../../store/theme'
 import { resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
 import { buildAudioCard } from '../../utils/audioCard'
