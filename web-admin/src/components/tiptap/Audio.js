@@ -67,6 +67,10 @@ export const Audio = Node.create({
   renderHTML({ node }) {
     const { src, title, artist, cover } = node.attrs
 
+    // ProseMirror renderSpec 约定:[tag, attrs, ...childSpecs],每个子节点是
+    // 独立的位置参数(可叠多个),绝不能把「子节点数组」当成单个参数塞进去 ——
+    // 那样递归 renderSpec 会把整个数组当成一个 child,而 structure[0] 不是
+    // string 标签就抛 RangeError: Invalid array passed to renderSpec。
     const body = []
     if (title) body.push(['span', { style: TITLE_STYLE }, title])
     if (artist) body.push(['span', { style: ARTIST_STYLE }, artist])
@@ -78,7 +82,7 @@ export const Audio = Node.create({
     } else {
       children.push(['span', { style: PLACEHOLDER_STYLE }, '🎵'])
     }
-    children.push(['span', { style: BODY_STYLE }, body])
+    children.push(['span', { style: BODY_STYLE }, ...body])
 
     return [
       'div',
@@ -90,7 +94,7 @@ export const Audio = Node.create({
         'data-cover': cover || '',
         style: WRAP_STYLE,
       },
-      children,
+      ...children,
     ]
   },
 
