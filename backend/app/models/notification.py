@@ -10,8 +10,6 @@ NOTI_REPLY = "reply"                # 有人回复了我的评论
 NOTI_COMMENT_LIKE = "comment_like"  # 有人点赞了我的评论
 NOTI_MENTION = "mention"            # 在评论里 @了我
 
-NOTI_TYPES = {NOTI_COMMENT, NOTI_REPLY, NOTI_COMMENT_LIKE, NOTI_MENTION}
-
 
 class Notification(TimestampMixin, Base):
     __tablename__ = "notifications"

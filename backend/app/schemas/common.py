@@ -1,14 +1,9 @@
-"""通用 schema:分页参数与分页响应。"""
+"""通用 schema:分页响应。"""
 from typing import Generic, List, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 T = TypeVar("T")
-
-
-class PageParams(BaseModel):
-    page: int = Field(1, ge=1, description="页码,从 1 开始")
-    page_size: int = Field(20, ge=1, le=100, description="每页条数")
 
 
 class Page(BaseModel, Generic[T]):

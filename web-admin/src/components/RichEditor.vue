@@ -315,10 +315,6 @@ async function onLink() {
     /* user cancelled */
   }
 }
-
-defineExpose({
-  getHTML: () => editor.value?.getHTML()
-})
 </script>
 
 <style scoped>

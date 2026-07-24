@@ -9,7 +9,6 @@ export const api = {
 
   articles: {
     list: (params) => http.get('/articles', params),
-    tags: () => http.get('/articles/tags'),
     get: (id) => http.get('/articles/' + id),
     like: (id) => http.post('/articles/' + id + '/like')
   },
@@ -35,16 +34,14 @@ export const api = {
   treeholes: {
     unlock: (code) => http.post('/treeholes/unlock', { code }),
     create: (data) => http.post('/treeholes', data),
-    changeCode: (id, code) => http.put('/treeholes/' + id + '/code', { code }),
-    remove: (id) => http.delete('/treeholes/' + id)
+    changeCode: (id, code) => http.put('/treeholes/' + id + '/code', { code })
   },
 
   me: {
     get: () => http.get('/me'),
     update: (data) => http.put('/me', data),
     myArticles: (params) => http.get('/me/articles', params),
-    myTreeholes: (params) => http.get('/me/treeholes', params),
-    myLikes: (params) => http.get('/me/likes', params)
+    myTreeholes: (params) => http.get('/me/treeholes', params)
   },
 
   daily: {

@@ -1,4 +1,5 @@
 import http from '../utils/request'
+import { api } from '../api'
 import { SNAP, clearSnap } from '../utils/snap'
 import { clearArticleSnaps } from '../utils/articleCache'
 import { resetFeed } from './feed'
@@ -17,7 +18,7 @@ export async function login(username, password) {
   const data = await http.post('/auth/login', { username, password })
   uni.setStorageSync('token', data.access_token)
   uni.setStorageSync('refresh_token', data.refresh_token)
-  const me = await http.get('/me')
+  const me = await api.me.get()
   uni.setStorageSync('userInfo', me)
   return me
 }
@@ -30,7 +31,7 @@ export async function login(username, password) {
 export async function refreshUser() {
   if (!isLoggedIn()) return null
   try {
-    const me = await http.get('/me')
+    const me = await api.me.get()
     uni.setStorageSync('userInfo', me)
     return me
   } catch {

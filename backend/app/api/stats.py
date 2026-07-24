@@ -22,6 +22,7 @@ from app.schemas.stats import (
     ActiveUserItem,
     ContentRankItem,
     OverviewOut,
+    StatsRange,
     TrendOut,
     TrendPoint,
 )
@@ -36,8 +37,6 @@ logger = logging.getLogger("yinyu.stats")
 
 # 北京时区
 CN_TZ = timezone(timedelta(hours=8))
-
-StatsRange = str  # Literal["7d", "30d", "90d"]
 
 # 时间范围 → 天数(模块级常量,避免每个 handler 重复定义)
 _DAYS = {"7d": 7, "30d": 30, "90d": 90}

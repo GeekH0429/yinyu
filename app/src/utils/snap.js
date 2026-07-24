@@ -21,14 +21,6 @@ export function readSnap(key) {
   }
 }
 
-export function writeSnap(key, data) {
-  try {
-    uni.setStorageSync(key, JSON.stringify({ ts: Date.now(), data }))
-  } catch (e) {
-    /* ignore */
-  }
-}
-
 /**
  * 防抖写入:列表每次触底加载都会调一次 persistXxxSnap,频繁同步写 storage 在弱机型上是卡顿源。
  * 按 key 记录最后一次 data,延迟 delay ms 后真正落盘;期间新调用覆盖旧 data。

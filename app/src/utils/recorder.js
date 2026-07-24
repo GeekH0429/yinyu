@@ -34,10 +34,6 @@ function h5Supported() {
   )
 }
 
-export function isRecordingSupported() {
-  return h5Supported() || typeof uni.getRecorderManager === 'function'
-}
-
 function mimeExt(mime) {
   if (!mime) return 'audio'
   if (mime.includes('webm')) return 'webm'

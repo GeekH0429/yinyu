@@ -59,7 +59,7 @@
       </el-form-item>
 
       <el-form-item label="正文">
-        <RichEditor ref="editorRef" v-model="form.content_html" style="width: 100%" />
+        <RichEditor v-model="form.content_html" style="width: 100%" />
       </el-form-item>
 
       <el-form-item label="状态">
@@ -96,7 +96,6 @@ const loading = ref(false)
 const saving = ref(false)
 const coverUploading = ref(false)
 const coverZoneRef = ref()
-const editorRef = ref()
 const formRef = ref()
 const tagOptions = ref([])
 

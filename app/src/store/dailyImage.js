@@ -12,8 +12,3 @@ import { ref } from 'vue'
 
 export const todayImage = ref(null) // { id, publish_date, image_url, title, description }
 export const todayLoaded = ref(false) // 本次会话内是否已请求过今日接口
-
-export function resetDaily() {
-  todayImage.value = null
-  todayLoaded.value = false
-}

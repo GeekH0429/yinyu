@@ -64,7 +64,7 @@ const props = defineProps({
   articleId: { type: Number, required: true }
 })
 
-const emit = defineEmits(['sent', 'mention-shown'])
+const emit = defineEmits(['sent'])
 
 // 回复目标:顶层评论对象(含 id / author) — 由父组件设置
 const replyTarget = ref(null)
@@ -134,7 +134,6 @@ async function showMention(prefix, startIndex) {
   mentionPicker.visible = true
   mentionPicker.prefix = prefix
   mentionPicker.startIndex = startIndex
-  emit('mention-shown', true)
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(async () => {
     mentionPicker.loading = true
@@ -157,7 +156,6 @@ function hideMention() {
   mentionPicker.results = []
   mentionPicker.prefix = ''
   mentionPicker.startIndex = -1
-  emit('mention-shown', false)
 }
 
 function pickMention(user) {

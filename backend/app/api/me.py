@@ -1,6 +1,6 @@
 """「我的」路由:个人资料、我发布的图文、我的树洞、我点赞的图文、我的评论。"""
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import Conflict

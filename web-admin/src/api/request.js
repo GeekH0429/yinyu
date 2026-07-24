@@ -30,9 +30,9 @@ request.interceptors.response.use(
   (resp) => resp.data, // 直接返回业务 data
   async (error) => {
     const { response, config } = error
-    const isAuthCall = config?.url?.includes('/auth/login') || config?.url?.includes('/auth/refresh')
+    const isAuthCall = config?.url?.includes('/auth/login')
 
-    // 401 且非登录/刷新接口:尝试用 refresh token 续期
+    // 401 且非登录接口:尝试用 refresh token 续期
     if (response?.status === 401 && !config?.__retried && !isAuthCall) {
       const refreshToken = localStorage.getItem('refresh')
       if (refreshToken && !refreshing) {

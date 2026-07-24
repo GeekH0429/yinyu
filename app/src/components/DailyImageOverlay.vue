@@ -27,9 +27,6 @@
     <view class="daily-close" :style="{ top: statusBarHeight + 24 + 'rpx' }" @tap.stop="close">
       <text class="daily-close-icon">×</text>
     </view>
-
-    <!-- 底部轻提示 -->
-<!--    <text class="daily-hint">轻点图片可查看大图,点空白处关闭 ✦</text>-->
   </view>
 </template>
 
@@ -189,15 +186,5 @@ function preview() {
 .daily-close-icon {
   font-size: 36rpx;
   color: #8d8d8d;
-}
-
-.daily-hint {
-  position: absolute;
-  bottom: calc(48rpx + env(safe-area-inset-bottom, 0));
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: 24rpx;
-  color: #b8b8b8;
 }
 </style>

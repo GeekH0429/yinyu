@@ -51,9 +51,7 @@ export default defineConfig({
             '@tiptap/vue-3',
             '@tiptap/starter-kit',
             '@tiptap/extension-image',
-            '@tiptap/extension-link',
-            '@tiptap/extension-placeholder',
-            '@tiptap/extension-underline'
+            '@tiptap/extension-placeholder'
           ]
         }
       }

@@ -4,7 +4,7 @@
 不再重复 require_admin。
 """
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BadRequest, Conflict, NotFound

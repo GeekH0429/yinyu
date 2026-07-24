@@ -3,8 +3,6 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.daily_image import DailyImage
-
 
 class DailyImageCreate(BaseModel):
     publish_date: date = Field(..., description="排期日期 YYYY-MM-DD")
@@ -30,7 +28,3 @@ class DailyImageOut(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-
-def to_out(d: DailyImage) -> DailyImageOut:
-    return DailyImageOut.model_validate(d)

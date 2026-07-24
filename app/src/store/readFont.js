@@ -37,12 +37,6 @@ export const fontLevel = computed(() => FONT_LEVELS[fontIdx.value])
 export const fontSize = computed(() => fontLevel.value.size)
 export const fontLine = computed(() => fontLevel.value.line)
 
-/** 同时改内存值 + 落盘(拖动场景应分别调用 setFontIdxLive + setFontIdxCommit 控制 IO) */
-export function setFontIdx(idx) {
-  fontIdx.value = idx
-  uni.setStorageSync(KEY, fontLevel.value.size)
-}
-
 /** 拖动中:只改内存,不落盘 */
 export function setFontIdxLive(idx) {
   fontIdx.value = idx

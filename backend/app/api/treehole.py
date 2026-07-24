@@ -7,7 +7,7 @@
     - 作者可在"我的"里管理自己的树洞(见 me.py)。
 """
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFound
