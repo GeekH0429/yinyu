@@ -33,6 +33,8 @@ class TrendOut(BaseModel):
     users: list[TrendPoint]
     articles: list[TrendPoint]
     treeholes: list[TrendPoint]
+    # 浏览趋势:从 Redis view:daily:article:* 读取(空窗期内默认 [])
+    views: list[TrendPoint] = []
 
 
 class ContentRankItem(BaseModel):

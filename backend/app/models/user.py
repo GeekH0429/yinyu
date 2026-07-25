@@ -32,5 +32,11 @@ class User(TimestampMixin, Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False, default=ROLE_USER, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # 是否在「被评论 / 被回复 / 被 @提及」时发送邮件提醒。
+    # 收件邮箱取 self.email;为空则不发。
+    email_notify_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+
     def is_admin(self) -> bool:
         return self.role == ROLE_ADMIN

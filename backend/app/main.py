@@ -3,6 +3,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,10 +19,13 @@ from app.core.exceptions import AppException
 from app.database import AsyncSessionLocal, get_db
 from app.logging_config import LOG_NAMESPACE, setup_logging
 from app.redis_client import redis
-from app.services.view_counter import flush_pending
+from app.services.view_counter import archive_daily_views, flush_pending
 from app.startup import bootstrap
 
 logger = logging.getLogger(f"{LOG_NAMESPACE}.main")
+
+# 北京时区(归档任务按 CN_TZ 判断"凌晨")
+_CN_TZ = timezone(timedelta(hours=8))
 
 
 async def _view_flusher():
@@ -35,14 +39,40 @@ async def _view_flusher():
             logger.exception("view_flusher failed")
 
 
+async def _daily_archiver():
+    """后台任务:每小时检查一次,在北京时区 01:00~02:00 跑归档。
+
+    归档语义见 `archive_daily_views`。模式选 "每小时轮询" 而非 "算精确 sleep 到下次 01:00":
+    - 实现简单,无需处理时钟漂移/系统休眠
+    - 归档本身幂等(GETDEL + UPSERT 累加),同小时内重复跑也只跑一次(GETDEL 后取不到值)
+    - 趋势统计对几分钟误差不敏感
+
+    服务在 01:xx 时段重启会立即补跑,这是好事(确保不漏归档)。
+    """
+    while True:
+        await asyncio.sleep(3600)
+        now_cn = datetime.now(_CN_TZ)
+        if now_cn.hour != 1:
+            continue
+        try:
+            async with AsyncSessionLocal() as db:
+                n = await archive_daily_views(redis, db)
+                if n:
+                    logger.info("daily_archiver archived %d days", n)
+        except Exception:  # noqa: BLE001
+            logger.exception("daily_archiver failed")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     setup_logging()
     logger.info("app starting", extra={"env": settings.app_env})
     await bootstrap()
     flusher = asyncio.create_task(_view_flusher())
+    archiver = asyncio.create_task(_daily_archiver())
     yield
     flusher.cancel()
+    archiver.cancel()
     await redis.aclose()
     logger.info("app stopped")
 

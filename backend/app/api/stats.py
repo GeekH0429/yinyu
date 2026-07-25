@@ -1,5 +1,6 @@
 """统计数据路由。"""
 import asyncio
+import builtins
 import json
 import logging
 from datetime import datetime, timedelta, timezone
@@ -15,6 +16,7 @@ from app.config import settings
 from app.database import get_db
 from app.deps import require_admin
 from app.models.article import Article
+from app.models.article_daily_view import ArticleDailyView
 from app.models.media import Media
 from app.models.treehole import TreeHole
 from app.models.user import User
@@ -267,10 +269,49 @@ async def get_trends(
             TrendPoint(date=str(r.date), count=r.count) for r in treehole_trend.all()
         ]
 
+        # 浏览趋势:DB 已归档 + Redis 未归档,合并相加
+        # - DB article_daily_views:归档任务每天凌晨从 Redis GETDEL 后 UPSERT,永久保留
+        # - Redis view:daily:article:YYYYMMDD:当天 + 最近 7 天(归档前的滚动窗口)
+        # 合并相加:GETDEL 后 Redis 该 key 被删,但如果之后又有迟到访问会重新累加,
+        # 那部分是 DB 没有的,所以两边都取并相加才完整;归档过的天 DB 有值、Redis 为 0,相加无误。
+        #
+        # 注:本函数参数 range(StatsRange)遮蔽了内置 range,用 builtins.range。
+        now_cn = datetime.now(CN_TZ)
+        today_cn = now_cn.date()
+        view_dates = [
+            today_cn - timedelta(days=i)
+            for i in builtins.range(days - 1, -1, -1)
+        ]
+
+        # 1. DB 已归档的范围(查 view_dates 的最小日期到今天)
+        start_date_cn = view_dates[0]
+        db_rows = await db.execute(
+            select(ArticleDailyView.date, ArticleDailyView.count).where(
+                ArticleDailyView.date >= start_date_cn
+            )
+        )
+        db_map = {r.date: r.count for r in db_rows.all()}
+
+        # 2. Redis 未归档(同 view_dates 范围,pipeline 一次性发)
+        pipe = redis.pipeline()
+        for d in view_dates:
+            pipe.get(f"view:daily:article:{d.strftime('%Y%m%d')}")
+        view_vals = await pipe.execute()
+
+        # 3. 合并:DB 已归档 + Redis 残余
+        view_points = [
+            TrendPoint(
+                date=d.strftime("%Y-%m-%d"),
+                count=db_map.get(d, 0) + (int(v) if v else 0),
+            )
+            for d, v in zip(view_dates, view_vals)
+        ]
+
         return TrendOut(
             users=user_points,
             articles=article_points,
             treeholes=treehole_points,
+            views=view_points,
         )
 
     return await _cache_get_or_set(

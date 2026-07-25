@@ -3,6 +3,9 @@
 挂在 /articles/{article_id}/comments 与 /comments 下。
 读 / 写均需登录(yinyu 全站登录才能阅读,与现有约定一致)。
 """
+import asyncio
+import logging
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +17,7 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.models.article import STATUS_PUBLISHED, Article
 from app.models.comment import Comment, CommentLike
+from app.models.notification import NOTI_COMMENT, NOTI_MENTION, NOTI_REPLY
 from app.models.user import User
 from app.redis_client import get_redis
 from app.schemas.comment import CommentCreate, CommentOut, to_comment_out
@@ -22,7 +26,13 @@ from app.services.comment_notify import (
     create_comment_like_notification,
     fanout_comment_notifications,
 )
+from app.services.email import notify_interaction_email
 from app.services.rate_limit import sliding_limit
+
+logger = logging.getLogger(__name__)
+
+# 触发邮件提醒的互动类型(评论被赞不在此列)
+_EMAIL_NOTI_TYPES = {NOTI_COMMENT, NOTI_REPLY, NOTI_MENTION}
 
 router = APIRouter(tags=["评论"])
 
@@ -191,7 +201,7 @@ async def create_comment(
     # 先 flush 拿到 comment.id,再写通知(都在同一事务)
     await db.flush()
 
-    await fanout_comment_notifications(
+    noti_targets = await fanout_comment_notifications(
         db,
         comment=comment,
         commenter=user,
@@ -203,6 +213,15 @@ async def create_comment(
 
     await db.commit()
     await db.refresh(comment)
+
+    # 邮件提醒:必须在 commit 成功后再发,避免回滚后误发。
+    # 用 asyncio.create_task 派发,失败仅记日志,绝不阻塞 / 影响评论接口。
+    await _dispatch_interaction_emails(
+        db=db,
+        targets=noti_targets,
+        actor=user,
+        article=article,
+    )
 
     return to_comment_out(
         comment,
@@ -294,3 +313,52 @@ async def delete_comment(
 
     await db.commit()
     return {"ok": True}
+
+
+# ---------- 邮件提醒 ----------
+
+async def _dispatch_interaction_emails(
+    *,
+    db: AsyncSession,
+    targets: list,
+    actor: User,
+    article: Article,
+) -> None:
+    """commit 成功后,把符合条件的通知派发为后台邮件任务。
+
+    targets 是 NotiTarget NamedTuple 列表(纯数据,commit 后访问安全),
+    每项字段:recipient_id / kind / summary。
+
+    条件链(逐条短路):
+      kind ∈ {comment, reply, mention}
+      → 收件人开启 email_notify_enabled
+      → 收件人已绑邮箱(email 非空)
+    实际 SMTP 投递走 asyncio.create_task,失败仅记日志。
+    所有原始值(email / nickname / title 等)在 create_task 前已作为
+    基本类型取出,session 关闭后任务仍可安全使用。
+    """
+    email_targets = [t for t in targets if t.kind in _EMAIL_NOTI_TYPES]
+    if not email_targets:
+        return
+
+    recipient_ids = {t.recipient_id for t in email_targets}
+    rows = await db.execute(select(User).where(User.id.in_(recipient_ids)))
+    recipients = {u.id: u for u in rows.scalars().all()}
+
+    actor_nick = actor.nickname or actor.username
+    article_title = article.title or ""
+
+    for t in email_targets:
+        r = recipients.get(t.recipient_id)
+        if not r or not r.email or not r.email_notify_enabled:
+            continue
+        asyncio.create_task(
+            notify_interaction_email(
+                recipient_email=r.email,
+                recipient_nickname=r.nickname or r.username,
+                actor_nickname=actor_nick,
+                article_title=article_title,
+                content_preview=t.summary or "",
+                kind=t.kind,
+            )
+        )

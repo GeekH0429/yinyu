@@ -24,6 +24,7 @@ pwdlib[bcrypt]==0.2.1
 python-slugify==8.0.4
 httpx==0.28.1
 aiofiles==24.1.0
+aiosmtplib==3.0.2
 
 # ===== 图像处理 =====
 Pillow==11.0.0

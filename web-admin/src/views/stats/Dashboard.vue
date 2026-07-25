@@ -94,10 +94,10 @@
     <el-row :gutter="16" class="charts-row">
       <el-col :xs="24" :lg="12">
         <div class="chart-container">
-          <h3>用户增长趋势</h3>
+          <h3>浏览趋势</h3>
           <v-chart
-            v-if="trendData.users.length"
-            :option="userTrendOption"
+            v-if="trendData.views.length"
+            :option="viewTrendOption"
             :autoresize="true"
             style="height: 300px"
           />
@@ -184,7 +184,8 @@ const overview = ref({})
 const trendData = ref({
   users: [],
   articles: [],
-  treeholes: []
+  treeholes: [],
+  views: []
 })
 const topArticles = ref([])
 const activeUsers = ref([])
@@ -194,12 +195,12 @@ const COLOR_PRIMARY = '#b8825a'   // 暖棕焦糖
 const COLOR_SUCCESS = '#7fa86b'   // 雾绿
 const COLOR_WARNING = '#d99557'   // 暖橙
 
-// 用户增长趋势配置
-const userTrendOption = computed(() => ({
+// 浏览趋势配置(文章浏览按日计数,数据来自 Redis view:daily:article:*)
+const viewTrendOption = computed(() => ({
   tooltip: { trigger: 'axis' },
   xAxis: {
     type: 'category',
-    data: trendData.value.users.map(p => p.date),
+    data: trendData.value.views.map(p => p.date),
     axisLine: { lineStyle: { color: '#d8c9b3' } },
     axisLabel: { color: '#7a6553' }
   },
@@ -211,9 +212,9 @@ const userTrendOption = computed(() => ({
     axisLabel: { color: '#7a6553' }
   },
   series: [{
-    name: '新增用户',
+    name: '文章浏览',
     type: 'line',
-    data: trendData.value.users.map(p => p.count),
+    data: trendData.value.views.map(p => p.count),
     smooth: true,
     areaStyle: {
       color: {

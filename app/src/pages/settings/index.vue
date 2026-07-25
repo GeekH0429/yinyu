@@ -67,6 +67,26 @@
       </view>
     </view>
 
+    <!-- 通知分组:评论 / 回复 / @提及 邮件提醒 -->
+    <text class="group-title anim-rise">通知</text>
+    <view class="card group anim-rise delay-1">
+      <view class="row">
+        <text class="row-label">评论与回复邮件提醒</text>
+        <view class="row-value">
+          <switch
+            class="anim-switch"
+            :checked="!!user?.email_notify_enabled"
+            :disabled="!user?.email"
+            color="#C4A882"
+            @change="onEmailNotifyChange"
+          />
+        </view>
+      </view>
+      <view v-if="!user?.email" class="row-hint">
+        请先在「个人资料」绑定邮箱后再开启邮件提醒
+      </view>
+    </view>
+
     <!-- 显示分组:主题 + 字号 + 缓存 -->
     <text class="group-title anim-rise">显示与缓存</text>
     <view class="card group anim-rise delay-1">
@@ -226,6 +246,27 @@ function cycleTheme() {
 /* ---- 动画开关(默认开;关闭后所有入场/反馈动画压成瞬态) ---- */
 function onAnimChange(e) {
   setAnimationsEnabled(e.detail.value)
+}
+
+/* ---- 评论 / 回复 / @提及 邮件提醒开关 ----
+ * 与后端 user.email_notify_enabled 双向同步。
+ * 未绑定邮箱时禁用切换并显示提示(见模板)。
+ * 失败回滚:tap 已经把 switch 视觉态改掉,我们通过回写 user 强制还原。
+ */
+async function onEmailNotifyChange(e) {
+  const next = e.detail.value
+  const prev = !!user.value?.email_notify_enabled
+  if (next === prev) return
+  try {
+    const me = await api.me.update({ email_notify_enabled: next })
+    uni.setStorageSync('userInfo', me)
+    user.value = me
+    uni.showToast({ title: next ? '已开启' : '已关闭', icon: 'none' })
+  } catch {
+    // 回滚 switch 视觉态:reassign user 让 :checked 重新渲染
+    user.value = { ...user.value, email_notify_enabled: prev }
+    /* request 拦截器已 toast 错误 */
+  }
 }
 
 /* ---- 阅读字号(与阅读页 Aa 共用 store/readFont,任一处改动另一处自动同步) ---- */
@@ -457,6 +498,12 @@ function onLogout() {
   font-size: 40rpx;
   color: #d8d8d8;
   line-height: 1;
+}
+.row-hint {
+  padding: 0 32rpx 22rpx;
+  font-size: 24rpx;
+  color: #b89a7a;
+  line-height: 1.4;
 }
 .anim-switch {
   transform: scale(0.85);

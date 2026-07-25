@@ -13,7 +13,11 @@ from app.models.notification import (
     Notification,
 )
 from app.models.user import User
-from app.services.comment_mention import _snippet, create_mention_notifications
+from app.services.comment_mention import (
+    NotiTarget,
+    _snippet,
+    create_mention_notifications,
+)
 
 
 async def fanout_comment_notifications(
@@ -25,15 +29,21 @@ async def fanout_comment_notifications(
     parent: Comment | None,
     parent_author: User | None,
     mentioned_user_ids: list[int],
-) -> None:
+) -> list[NotiTarget]:
     """评论创建后调一次,把所有应发通知写进同一事务。
 
     规则:
       - 顶层评论 → 文章作者收一条 NOTI_COMMENT(自己评论自己文章不发)
       - 回复     → 被回复的顶层评论作者收一条 NOTI_REPLY(自己回复自己不发)
       - @提及    → 每个被 @用户收一条 NOTI_MENTION(去重 commenter 自己)
+
+    返回值:本次写入的 NotiTarget 列表(纯数据,commit 后访问安全),
+    供调用方在 db.commit() 成功后触发邮件通知等事务外副作用。
+    不返回 ORM Notification 对象 — 那会在 commit 后过期,async 下访问触发
+    懒加载 → MissingGreenlet(见 CLAUDE.md「关键坑」)。
     """
     notis: list[Notification] = []
+    targets: list[NotiTarget] = []
     snippet = _snippet(comment.content)
 
     if comment.parent_id is None:
@@ -48,6 +58,9 @@ async def fanout_comment_notifications(
                     comment_id=comment.id,
                     summary=snippet,
                 )
+            )
+            targets.append(
+                NotiTarget(recipient_id=article.author_id, kind=NOTI_COMMENT, summary=snippet)
             )
     else:
         # 回复 → 顶层评论作者
@@ -64,17 +77,22 @@ async def fanout_comment_notifications(
                         summary=snippet,
                     )
                 )
+                targets.append(
+                    NotiTarget(recipient_id=parent.author_id, kind=NOTI_REPLY, summary=snippet)
+                )
 
     db.add_all(notis)
 
     # @提及
-    await create_mention_notifications(
+    mention_targets = await create_mention_notifications(
         db,
         comment=comment,
         commenter=commenter,
         article=article,
         mentioned_user_ids=mentioned_user_ids,
     )
+
+    return targets + mention_targets
 
 
 async def create_comment_like_notification(

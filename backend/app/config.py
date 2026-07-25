@@ -64,6 +64,19 @@ class Settings(BaseSettings):
     comment_attempt_window_seconds: int = 60
     comment_lock_seconds: int = 300
 
+    # ---- 邮件通知 (SMTP) ----
+    # 总开关:False 时邮件模块整体 no-op(不连接 SMTP,只记日志)。
+    # 用 SSL(默认 465)时 smtp_use_tls=True;用 STARTTLS(587)时 smtp_use_tls=False。
+    smtp_enabled: bool = False
+    smtp_host: str = ""
+    smtp_port: int = 465
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""              # 发件人地址,如 noreply@example.com
+    smtp_use_tls: bool = True        # True=SSL; False=STARTTLS
+    # 邮件中显示的产品名 / 站点名
+    smtp_sender_name: str = "yinyu"
+
     # ---- 统计缓存 ----
     stats_cache_ttl_seconds: int = 300
 

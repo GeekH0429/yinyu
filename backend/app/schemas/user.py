@@ -23,6 +23,7 @@ class UserOut(BaseModel):
     avatar_url: str | None = None
     bio: str | None = None
     role: str = ROLE_USER
+    email_notify_enabled: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -37,6 +38,7 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     avatar_url: str | None = Field(None, max_length=500)
     bio: str | None = Field(None, max_length=500)
+    email_notify_enabled: bool | None = None
 
 
 class AdminUserPatch(BaseModel):
