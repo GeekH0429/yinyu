@@ -328,7 +328,10 @@ function goBack() {
   if (getCurrentPages().length > 1) {
     uni.navigateBack()
   } else {
-    uni.reLaunch({ url: '/pages/mine/index' })
+    uni.switchTab({
+      url: '/pages/mine/index',
+      fail: () => uni.reLaunch({ url: '/pages/mine/index' })
+    })
   }
 }
 </script>

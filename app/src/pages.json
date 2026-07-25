@@ -17,6 +17,17 @@
     { "path": "pages/settings/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/login/index", "style": { "navigationStyle": "custom" } }
   ],
+  "tabBar": {
+    "custom": true,
+    "color": "#bdb5a8",
+    "selectedColor": "#c4a882",
+    "backgroundColor": "#fdfbf7",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "阅读" },
+      { "pagePath": "pages/treehole/index", "text": "树洞" },
+      { "pagePath": "pages/mine/index", "text": "我的" }
+    ]
+  },
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "隐语",

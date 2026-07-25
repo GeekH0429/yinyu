@@ -251,7 +251,10 @@ async function onLike() {
 function goBack() {
   const pages = getCurrentPages()
   if (pages.length > 1) uni.navigateBack()
-  else uni.reLaunch({ url: '/pages/index/index' })
+  else uni.switchTab({
+    url: '/pages/index/index',
+    fail: () => uni.reLaunch({ url: '/pages/index/index' })
+  })
 }
 </script>
 

@@ -108,7 +108,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, nextTick } from 'vue'
 import { onShow, onReachBottom, onPullDownRefresh, onPageScroll } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { formatDate } from '../../utils/format'
@@ -134,27 +134,34 @@ const dailyOverlayVisible = ref(false) // 每日一图弹层显隐
 let searchDebounce = null
 let listReqId = 0
 
-onMounted(async () => {
-  if (isLoggedIn()) refreshUser()
-  // ① reLaunch 重挂载、内存缓存命中:还原滚动、不重载
-  if (hydrated.value && !dirty.value) {
+onShow(async () => {
+  // 首次进入(冷启动或 reLaunch 后首次):走完整水合流程
+  if (!hydrated.value) {
+    if (isLoggedIn()) refreshUser()
+    const hasSnap = hydrateFeedFromSnap()
     restoreScroll()
-    return
-  }
-  // ② 冷启动:先从持久快照水合,立即展示上次内容
-  const hasSnap = hydrateFeedFromSnap()
-  restoreScroll()
-  if (hasSnap && !dirty.value) {
-    // 有快照、未失效:后台静默刷新(不显示"加载中"),成功覆盖快照,失败保留快照
-    backgroundRefresh()
+    if (hasSnap && !dirty.value) {
+      // 有快照、未失效:后台静默刷新(不显示"加载中"),成功覆盖快照,失败保留快照
+      backgroundRefresh()
+    } else {
+      // 无快照或已失效:前台带 spinner 拉取
+      loading.value = true
+      await loadArticles(true)
+      persistFeedSnap()
+    }
+    hydrated.value = true
+    dirty.value = false
   } else {
-    // ③ 无快照或已失效:前台带 spinner 拉取
-    loading.value = true
-    await loadArticles(true)
-    persistFeedSnap()
+    // 切 tab 保活模式下回首页:还原滚动位置(模块级 store 在切走期间保留了值)
+    restoreScroll()
+    // 失效标记(写完文章/navigateBack 回来)触发前台刷新
+    if (dirty.value) {
+      dirty.value = false
+      loadArticles(true).then(() => persistFeedSnap()).catch(() => {})
+    }
   }
-  hydrated.value = true
-  dirty.value = false
+  // 每日一图:每次 App 启动进入首页时弹一次(本次会话内不重复)
+  maybeShowDaily()
 })
 
 /** 后台静默刷新(SWR revalidate):不显示 loading,成功后覆盖快照,失败时给顶部提示 */
@@ -173,16 +180,6 @@ function backgroundRefresh() {
 function dismissOffline() {
   offlineStale.value = false
 }
-
-// navigateBack(write 发完帖返回)不重挂载页面,用 onShow 处理失效刷新
-onShow(() => {
-  if (dirty.value) {
-    dirty.value = false
-    loadArticles(true).then(() => persistFeedSnap()).catch(() => {})
-  }
-  // 每日一图:今日首次打开触发弹层
-  maybeShowDaily()
-})
 
 /** 每日一图:每次 App 启动进入首页时弹一次(本次会话内不重复弹,避免 onShow 反复触发)。
  *  不做"当天只弹一次"的限制 —— 用户每次打开 App 都能看到今日图。 */

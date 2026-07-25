@@ -175,7 +175,10 @@ function describe(n) {
 function goBack() {
   const pages = getCurrentPages()
   if (pages.length > 1) uni.navigateBack()
-  else uni.reLaunch({ url: '/pages/mine/index' })
+  else uni.switchTab({
+    url: '/pages/mine/index',
+    fail: () => uni.reLaunch({ url: '/pages/mine/index' })
+  })
 }
 
 onShow(() => {

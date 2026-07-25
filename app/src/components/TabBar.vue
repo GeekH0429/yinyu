@@ -43,13 +43,25 @@ function syncCurrent() {
   }
 }
 
-onShow(syncCurrent)
+onShow(() => {
+  // App 端 pages.json 的 tabBar(custom:true)不会自动隐藏原生 tabBar(H5 端会)。
+  // 放在 onShow 里:每次 tab 页显示都强制隐一次,时机足够晚(原生 tabBar 已创建),
+  // 同时覆盖 switchTab 后某些版本会重新显现原生 tabBar 的情况。
+  // #ifdef APP-PLUS
+  uni.hideTabBar({ animation: false })
+  // #endif
+  syncCurrent()
+})
 
 function onTap(pagePath) {
   if (current.value === pagePath) return
-  // 已改用纯自定义 tabBar(无 pages.json 注册),三主页不再是 tabBar 页,switchTab 会失败,
-  // 改用 reLaunch。代价:切 tab 会重新挂载目标页(不再保活,列表/滚动位置不保留)
-  uni.reLaunch({ url: '/' + pagePath })
+  // 立即更新 current:避免切到树洞页时 onShow 还没触发,TabBar 短暂显示浅色再变深色
+  current.value = pagePath
+  // pages.json 已注册三主页为 tabBar 页(custom: true),用 switchTab 保活页面实例
+  uni.switchTab({
+    url: '/' + pagePath,
+    fail: () => uni.reLaunch({ url: '/' + pagePath })
+  })
 }
 </script>
 

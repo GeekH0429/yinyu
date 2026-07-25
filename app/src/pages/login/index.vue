@@ -73,7 +73,10 @@ async function onLogin() {
   try {
     await login(form.username, form.password)
     uni.showToast({ title: '欢迎回来', icon: 'success' })
-    setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 300)
+    setTimeout(() => uni.switchTab({
+      url: '/pages/index/index',
+      fail: () => uni.reLaunch({ url: '/pages/index/index' })
+    }), 300)
   } catch {
     /* 拦截器已提示 */
   } finally {

@@ -111,6 +111,7 @@
 
 <script setup>
 import { ref, computed, nextTick } from 'vue'
+import { onShow, onHide } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { SERVER_ORIGIN, resourceUrl, isRemoteUrl } from '../../config'
 import { extractAudio } from '../../utils/audioCard'
@@ -209,11 +210,27 @@ async function onUnlock() {
 function reset() {
   clearTimeout(rippleTimer1)
   clearTimeout(rippleTimer2)
+  clearTimeout(shakeTimer)
   unlocking.value = false
   revealed.value = null
   enteredCode.value = ''
   code.value = ''
+  pinShake.value = false
 }
+
+/* 切 tab 保活模式下,树洞页不再重挂载 → 已解锁的内容会一直停留。
+   树洞核心安全设计是"隐匿",离开页面必须清空(切走 / App 进后台都触发)。*/
+onShow(() => {
+  // 仅在确实有解锁内容或残留状态时才重置,避免冲掉首次进入的初始状态
+  if (revealed.value || code.value || unlocking.value || pinShake.value) {
+    reset()
+  }
+})
+
+// App 进入后台或锁屏时,也立即清掉(更进一步加固隐匿)
+onHide(() => {
+  if (revealed.value || unlocking.value) reset()
+})
 
 /* ---- 写树洞(写作/编辑逻辑封装进 TreeholeEditor,这里只控制显隐与刷新) ---- */
 const planeSvg = `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><path d="M1007.9 7.2C1001.8 3 994.8.8 987.2.8c-6.6 0-12.6 1.7-18.3 5.2L18.9 554.1C5.9 561.4-.2 572.6.6 587.9c1 15.7 8.7 26.2 22.8 31.5l216.4 88.8c5.6 2.3 12 1.2 16.5-2.7L859.2 184.6 380.3 771.6c-9.3 11.4-14.4 25.7-14.4 40.5v176.3c0 7.7 2.3 14.6 6.7 20.9 4.3 6.4 10.2 10.7 17.4 13.4 3.6 1.5 7.8 2.3 12.7 2.3 11.8 0 21.1-4.2 28-13.1l115.5-141.3c8.9-10.9 23.8-14.6 36.8-9.3l236.7 96.8c4.9 1.9 9.5 2.9 13.7 2.9 6.4 0 12.4-1.7 17.7-4.9 8.9-5.2 14.3-13.1 16.4-23.2L1023.7 49.4c3.4-17.1-1.3-31.5-15.8-42.2z" fill="currentColor"/></svg>`
