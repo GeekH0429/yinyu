@@ -1,7 +1,6 @@
 /**
  * HTTP 请求封装(适配 yinyu FastAPI 后端)。
  *
- * 与 pig-blog 的差异:yinyu 后端 2xx 直接返回业务对象(无 {code,data} 信封),
  * 错误为 {code, detail} + HTTP 状态码。401 时用 refresh_token 自动续期并重放一次。
  */
 import { API_BASE } from '../config'

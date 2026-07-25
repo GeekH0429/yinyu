@@ -7,10 +7,9 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  background: #f5f6f8;
-  color: #2c2c2c;
+  font-family: var(--font-sans);
+  background: var(--bg-page);
+  color: var(--text-primary);
 }
 
 * {
@@ -22,21 +21,177 @@ a {
   text-decoration: none;
 }
 
+/* ============================================================
+ * 全局卡片容器:奶油白 + 暖色边框 + 柔和阴影
+ * ============================================================ */
 .page-card {
-  background: #fff;
-  border-radius: 10px;
-  padding: 18px 20px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ============================================================
+ * 工具条:标题+搜索+按钮一行的 flex 容器
+ * 标题样式由 theme.css 的 .toolbar .title 全局控制(serif + 装饰线)
+ * ============================================================ */
 .toolbar {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
 }
 
 .toolbar .grow {
   flex: 1;
+}
+
+/* ============================================================
+ * 通用图片上传区:大块虚线区域 + 双重提示(点击/拖拽/粘贴)
+ * 横向用于封面类 320×180,方形用于头像/音频封面 120×120
+ * 各页 scoped 里的 .cover-zone / .image-zone / .avatar-row / .cover-row 复用此样式
+ * ============================================================ */
+.img-uploader {
+  position: relative;
+  border: 1.5px dashed var(--border-medium);
+  border-radius: 12px;
+  background: var(--brand-primary-mist);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.img-uploader--landscape {
+  width: 320px;
+  height: 180px;
+}
+
+.img-uploader--square {
+  width: 120px;
+  height: 120px;
+}
+
+.img-uploader:hover {
+  border-color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+}
+
+/* 拖拽高亮(沿用 yinyu 治愈粉点缀) */
+.img-uploader.is-dragover {
+  border-color: var(--accent-pink);
+  background: var(--accent-pink-mist);
+  box-shadow: 0 0 0 3px rgba(230, 122, 163, 0.2);
+}
+
+/* el-upload 用绝对定位钉死在整个 .img-uploader 上
+ * 不依赖 flex 行为(因为 EP 可能在 .img-uploader 和 .el-upload 之间注入额外节点,
+ * 破坏 flex 子项布局),absolute + inset:0 是最稳的撑满方式。
+ */
+.img-uploader .el-upload {
+  position: absolute;
+  inset: 0;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  outline: none;
+  cursor: pointer;
+}
+
+/* 空态内容撑满 el-upload 后再 flex 居中 */
+.img-uploader__empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 12px;
+  pointer-events: none;
+}
+
+.img-uploader__icon {
+  font-size: 32px;
+  color: var(--brand-primary);
+  margin-bottom: 4px;
+}
+
+.img-uploader__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.img-uploader__hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+}
+
+/* 有图态:填满预览 + 悬停遮罩 */
+.img-uploader__filled {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.img-uploader__filled img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.img-uploader__mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(60, 40, 25, 0.5);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.img-uploader__filled:hover .img-uploader__mask {
+  opacity: 1;
+}
+
+.img-uploader__mask .el-icon {
+  font-size: 20px;
+}
+
+/* 方形小尺寸时,空态字号略缩 */
+.img-uploader--square .img-uploader__icon {
+  font-size: 26px;
+}
+.img-uploader--square .img-uploader__title {
+  font-size: 13px;
+}
+.img-uploader--square .img-uploader__hint {
+  font-size: 10px;
+}
+
+/* "移除"按钮统一放在上传区右上角外 */
+.img-uploader-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }

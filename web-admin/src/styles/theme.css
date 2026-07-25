@@ -1,0 +1,153 @@
+/* ============================================================
+ * yinyu web-admin · 暖杏奶油主题变量层
+ * 主调:暖棕焦糖 + 奶油背景 + 浅杏侧边栏
+ * 治愈粉(#e67aa3)收敛为编辑器/暗号内部点缀,不进 primary 体系
+ * ============================================================ */
+
+:root {
+  /* ---- 品牌主色:暖棕焦糖 ---- */
+  --brand-primary: #b8825a;
+  --brand-primary-hover: #a06f48;
+  --brand-primary-light: #d4a373;
+  --brand-primary-soft: #f5e6d3;
+  --brand-primary-mist: #faf3ea;
+
+  /* ---- 背景与文字(暖中性) ---- */
+  --bg-page: #faf6f0;
+  --bg-card: #ffffff;
+  --bg-aside: #f4ece1;
+  --bg-aside-deep: #ede0cc;
+  --bg-aside-active: #faf3ea;
+
+  --text-primary: #3d2e22;
+  --text-secondary: #7a6553;
+  --text-tertiary: #a89a8a;
+
+  --border-soft: #ece3d6;
+  --border-medium: #d8c9b3;
+
+  /* ---- 功能色(柔化) ---- */
+  --color-success: #7fa86b;
+  --color-warning: #d99557;
+  --color-danger: #c66b6b;
+  --color-info: #9b8b7a;
+
+  /* ---- yinyu 治愈粉(仅内部点缀) ---- */
+  --accent-pink: #e67aa3;
+  --accent-pink-soft: #ffd6e7;
+  --accent-pink-mist: #fff8fb;
+
+  /* ---- 字体 ---- */
+  --font-serif: 'Songti SC', 'STSong', 'SimSun', 'Noto Serif SC', Georgia, serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+
+  /* ---- 阴影 ---- */
+  --shadow-card: 0 4px 16px rgba(184, 130, 90, 0.05);
+  --shadow-card-hover: 0 8px 24px rgba(184, 130, 90, 0.1);
+
+  /* ============================================================
+   * Element Plus 主题变量覆盖
+   * 让所有 el-button/el-link/el-tag/el-pagination 等跟随暖棕
+   * ============================================================ */
+  --el-color-primary: #b8825a;
+  --el-color-primary-light-3: #c69a72;
+  --el-color-primary-light-5: #d4b08e;
+  --el-color-primary-light-7: #e3c9ad;
+  --el-color-primary-light-8: #efd8c1;
+  --el-color-primary-light-9: #f5e6d3;
+  --el-color-primary-dark-2: #a06f48;
+
+  --el-color-success: #7fa86b;
+  --el-color-success-light-3: #a3c088;
+  --el-color-success-light-5: #b9d2a4;
+  --el-color-success-light-7: #cfe0c2;
+  --el-color-success-light-8: #dbe9d2;
+  --el-color-success-light-9: #ebf3e6;
+  --el-color-success-dark-2: #6b9159;
+
+  --el-color-warning: #d99557;
+  --el-color-warning-light-3: #e4b07e;
+  --el-color-warning-light-5: #eac498;
+  --el-color-warning-light-7: #f0d4b1;
+  --el-color-warning-light-8: #f4e0c4;
+  --el-color-warning-light-9: #f9ede0;
+  --el-color-warning-dark-2: #b87a3f;
+
+  --el-color-danger: #c66b6b;
+  --el-color-danger-light-3: #d48e8e;
+  --el-color-danger-light-5: #dfa6a6;
+  --el-color-danger-light-7: #e9bfbe;
+  --el-color-danger-light-8: #efd2d1;
+  --el-color-danger-light-9: #f6e6e6;
+  --el-color-danger-dark-2: #a55555;
+
+  --el-color-info: #9b8b7a;
+  --el-color-info-light-3: #b3a698;
+  --el-color-info-light-5: #c5bbab;
+  --el-color-info-light-7: #d6cec3;
+  --el-color-info-light-8: #e0d9cf;
+  --el-color-info-light-9: #ece7df;
+  --el-color-info-dark-2: #82735f;
+
+  --el-border-radius-base: 8px;
+  --el-border-color: var(--border-soft);
+  --el-border-color-light: var(--border-soft);
+  --el-border-color-lighter: var(--border-soft);
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-primary);
+  --el-text-color-secondary: var(--text-secondary);
+  --el-text-color-placeholder: var(--text-tertiary);
+  --el-bg-color: var(--bg-card);
+  --el-bg-color-page: var(--bg-page);
+  --el-fill-color-blank: var(--bg-card);
+  --el-font-family: var(--font-sans);
+}
+
+/* ============================================================
+ * 全局滚动条美化
+ * ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-primary);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) transparent;
+}
+
+/* ============================================================
+ * 全局:toolbar 标题统一 serif 字体 + 装饰短横线
+ * 所有列表页/编辑页的 .toolbar .title 自动受益
+ * ============================================================ */
+.toolbar .title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+  position: relative;
+  padding-bottom: 8px;
+}
+.toolbar .title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 28px;
+  height: 2px;
+  background: var(--brand-primary);
+  border-radius: 2px;
+}

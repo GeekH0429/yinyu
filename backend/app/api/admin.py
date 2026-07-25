@@ -202,7 +202,11 @@ async def admin_list_comments(
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    """管理后台:全部评论,支持按文章/关键词过滤。"""
+    """管理后台:全部评论,支持按文章/关键词过滤。
+
+    下发字段含 article_title(文章标题)和 reply_to(被回复用户),
+    供后台表格直接展示,无需前端二次查询。
+    """
     conds = []
     if article_id:
         conds.append(Comment.article_id == article_id)
@@ -212,14 +216,33 @@ async def admin_list_comments(
         select(func.count()).select_from(Comment).where(*conds)
     )
     rows = await db.execute(
-        select(Comment, User)
+        select(Comment, User, Article)
         .join(User, User.id == Comment.author_id)
+        .join(Article, Article.id == Comment.article_id)
         .where(*conds)
         .order_by(Comment.created_at.desc())
         .offset(offset_of(page, page_size))
         .limit(page_size)
     )
-    items = [to_comment_out(c, u) for c, u in rows.all()]
+    pairs = rows.all()  # list of (Comment, User, Article)
+
+    # 批量取所有被回复用户(避免 N+1;reply_to_user_id 不一定等于 parent.author_id,
+    # 一条顶层评论下可以有多条回复各自指向不同用户)
+    reply_to_ids = {c.reply_to_user_id for c, _, _ in pairs if c.reply_to_user_id}
+    reply_users_map: dict[int, User] = {}
+    if reply_to_ids:
+        u_rows = await db.execute(select(User).where(User.id.in_(reply_to_ids)))
+        reply_users_map = {u.id: u for u in u_rows.scalars().all()}
+
+    items = [
+        to_comment_out(
+            c,
+            u,
+            reply_to=reply_users_map.get(c.reply_to_user_id) if c.reply_to_user_id else None,
+            article_title=a.title,
+        )
+        for c, u, a in pairs
+    ]
     return Page[CommentOut](items=items, total=total or 0, page=page, page_size=page_size)
 
 

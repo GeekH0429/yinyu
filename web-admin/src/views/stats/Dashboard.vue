@@ -14,28 +14,48 @@
     <el-row :gutter="16" class="overview-cards">
       <el-col :xs="24" :sm="12" :md="8" :lg="6">
         <div class="stat-card">
-          <div class="label">总用户数</div>
+          <div class="stat-head">
+            <div class="stat-icon stat-icon-user">
+              <el-icon><User /></el-icon>
+            </div>
+            <div class="label">总用户数</div>
+          </div>
           <div class="value">{{ overview.total_users?.toLocaleString() || 0 }}</div>
           <div class="delta">+{{ overview.new_users || 0 }} 新增</div>
         </div>
       </el-col>
       <el-col :xs="24" :sm="12" :md="8" :lg="6">
         <div class="stat-card">
-          <div class="label">总文章数</div>
+          <div class="stat-head">
+            <div class="stat-icon stat-icon-doc">
+              <el-icon><Document /></el-icon>
+            </div>
+            <div class="label">总文章数</div>
+          </div>
           <div class="value">{{ overview.total_articles?.toLocaleString() || 0 }}</div>
           <div class="delta">已发布 {{ overview.total_published || 0 }}</div>
         </div>
       </el-col>
       <el-col :xs="24" :sm="12" :md="8" :lg="6">
         <div class="stat-card">
-          <div class="label">总树洞数</div>
+          <div class="stat-head">
+            <div class="stat-icon stat-icon-tree">
+              <el-icon><ChatDotRound /></el-icon>
+            </div>
+            <div class="label">总树洞数</div>
+          </div>
           <div class="value">{{ overview.total_treeholes?.toLocaleString() || 0 }}</div>
           <div class="delta">+{{ overview.new_treeholes || 0 }} 新增</div>
         </div>
       </el-col>
       <el-col :xs="24" :sm="12" :md="8" :lg="6">
         <div class="stat-card">
-          <div class="label">媒体文件</div>
+          <div class="stat-head">
+            <div class="stat-icon stat-icon-media">
+              <el-icon><Picture /></el-icon>
+            </div>
+            <div class="label">媒体文件</div>
+          </div>
           <div class="value">{{ overview.total_media?.toLocaleString() || 0 }}</div>
           <div class="delta">{{ formatBytes(overview.total_storage_bytes) }}</div>
         </div>
@@ -46,14 +66,26 @@
     <el-row :gutter="16" class="interaction-cards">
       <el-col :xs="24" :sm="12">
         <div class="stat-card stat-card-primary">
-          <div class="label">总浏览量</div>
+          <div class="stat-head">
+            <div class="stat-icon-bg stat-icon-view">
+              <el-icon><View /></el-icon>
+            </div>
+            <div class="label">总浏览量</div>
+          </div>
           <div class="value">{{ overview.total_views?.toLocaleString() || 0 }}</div>
+          <div class="delta">温柔的注视</div>
         </div>
       </el-col>
       <el-col :xs="24" :sm="12">
         <div class="stat-card stat-card-success">
-          <div class="label">总点赞数</div>
+          <div class="stat-head">
+            <div class="stat-icon-bg stat-icon-like">
+              <el-icon><Star /></el-icon>
+            </div>
+            <div class="label">总点赞数</div>
+          </div>
           <div class="value">{{ overview.total_likes?.toLocaleString() || 0 }}</div>
+          <div class="delta">心意的回响</div>
         </div>
       </el-col>
     </el-row>
@@ -126,6 +158,14 @@ import {
   GridComponent
 } from 'echarts/components'
 import VChart from 'vue-echarts'
+import {
+  User,
+  Document,
+  ChatDotRound,
+  Picture,
+  View,
+  Star
+} from '@element-plus/icons-vue'
 import { api } from '@/api'
 import { ElMessage } from 'element-plus'
 
@@ -149,29 +189,50 @@ const trendData = ref({
 const topArticles = ref([])
 const activeUsers = ref([])
 
+// 暖色主题色(与 CSS 变量保持一致,echarts canvas 不读 CSS 故硬编码)
+const COLOR_PRIMARY = '#b8825a'   // 暖棕焦糖
+const COLOR_SUCCESS = '#7fa86b'   // 雾绿
+const COLOR_WARNING = '#d99557'   // 暖橙
+
 // 用户增长趋势配置
 const userTrendOption = computed(() => ({
   tooltip: { trigger: 'axis' },
   xAxis: {
     type: 'category',
-    data: trendData.value.users.map(p => p.date)
+    data: trendData.value.users.map(p => p.date),
+    axisLine: { lineStyle: { color: '#d8c9b3' } },
+    axisLabel: { color: '#7a6553' }
   },
-  yAxis: { type: 'value' },
+  yAxis: {
+    type: 'value',
+    axisLine: { show: false },
+    axisTick: { show: false },
+    splitLine: { lineStyle: { color: '#ece3d6', type: 'dashed' } },
+    axisLabel: { color: '#7a6553' }
+  },
   series: [{
     name: '新增用户',
     type: 'line',
     data: trendData.value.users.map(p => p.count),
     smooth: true,
-    areaStyle: { opacity: 0.3 },
-    itemStyle: { color: '#409EFF' }
+    areaStyle: {
+      color: {
+        type: 'linear',
+        x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [
+          { offset: 0, color: 'rgba(184, 130, 90, 0.35)' },
+          { offset: 1, color: 'rgba(184, 130, 90, 0.02)' }
+        ]
+      }
+    },
+    lineStyle: { color: COLOR_PRIMARY, width: 2 },
+    itemStyle: { color: COLOR_PRIMARY }
   }]
 }))
 
 // 内容发布趋势配置
 const contentTrendOption = computed(() => {
   // 以并集日期作为 x 轴,通过 Map 对齐两个 series,缺失日期补 0
-  // (旧实现用 .map(p => p.count) 按索引对齐,某天只有 treehole 没 article
-  //   时 article 线会整体左移错位)
   const dates = [...new Set([
     ...trendData.value.articles.map(p => p.date),
     ...trendData.value.treeholes.map(p => p.date)
@@ -180,26 +241,40 @@ const contentTrendOption = computed(() => {
   const tm = new Map(trendData.value.treeholes.map(p => [p.date, p.count]))
   return {
     tooltip: { trigger: 'axis' },
-    legend: { data: ['文章', '树洞'] },
+    legend: {
+      data: ['文章', '树洞'],
+      icon: 'roundRect',
+      textStyle: { color: '#7a6553' }
+    },
     xAxis: {
       type: 'category',
-      data: dates
+      data: dates,
+      axisLine: { lineStyle: { color: '#d8c9b3' } },
+      axisLabel: { color: '#7a6553' }
     },
-    yAxis: { type: 'value' },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: '#ece3d6', type: 'dashed' } },
+      axisLabel: { color: '#7a6553' }
+    },
     series: [
       {
         name: '文章',
         type: 'line',
         data: dates.map(d => am.get(d) ?? 0),
         smooth: true,
-        itemStyle: { color: '#67C23A' }
+        lineStyle: { color: COLOR_SUCCESS, width: 2 },
+        itemStyle: { color: COLOR_SUCCESS }
       },
       {
         name: '树洞',
         type: 'line',
         data: dates.map(d => tm.get(d) ?? 0),
         smooth: true,
-        itemStyle: { color: '#E6A23C' }
+        lineStyle: { color: COLOR_WARNING, width: 2 },
+        itemStyle: { color: COLOR_WARNING }
       }
     ]
   }
@@ -262,12 +337,11 @@ onMounted(() => {
 .toolbar {
   display: flex;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .title {
   margin: 0;
-  font-size: 18px;
 }
 
 .grow {
@@ -280,76 +354,152 @@ onMounted(() => {
   margin-bottom: 16px;
 }
 
+/* ============================================================
+ * 数据卡片:奶油底 + 圆形图标徽章
+ * ============================================================ */
 .stat-card {
-  background: #fff;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  padding: 20px 22px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
   margin-bottom: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
 .stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow-card-hover);
 }
 
-.stat-card-primary {
-  background: linear-gradient(135deg, #409EFF 0%, #79bbff 100%);
-  color: white;
+.stat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
-.stat-card-success {
-  background: linear-gradient(135deg, #67C23A 0%, #95d475 100%);
-  color: white;
+.stat-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background: var(--brand-primary-mist);
+  color: var(--brand-primary);
 }
+
+/* 不同概览卡图标色调微调(都用暖色系) */
+.stat-icon-user { background: #f5e6d3; color: #b8825a; }
+.stat-icon-doc  { background: #ebf3e6; color: #7fa86b; }
+.stat-icon-tree { background: #f9ede0; color: #d99557; }
+.stat-icon-media { background: #f6e6e6; color: #c66b6b; }
 
 .stat-card .label {
   font-size: 13px;
-  color: #909399;
-  margin-bottom: 8px;
-}
-
-.stat-card-primary .label,
-.stat-card-success .label {
-  color: rgba(255,255,255,0.8);
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .stat-card .value {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 4px;
-}
-
-.stat-card-primary .value,
-.stat-card-success .value {
-  color: white;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  font-family: var(--font-serif);
+  letter-spacing: 0.5px;
 }
 
 .stat-card .delta {
   font-size: 12px;
-  color: #67C23A;
+  color: var(--brand-primary);
+  letter-spacing: 0.3px;
+}
+
+/* 互动卡片:渐变底 + 反白文字 */
+.stat-card-primary {
+  background: linear-gradient(135deg, #b8825a 0%, #d4a373 100%);
+  color: #fff;
+  border-color: transparent;
+}
+
+.stat-card-success {
+  background: linear-gradient(135deg, #7fa86b 0%, #a3c088 100%);
+  color: #fff;
+  border-color: transparent;
+}
+
+.stat-card-primary .label,
+.stat-card-success .label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.stat-card-primary .value,
+.stat-card-success .value {
+  color: #fff;
 }
 
 .stat-card-primary .delta,
 .stat-card-success .delta {
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.85);
 }
 
+/* 互动卡内的图标徽章反白 */
+.stat-icon-bg {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.stat-icon-view { background: rgba(255, 255, 255, 0.25); }
+.stat-icon-like { background: rgba(255, 255, 255, 0.25); }
+
+/* ============================================================
+ * 图表/排行榜容器
+ * ============================================================ */
 .chart-container,
 .rank-container {
-  background: #fff;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  padding: 20px 22px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
   height: 100%;
+  margin-bottom: 16px;
 }
 
 .chart-container h3,
 .rank-container h3 {
   margin: 0 0 16px 0;
-  font-size: 14px;
-  color: #606266;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  letter-spacing: 0.5px;
+  position: relative;
+  padding-left: 12px;
+}
+
+.chart-container h3::before,
+.rank-container h3::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 14px;
+  background: var(--brand-primary);
+  border-radius: 2px;
 }
 </style>

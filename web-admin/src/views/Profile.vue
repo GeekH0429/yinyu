@@ -4,13 +4,37 @@
       <h2 class="title">个人资料</h2>
       <el-form :model="form" label-width="100px" v-loading="loading" style="max-width: 560px">
         <el-form-item label="头像">
-          <div class="avatar-row upload-zone" ref="avatarZoneRef" :class="{ 'is-dragover': avatarDrag }">
-            <el-avatar :size="72" :src="form.avatar_url">
-              {{ (form.nickname || '?').slice(0, 1) }}
-            </el-avatar>
-            <el-upload :show-file-list="false" :before-upload="onAvatar" accept="image/*">
-              <el-button :loading="avatarUploading" size="small">更换头像</el-button>
-            </el-upload>
+          <div class="avatar-wrap">
+            <div
+              class="avatar-row upload-zone img-uploader img-uploader--square"
+              ref="avatarZoneRef"
+              :class="{ 'is-dragover': avatarDrag }"
+            >
+              <el-upload :show-file-list="false" :before-upload="onAvatar" accept="image/*">
+                <div v-if="form.avatar_url" class="img-uploader__filled">
+                  <img :src="form.avatar_url" alt="avatar" />
+                  <div class="img-uploader__mask">
+                    <el-icon><Refresh /></el-icon>
+                    <span>更换</span>
+                  </div>
+                </div>
+                <div v-else class="img-uploader__empty">
+                  <el-icon class="img-uploader__icon"><Picture /></el-icon>
+                  <div class="img-uploader__title">上传头像</div>
+                  <div class="img-uploader__hint">点击 / 拖拽 / 粘贴</div>
+                </div>
+              </el-upload>
+            </div>
+            <div class="avatar-side">
+              <div class="avatar-hint">支持 JPG / PNG,推荐方形</div>
+              <el-button
+                v-if="form.avatar_url"
+                link
+                type="danger"
+                size="small"
+                @click="form.avatar_url = ''"
+              >移除头像</el-button>
+            </div>
           </div>
         </el-form-item>
         <el-form-item label="用户名">
@@ -54,6 +78,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Picture, Refresh } from '@element-plus/icons-vue'
 import { api } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { useImageDropPaste } from '@/composables/useImageDropPaste'
@@ -134,16 +159,22 @@ onMounted(loadProfile)
   margin: 0 0 18px;
   font-size: 18px;
 }
-.avatar-row {
+.avatar-wrap {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 8px;
-  border-radius: 6px;
-  transition: background 0.15s, box-shadow 0.15s;
 }
-.avatar-row.is-dragover {
-  background: #fff8fb;
-  box-shadow: 0 0 0 2px rgba(230, 122, 163, 0.25);
+.avatar-row {
+  /* 尺寸/dragover 由全局 .img-uploader 控制 */
+}
+.avatar-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.avatar-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.3px;
 }
 </style>

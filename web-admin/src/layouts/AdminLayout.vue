@@ -1,18 +1,16 @@
 <template>
   <el-container class="layout">
-    <el-aside :width="collapsed ? '64px' : '210px'" class="aside">
+    <el-aside :width="collapsed ? '64px' : '220px'" class="aside">
       <div class="logo">
-        <span v-if="!collapsed">yinyu</span>
-        <span v-else>Y</span>
+        <span v-if="!collapsed" class="logo-text">yinyu</span>
+        <span v-else class="logo-mark">y</span>
       </div>
       <el-menu
         :default-active="activeMenu"
         :collapse="collapsed"
         :collapse-transition="false"
         router
-        background-color="#2b2b3c"
-        text-color="#cfcfe0"
-        active-text-color="#ffd6e7"
+        class="aside-menu"
       >
         <el-menu-item index="/articles" :icon="Document">
           <span>图文管理</span>
@@ -41,6 +39,9 @@
           <span>个人资料</span>
         </el-menu-item>
       </el-menu>
+      <div v-if="!collapsed" class="aside-footer">
+        <span class="aside-footer-text">温暖治愈的精神角落</span>
+      </div>
     </el-aside>
 
     <el-container>
@@ -52,11 +53,11 @@
         <div class="grow"></div>
         <el-dropdown @command="onCommand">
           <span class="user-chip">
-            <el-avatar :size="28" :src="auth.user?.avatar_url">
+            <el-avatar :size="30" :src="auth.user?.avatar_url">
               {{ (auth.user?.nickname || auth.user?.username || '?').slice(0, 1) }}
             </el-avatar>
             <span class="uname">{{ auth.user?.nickname || auth.user?.username }}</span>
-            <el-tag v-if="auth.isAdmin" size="small" type="warning" effect="plain">管理员</el-tag>
+            <span v-if="auth.isAdmin" class="admin-chip">管理员</span>
           </span>
           <template #dropdown>
             <el-dropdown-menu>
@@ -115,53 +116,179 @@ function onCommand(cmd) {
 .layout {
   height: 100vh;
 }
+
+/* ============================================================
+ * 侧边栏:浅杏奶油底,告别深紫黑
+ * ============================================================ */
 .aside {
-  background: #2b2b3c;
-  transition: width 0.2s;
+  background: var(--bg-aside);
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-soft);
 }
+
 .logo {
-  height: 56px;
-  color: #fff;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  border-bottom: 1px solid var(--border-soft);
+  padding: 0 16px;
+}
+
+.logo-text {
+  font-family: var(--font-serif);
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: 2px;
-  font-family: 'Georgia', serif;
+  letter-spacing: 4px;
+  color: var(--text-primary);
+  position: relative;
 }
-.aside :deep(.el-menu) {
+
+.logo-text::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: var(--brand-primary);
+  border-radius: 2px;
+}
+
+.logo-mark {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--brand-primary);
+}
+
+.aside-menu {
+  flex: 1;
   border-right: none;
+  background: transparent !important;
+  padding: 10px 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
+
+/* el-menu-item 浅色暖调样式覆盖 */
+.aside-menu :deep(.el-menu-item) {
+  color: var(--text-secondary);
+  background: transparent !important;
+  border-radius: 8px;
+  margin-bottom: 2px;
+  height: 44px;
+  line-height: 44px;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.aside-menu :deep(.el-menu-item:hover) {
+  background: var(--brand-primary-mist) !important;
+  color: var(--text-primary);
+}
+
+.aside-menu :deep(.el-menu-item.is-active) {
+  background: var(--bg-aside-active) !important;
+  color: var(--brand-primary) !important;
+  font-weight: 500;
+}
+
+.aside-menu :deep(.el-menu-item.is-active::before) {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  background: var(--brand-primary);
+  border-radius: 0 3px 3px 0;
+}
+
+/* 折叠态菜单图标居中 */
+.aside-menu :deep(.el-menu--collapse .el-menu-item) {
+  text-align: center;
+}
+
+.aside-footer {
+  padding: 14px 16px 18px;
+  border-top: 1px solid var(--border-soft);
+  text-align: center;
+}
+
+.aside-footer-text {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 1px;
+}
+
+/* ============================================================
+ * 头部:奶油白 + 微妙下边框
+ * ============================================================ */
 .header {
-  background: #fff;
+  background: var(--bg-card);
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-soft);
+  height: 56px;
 }
+
 .collapse-btn {
   font-size: 20px;
   cursor: pointer;
-  color: #666;
+  color: var(--text-secondary);
+  transition: color 0.15s ease;
+  padding: 6px;
+  border-radius: 6px;
 }
+
+.collapse-btn:hover {
+  color: var(--brand-primary);
+  background: var(--brand-primary-mist);
+}
+
 .grow {
   flex: 1;
 }
+
 .user-chip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
   outline: none;
+  padding: 4px 10px 4px 4px;
+  border-radius: 20px;
+  transition: background 0.15s ease;
 }
+
+.user-chip:hover {
+  background: var(--brand-primary-mist);
+}
+
 .uname {
   font-size: 14px;
-  color: #333;
+  color: var(--text-primary);
+  font-weight: 500;
 }
+
+.admin-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary-hover);
+  letter-spacing: 0.5px;
+}
+
 .main {
-  padding: 18px;
+  padding: 22px;
   overflow-y: auto;
 }
 </style>

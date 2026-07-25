@@ -24,6 +24,7 @@ class CommentCreate(BaseModel):
 class CommentOut(BaseModel):
     id: int
     article_id: int
+    article_title: str | None = None
     author: AuthorBrief
     content: str
     parent_id: int | None = None
@@ -43,11 +44,13 @@ def to_comment_out(
     reply_to: User | None = None,
     mentioned_users: list[User] | None = None,
     liked_by_me: bool = False,
+    article_title: str | None = None,
 ) -> CommentOut:
     """Comment + 作者 → CommentOut 的唯一映射,所有路由复用。"""
     return CommentOut(
         id=c.id,
         article_id=c.article_id,
+        article_title=article_title,
         author=AuthorBrief.model_validate(author),
         content=c.content,
         parent_id=c.parent_id,

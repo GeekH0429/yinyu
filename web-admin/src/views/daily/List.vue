@@ -66,18 +66,38 @@
           />
         </el-form-item>
         <el-form-item label="图片" prop="image_url">
-          <div class="image-zone upload-zone" ref="imageZoneRef" :class="{ 'is-dragover': imageDrag }">
-            <el-upload
-              :show-file-list="false"
-              :before-upload="onImageUpload"
-              accept="image/*"
+          <div class="image-wrap">
+            <div
+              class="image-zone upload-zone img-uploader img-uploader--landscape"
+              ref="imageZoneRef"
+              :class="{ 'is-dragover': imageDrag }"
             >
-              <div v-if="form.image_url" class="img-preview">
-                <img :src="form.image_url" alt="daily" />
-              </div>
-              <el-button v-else :icon="Picture" :loading="uploading">上传图片</el-button>
-            </el-upload>
-            <el-button v-if="form.image_url" link type="danger" @click="form.image_url = ''">移除</el-button>
+              <el-upload
+                :show-file-list="false"
+                :before-upload="onImageUpload"
+                accept="image/*"
+              >
+                <div v-if="form.image_url" class="img-uploader__filled">
+                  <img :src="form.image_url" alt="daily" />
+                  <div class="img-uploader__mask">
+                    <el-icon><Refresh /></el-icon>
+                    <span>更换图片</span>
+                  </div>
+                </div>
+                <div v-else class="img-uploader__empty">
+                  <el-icon class="img-uploader__icon"><Picture /></el-icon>
+                  <div class="img-uploader__title">点击上传图片</div>
+                  <div class="img-uploader__hint">支持拖拽到此处 · Ctrl+V 粘贴</div>
+                </div>
+              </el-upload>
+            </div>
+            <el-button
+              v-if="form.image_url"
+              link
+              type="danger"
+              size="small"
+              @click="form.image_url = ''"
+            >移除图片</el-button>
           </div>
         </el-form-item>
         <el-form-item label="标题" prop="title">
@@ -104,7 +124,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
-import { Plus, Picture } from '@element-plus/icons-vue'
+import { Plus, Picture, Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/api'
 import { useImageDropPaste } from '@/composables/useImageDropPaste'
@@ -275,23 +295,13 @@ onMounted(loadData)
   margin: 0;
   font-size: 18px;
 }
-.image-zone {
+.image-wrap {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
-  border-radius: 6px;
-  transition: background 0.15s, box-shadow 0.15s;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
-.image-zone.is-dragover {
-  background: #fff8fb;
-  box-shadow: 0 0 0 2px rgba(230, 122, 163, 0.25);
-}
-.img-preview img {
-  width: 220px;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 6px;
-  display: block;
+.image-zone {
+  /* 尺寸/dragover 由全局 .img-uploader 控制 */
 }
 </style>

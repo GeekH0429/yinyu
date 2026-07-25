@@ -1,6 +1,6 @@
 # 隐语 App(uni-app 客户端)
 
-治愈系图文 + 树洞的移动端,基于 **uni-app (Vue 3 + Vite)**。UI 审美参考自 pig-blog(暖白 `#FDFBF7` + 木褐 `#C4A882` + 苔绿 `#88A07A` + 落日粉 `#E8C4C4`,大圆角卡片 + 柔阴影)。
+治愈系图文 + 树洞的移动端,基于 **uni-app (Vue 3 + Vite)**。UI 审美参考(暖白 `#FDFBF7` + 木褐 `#C4A882` + 苔绿 `#88A07A` + 落日粉 `#E8C4C4`,大圆角卡片 + 柔阴影)。
 
 ## 模块
 - **阅读**(首页):图文 feed,标签筛选,下拉加载,点进详情(mp-html 渲染图/音/视频)
@@ -38,6 +38,3 @@ npm run build:mp-weixin
 - **资源 URL**:`config/resourceUrl()` 把后端的 `/uploads/xxx` 补成完整地址。
 - **TabBar**:自定义组件 `components/TabBar.vue`(内联 SVG,暖色高亮),通过 `uni.reLaunch` 切换三个主页面。
 - **登录守卫**:`App.vue` onLaunch 未登录即 `reLaunch` 到登录页;`mine` 页 onShow 复核。
-
-## 与 pig-blog 的差异(重要)
-pig-blog 后端用 `{code:0,data}` 信封;**yinyu 后端是 FastAPI 直接返回对象,错误为 `{code,detail}`**。所以 `utils/request.js` 是按 yinyu 重写的(2xx 直接 resolve `res.data`),不要照搬 pig-blog 的解析。

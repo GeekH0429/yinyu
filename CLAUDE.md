@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 yinyu 是一个治愈系图文 App,提供极致私密、温暖治愈的精神角落。技术栈由用户敲定:
 - **后端**:`backend/` — FastAPI(Python 3.12)+ PostgreSQL(async SQLAlchemy / asyncpg)+ Redis
 - **Web 管理后台**:`web-admin/` — Vue 3 + Vite + Element Plus + **TipTap v3** 富文本(主力写作,图/音/视频)
-- **App 客户端**:`app/` — uni-app (Vue3 + Vite),暖色治愈 UI(审美参考 `D:\code\pig-blog`)。阅读为主 + 轻量写作(图文/树洞)。已通过 `build:h5`。
+- **App 客户端**:`app/` — uni-app (Vue3 + Vite),暖色治愈 UI。阅读为主 + 轻量写作(图文/树洞)。已通过 `build:h5`。
 - **文件存储**:本地 `/data/uploads/`,生产由 Nginx 直接代理 `/uploads/`
 - **登录**:账号密码 + JWT(access + refresh)+ **邀请码注册**(封闭社区)
 - **部署目标**:**宝塔面板(BT Panel)Linux 服务器**,**坚决不用 Docker**(PG/Redis/Nginx/Python 项目都走宝塔)
@@ -19,10 +19,10 @@ yinyu 是一个治愈系图文 App,提供极致私密、温暖治愈的精神角
 
 ## 常用命令
 
-后端在 conda 环境 `blogPigV312`(路径 `C:\Users\geekdx\.conda\envs\blogPigV312`)。bash 里用绝对路径调用(bash 命令的 cwd 不跨调用保留):
+后端在 conda 环境 `blogPigV312`(路径 `C:\Users\用户名\.conda\envs\blogPigV312`)。bash 里用绝对路径调用(bash 命令的 cwd 不跨调用保留):
 
 ```bash
-PY="/c/Users/geekdx/.conda/envs/blogPigV312/python.exe"
+PY="/c/Users/用户名/.conda/envs/blogPigV312/python.exe"
 
 # 后端(必须先 cd 到 backend,否则找不到 app 包 / .env)
 cd /d/code/yinyu/backend
@@ -99,11 +99,10 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 - 很多扩展是**命名导出**(无 default),例如 `@tiptap/extension-text-style` 只能 `import { TextStyle }`。`@tiptap/starter-kit` **已内置 underline + link**(不要再单独装/导入,会重复注册)。
 
 **App 客户端(uni-app)**
-- `app/src/utils/request.js` 按 **yinyu 后端**重写:2xx 直接 `resolve(res.data)`(FastAPI 直返对象),**不要**照搬 pig-blog 的 `{code:0,data}` 信封解析。401 用 refresh_token 续期并重放一次,失败跳登录。
 - 后端地址在 `app/src/config/index.js` 的 `SERVER_ORIGIN`(H5=127.0.0.1:8000;真机/小程序必须改局域网 IP 且同网段;生产改域名)。换环境只改这一处。
 - 富文本阅读用 `<mp-html>`(`pages.json` easycom 已注册),渲染 `content_html` 里的图/音/视频。
 - TabBar 是自定义组件 `components/TabBar.vue`(内联 SVG),三主页用 `uni.reLaunch` 切换;写作经首页 FAB 进入 `pages/write`。
-- @dcloudio 包用固定 alpha 版本 `3.0.0-5000720260410001`(与 pig-blog 对齐,已知可装可编译)。
+- @dcloudio 包用固定 alpha 版本 `3.0.0-5000720260410001`
 
 ## dev 与生产差异
 - 开发期 `main.py` 在 `APP_ENV=dev` 时挂 `/uploads` 静态(`StaticFiles`),前端能直接预览上传文件;**生产由 Nginx 直接 alias `/data/uploads/`**,不走 Python。`.env` 的 `UPLOAD_DIR` 在 Windows dev 下用相对路径(如 `./_uploads`)避开 `/data/uploads` 在 Windows 的路径问题。

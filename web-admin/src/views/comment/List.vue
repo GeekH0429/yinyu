@@ -27,17 +27,19 @@
           <span class="cmt-content">{{ row.content }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="文章" width="110">
+      <el-table-column label="文章" min-width="200" show-overflow-tooltip>
         <template #default="{ row }">
-          <el-link type="primary" @click="goArticle(row.article_id)">#{{ row.article_id }}</el-link>
+          <el-link type="primary" @click="goArticle(row.article_id)">
+            {{ row.article_title || ('#' + row.article_id) }}
+          </el-link>
         </template>
       </el-table-column>
       <el-table-column label="作者" width="130">
         <template #default="{ row }">{{ row.author?.nickname || row.author?.id }}</template>
       </el-table-column>
-      <el-table-column label="回复目标" width="120">
+      <el-table-column label="回复目标" width="130">
         <template #default="{ row }">
-          <span v-if="row.parent_id">→ #{{ row.parent_id }}</span>
+          <span v-if="row.reply_to" class="reply-to">→ {{ row.reply_to.nickname || row.reply_to.id }}</span>
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>

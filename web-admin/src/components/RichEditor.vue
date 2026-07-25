@@ -60,18 +60,28 @@
           <el-input v-model="audioDialog.artist" maxlength="60" placeholder="谁的作品?(可选)" />
         </el-form-item>
         <el-form-item label="封面图">
-          <div class="cover-row upload-zone" ref="audioCoverZoneRef" :class="{ 'is-dragover': audioCoverDrag }">
-            <el-upload
-              :show-file-list="false"
-              :before-upload="onCoverUpload"
-              accept="image/*"
-            >
-              <div v-if="audioDialog.cover" class="cover-preview">
-                <img :src="audioDialog.cover" alt="cover" />
-              </div>
-              <el-button v-else :loading="coverUploading" size="small">上传封面</el-button>
-            </el-upload>
-            <el-button v-if="audioDialog.cover" link type="danger" size="small" @click="audioDialog.cover = ''">移除</el-button>
+          <div class="audio-cover-wrap">
+            <div class="cover-row upload-zone img-uploader img-uploader--square" ref="audioCoverZoneRef" :class="{ 'is-dragover': audioCoverDrag }">
+              <el-upload
+                :show-file-list="false"
+                :before-upload="onCoverUpload"
+                accept="image/*"
+              >
+                <div v-if="audioDialog.cover" class="img-uploader__filled">
+                  <img :src="audioDialog.cover" alt="cover" />
+                  <div class="img-uploader__mask">
+                    <el-icon><Refresh /></el-icon>
+                    <span>更换</span>
+                  </div>
+                </div>
+                <div v-else class="img-uploader__empty">
+                  <el-icon class="img-uploader__icon"><Picture /></el-icon>
+                  <div class="img-uploader__title">上传封面</div>
+                  <div class="img-uploader__hint">点击 / 拖拽 / 粘贴</div>
+                </div>
+              </el-upload>
+            </div>
+            <el-button v-if="audioDialog.cover" link type="danger" size="small" @click="audioDialog.cover = ''">移除封面</el-button>
           </div>
         </el-form-item>
       </el-form>
@@ -86,6 +96,7 @@
 <script setup>
 import { ref, reactive, watch, onBeforeUnmount } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
+import { Picture, Refresh } from '@element-plus/icons-vue'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -319,10 +330,13 @@ async function onLink() {
 
 <style scoped>
 .tiptap-wrap {
-  border: 1px solid #dcdfe6;
-  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
   overflow: hidden;
   transition: border-color 0.15s, box-shadow 0.15s;
+}
+.tiptap-wrap:hover {
+  border-color: var(--brand-primary-light);
 }
 .tiptap-wrap.is-dragover {
   border-color: #e67aa3;
@@ -341,8 +355,8 @@ async function onLink() {
   gap: 2px;
   flex-wrap: wrap;
   padding: 8px 10px;
-  border-bottom: 1px solid #ececec;
-  background: #fafafa;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--brand-primary-mist);
 }
 .t-toolbar .grow {
   flex: 1;
@@ -350,21 +364,23 @@ async function onLink() {
 .t-toolbar .sep {
   width: 1px;
   height: 20px;
-  background: #ddd;
+  background: var(--border-medium);
   margin: 0 6px;
 }
 .tb {
   border: 1px solid transparent;
-  background: #fff;
-  border-radius: 4px;
+  background: var(--bg-card);
+  border-radius: 6px;
   padding: 4px 9px;
   font-size: 13px;
-  color: #444;
+  color: var(--text-secondary);
   cursor: pointer;
   line-height: 1.4;
+  transition: all 0.15s ease;
 }
 .tb:hover {
-  background: #f0f0f0;
+  background: var(--brand-primary-soft);
+  color: var(--text-primary);
 }
 .tb.active {
   background: #ffe0ec;
@@ -387,10 +403,10 @@ async function onLink() {
   align-items: center;
   gap: 10px;
   padding: 6px 14px;
-  background: #fafafa;
-  border-top: 1px solid #ececec;
+  background: var(--brand-primary-mist);
+  border-top: 1px solid var(--border-soft);
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
 }
 .t-progress-label {
   flex-shrink: 0;
@@ -434,7 +450,7 @@ async function onLink() {
 .t-content :deep(.ProseMirror) blockquote {
   border-left: 3px solid #ffd6e7;
   padding-left: 12px;
-  color: #666;
+  color: var(--text-secondary);
   margin: 0.5em 0;
 }
 .t-content :deep(.ProseMirror) ul,
@@ -449,7 +465,7 @@ async function onLink() {
 .t-content :deep(.ProseMirror p.is-editor-empty:first-child::before) {
   content: attr(data-placeholder);
   float: left;
-  color: #aaa;
+  color: var(--text-tertiary);
   pointer-events: none;
   height: 0;
 }
@@ -458,24 +474,14 @@ async function onLink() {
   padding-bottom: 4px;
 }
 .upload-zone {
-  border-radius: 6px;
+  border-radius: 12px;
   transition: background 0.15s, box-shadow 0.15s;
 }
-.upload-zone.is-dragover {
-  background: #fff8fb;
-  box-shadow: 0 0 0 2px rgba(230, 122, 163, 0.25);
-}
-.cover-row {
+.audio-cover-wrap {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
-.cover-preview img {
-  width: 96px;
-  height: 96px;
-  object-fit: cover;
-  border-radius: 8px;
-  display: block;
-  cursor: pointer;
-}
+/* cover-row 的尺寸/dragover 由全局 .img-uploader 控制 */
 </style>
