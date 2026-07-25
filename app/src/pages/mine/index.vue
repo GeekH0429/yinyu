@@ -3,15 +3,12 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="header">
-      <text class="header-title serif">我的</text>
-      <view class="header-actions">
-        <view class="header-action" @tap="goNotifications">
-          <text class="bell">🔔</text>
-          <view v-if="unreadCount > 0" class="badge-dot"></view>
-        </view>
-        <view class="header-action" @tap="goSettings">
-          <text class="settings-gear">⚙</text>
-        </view>
+      <view class="header-action" @tap="goSettings">
+        <view class="svg-icon" v-html="settingsSvg"></view>
+      </view>
+      <view class="header-action" @tap="goNotifications">
+        <view class="svg-icon" v-html="mailSvg"></view>
+        <view v-if="unreadCount > 0" class="badge-dot"></view>
       </view>
     </view>
 
@@ -67,6 +64,10 @@ import CachedImage from '../../components/CachedImage.vue'
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const user = ref(getUser())
 
+// 头部图标(细线风格,currentColor 跟随 .svg-icon 配色)
+const settingsSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="100%" height="100%"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`
+const mailSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="100%" height="100%"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`
+
 onShow(async () => {
   user.value = getUser()
   if (!isLoggedIn()) {
@@ -108,38 +109,30 @@ function goMyWorks() {
   justify-content: space-between;
   align-items: center;
 }
-.header-title {
-  font-size: 52rpx;
-  font-weight: 700;
-  color: #c4a882;
-}
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
 .header-action {
   position: relative;
   padding: 12rpx;
+  /* 按下反馈 */
+  transition: transform var(--t-fast, 0.2s) var(--ease-healing, cubic-bezier(0.34, 1.56, 0.64, 1));
 }
-.bell {
-  font-size: 42rpx;
+.header-action:active {
+  transform: scale(0.86);
+}
+.svg-icon {
+  width: 44rpx;
+  height: 44rpx;
   color: #c4a882;
+  display: block;
 }
 .badge-dot {
   position: absolute;
-  top: 6rpx;
-  right: 6rpx;
-  min-width: 16rpx;
-  height: 16rpx;
-  padding: 0 4rpx;
-  border-radius: 8rpx;
-  background: #e0a8b0;
+  top: 10rpx;
+  right: 10rpx;
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #e74c3c;
   border: 2rpx solid #fdfbf7;
-}
-.settings-gear {
-  font-size: 48rpx;
-  color: #c4a882;
 }
 .profile-card {
   margin: 24rpx 32rpx;
