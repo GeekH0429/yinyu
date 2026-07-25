@@ -222,7 +222,12 @@ onShow(() => {
 })
 
 function goBack() {
-  uni.navigateBack()
+  // 直接刷新 / 通过 URL 进入时栈里只有自己,navigateBack 会静默失败
+  if (getCurrentPages().length > 1) {
+    uni.navigateBack()
+  } else {
+    uni.reLaunch({ url: '/pages/mine/index' })
+  }
 }
 
 /* ---- 主题切换(跟随系统 / 浅色 / 深色) ---- */

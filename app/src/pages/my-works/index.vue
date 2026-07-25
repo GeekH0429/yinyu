@@ -324,7 +324,12 @@ async function onRefreshTreeholes() {
 }
 
 function goBack() {
-  uni.navigateBack()
+  // 直接刷新 / 通过 URL 进入时栈里只有自己,navigateBack 会静默失败
+  if (getCurrentPages().length > 1) {
+    uni.navigateBack()
+  } else {
+    uni.reLaunch({ url: '/pages/mine/index' })
+  }
 }
 </script>
 
