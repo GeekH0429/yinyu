@@ -48,6 +48,15 @@
       <text class="entry-arrow">›</text>
     </view>
 
+    <!-- 暖话入口 -->
+    <view class="card entry-card pressable anim-rise delay-3" @tap="goWarmWords">
+      <view class="entry-left">
+        <text class="entry-title">暖话</text>
+        <text class="entry-sub">一句温柔的话</text>
+      </view>
+      <text class="entry-arrow">›</text>
+    </view>
+
     <TabBar />
   </view>
 </template>
@@ -91,6 +100,11 @@ function goDailyHistory() {
 
 function goMyWorks() {
   uni.navigateTo({ url: '/pages/my-works/index' })
+}
+
+function goWarmWords() {
+  if (!isLoggedIn()) return uni.reLaunch({ url: '/pages/login/index' })
+  uni.navigateTo({ url: '/pages/warm-words/index' })
 }
 </script>
 

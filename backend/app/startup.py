@@ -7,6 +7,7 @@ from app.models.invite import InviteCode
 from app.models.user import ROLE_ADMIN, User
 from app.security import hash_password
 from app.services.invite_code import generate_invite_code
+from app.services.warm_word import seed_warm_words
 
 
 async def bootstrap() -> None:
@@ -31,3 +32,6 @@ async def bootstrap() -> None:
             db.add(InviteCode(code=code, max_uses=10, remark="bootstrap"))
             await db.commit()
             print(f"[bootstrap] 已生成引导邀请码: {code}  (max_uses=10)")
+
+        # 暖话种子语料(表空才插入,幂等)
+        await seed_warm_words(db)

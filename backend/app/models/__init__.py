@@ -9,6 +9,7 @@ from app.models.media import Media
 from app.models.notification import Notification
 from app.models.treehole import TreeHole
 from app.models.user import User
+from app.models.warm_word import WarmWord
 
 __all__ = [
     "Base",
@@ -23,4 +24,5 @@ __all__ = [
     "TreeHole",
     "Media",
     "DailyImage",
+    "WarmWord",
 ]

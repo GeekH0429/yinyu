@@ -49,6 +49,11 @@ export const api = {
     history: (params) => http.get('/daily-images/history', params)
   },
 
+  warmWords: {
+    scenes: () => http.get('/warm_words/scenes'),
+    random: (scene) => http.get('/warm_words/random', { scene })
+  },
+
   write: {
     createArticle: (data) => http.post('/articles', data),
     updateArticle: (id, data) => http.put('/articles/' + id, data),

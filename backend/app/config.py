@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     comment_attempt_window_seconds: int = 60
     comment_lock_seconds: int = 300
 
+    # ---- 暖话 ----
+    warm_words_daily_limit: int = 30  # 每用户每日随机抽取次数上限(自然日)
+    warm_words_scene_window_seconds: int = 86400  # 限流窗口(实际 key 带日期,设 2 天保险过期)
+
     # ---- 邮件通知 (SMTP) ----
     # 总开关:False 时邮件模块整体 no-op(不连接 SMTP,只记日志)。
     # 用 SSL(默认 465)时 smtp_use_tls=True;用 STARTTLS(587)时 smtp_use_tls=False。

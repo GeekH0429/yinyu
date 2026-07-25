@@ -13,6 +13,7 @@ from app.api import (
     treehole,
     upload,
     users,
+    warm_word,
 )
 
 api_router = APIRouter()
@@ -27,3 +28,4 @@ api_router.include_router(daily_image.router)
 api_router.include_router(upload.router)
 api_router.include_router(admin.router)
 api_router.include_router(stats.router)
+api_router.include_router(warm_word.router)

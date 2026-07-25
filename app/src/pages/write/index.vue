@@ -103,6 +103,10 @@ onLoad((opts) => {
     articleId.value = Number(opts.id)
     isEdit.value = true
     loadDetail(articleId.value)
+  } else if (opts && opts.prefill) {
+    // 来自「暖话」:把文本预填到正文,方便以此为开头展开
+    form.content_html = decodeURIComponent(opts.prefill)
+    markDirty()
   }
 })
 

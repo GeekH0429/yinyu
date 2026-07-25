@@ -15,7 +15,8 @@
     { "path": "pages/daily/history", "style": { "navigationStyle": "custom" } },
     { "path": "pages/my-works/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/settings/index", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/login/index", "style": { "navigationStyle": "custom" } }
+    { "path": "pages/login/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/warm-words/index", "style": { "navigationStyle": "custom" } }
   ],
   "tabBar": {
     "custom": true,
