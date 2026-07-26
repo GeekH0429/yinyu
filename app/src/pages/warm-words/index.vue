@@ -7,7 +7,7 @@
       <view class="topbar">
         <text class="back pressable" @tap="goBack">‹ 返回</text>
         <text class="topbar-title serif">暖话</text>
-        <text class="action placeholder"></text>
+        <text class="action pressable" @tap="goFavorites">我的收藏</text>
       </view>
 
       <view class="guide anim-fade">
@@ -46,7 +46,13 @@
 
         <!-- 暖话卡片 -->
         <view v-else-if="currentWord" class="card result-card anim-pop">
-          <text class="scene-tag">{{ currentLabel }} · 今日暖话</text>
+          <view class="card-header">
+            <text class="scene-tag">{{ currentLabel }} · 今日暖话</text>
+            <text
+              :class="['fav-btn', 'pressable', { active: currentWord.is_favorited }]"
+              @tap="toggleFavorite"
+            >{{ currentWord.is_favorited ? '♥' : '♡' }}</text>
+          </view>
           <text class="warm-text serif">{{ currentWord.text }}</text>
           <view class="actions">
             <text class="act-btn pressable" @tap="goWrite">✎ 写成图文</text>
@@ -125,6 +131,28 @@ function goWrite() {
   uni.navigateTo({
     url: '/pages/write/index?prefill=' + encodeURIComponent(text)
   })
+}
+
+async function toggleFavorite() {
+  if (!currentWord.value) return
+  const wasFav = !!currentWord.value.is_favorited
+  // 乐观更新:让 UI 立即响应,失败再回滚
+  currentWord.value.is_favorited = !wasFav
+  try {
+    if (wasFav) {
+      await api.warmWords.unfavorite(currentWord.value.id)
+    } else {
+      await api.warmWords.favorite(currentWord.value.id)
+      uni.showToast({ title: '已收藏', icon: 'none' })
+    }
+  } catch {
+    // 回滚
+    currentWord.value.is_favorited = wasFav
+  }
+}
+
+function goFavorites() {
+  uni.navigateTo({ url: '/pages/warm-words/favorites' })
 }
 
 function goBack() {
@@ -259,10 +287,27 @@ onShow(() => {
   display: flex;
   flex-direction: column;
 }
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 .scene-tag {
   font-size: 22rpx;
   color: #c4a882;
   letter-spacing: 2rpx;
+}
+.fav-btn {
+  font-size: 44rpx;
+  color: #c4a882;
+  line-height: 1;
+  transition: transform var(--t-fast, 0.2s) var(--ease-healing, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+.fav-btn.active {
+  color: #e8c4c4;
+}
+.fav-btn:active {
+  transform: scale(0.86);
 }
 .warm-text {
   margin-top: 32rpx;

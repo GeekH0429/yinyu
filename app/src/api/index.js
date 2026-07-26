@@ -51,7 +51,10 @@ export const api = {
 
   warmWords: {
     scenes: () => http.get('/warm_words/scenes'),
-    random: (scene) => http.get('/warm_words/random', { scene })
+    random: (scene) => http.get('/warm_words/random', { scene }),
+    favorites: (params) => http.get('/warm_words/favorites', params),
+    favorite: (id) => http.post('/warm_words/' + id + '/favorite'),
+    unfavorite: (id) => http.delete('/warm_words/' + id + '/favorite')
   },
 
   write: {
