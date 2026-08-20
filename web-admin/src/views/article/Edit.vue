@@ -86,7 +86,20 @@
         <el-radio-group v-model="form.status">
           <el-radio value="draft">草稿</el-radio>
           <el-radio value="published">发布</el-radio>
+          <el-radio value="scheduled">定时发布</el-radio>
         </el-radio-group>
+      </el-form-item>
+
+      <el-form-item v-if="form.status === 'scheduled'" label="发布时间">
+        <div class="schedule-wrap">
+          <el-date-picker
+            v-model="scheduledAt"
+            type="datetime"
+            placeholder="选择定时发布时间"
+            :disabled-date="(d) => d.getTime() < Date.now() - 86400000"
+          />
+          <div class="schedule-hint">到设定时间后自动发布,期间文章仅自己可见</div>
+        </div>
       </el-form-item>
 
       <el-form-item>
@@ -127,6 +140,7 @@ const form = reactive({
   content_html: '',
   status: 'draft'
 })
+const scheduledAt = ref(null)
 const rules = {
   title: [{ required: true, message: '请输入标题', trigger: 'blur' }]
 }
@@ -151,6 +165,7 @@ async function loadArticle() {
     form.tags = data.tags || []
     form.content_html = data.content_html || ''
     form.status = data.status
+    scheduledAt.value = data.scheduled_at ? new Date(data.scheduled_at) : null
   } finally {
     loading.value = false
   }
@@ -175,6 +190,12 @@ const { isDragover: coverDrag } = useImageDropPaste(coverZoneRef, onCoverUpload)
 async function onSave() {
   await formRef.value.validate().catch(() => {})
   if (!form.title) return
+  if (form.status === 'scheduled') {
+    if (!scheduledAt.value) return ElMessage.warning('请选择定时发布时间')
+    if (scheduledAt.value.getTime() <= Date.now() + 60000) {
+      return ElMessage.warning('定时发布时间需晚于当前时间 1 分钟')
+    }
+  }
   saving.value = true
   try {
     const payload = {
@@ -183,7 +204,8 @@ async function onSave() {
       cover_url: form.cover_url || null,
       tags: form.tags,
       content_html: form.content_html,
-      status: form.status
+      status: form.status,
+      scheduled_at: form.status === 'scheduled' ? scheduledAt.value.toISOString() : null
     }
     if (isEdit.value) {
       await api.articles.update(route.params.id, payload)
@@ -217,5 +239,14 @@ onMounted(() => {
 }
 .cover-zone {
   /* 尺寸/dragover 由全局 .img-uploader 控制 */
+}
+.schedule-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.schedule-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 </style>

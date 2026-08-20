@@ -1,15 +1,16 @@
 """图文阅读路由(多用户共创:登录后均可发布)。"""
+import asyncio
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFound
+from app.core.exceptions import AppException, NotFound
 from app.core.ownership import get_owned
 from app.database import get_db
 from app.deps import get_current_user
-from app.models.article import STATUS_PUBLISHED, Article, ArticleLike
+from app.models.article import STATUS_PUBLISHED, STATUS_SCHEDULED, Article, ArticleLike
 from app.models.user import User
 from app.schemas.article import (
     ArticleBrief,
@@ -22,6 +23,7 @@ from app.schemas.article import (
 )
 from app.schemas.common import Page, offset_of
 from app.redis_client import get_redis
+from app.services.email import notify_new_article
 from app.services.rate_limit import get_client_ip
 from app.services.view_counter import incr_view
 
@@ -156,10 +158,14 @@ async def create_article(
         tags=data.tags or [],
         status=data.status,
         published_at=datetime.now(timezone.utc) if data.status == STATUS_PUBLISHED else None,
+        scheduled_at=data.scheduled_at if data.status == STATUS_SCHEDULED else None,
     )
     db.add(article)
     await db.commit()
     await db.refresh(article)
+    if article.status == STATUS_PUBLISHED:
+        # commit 成功后再派发订阅邮件(只传纯值 id,避免 commit 后属性过期)
+        asyncio.create_task(notify_new_article(article.id))
     return to_out(article, user)
 
 
@@ -173,14 +179,31 @@ async def update_article(
     article = await get_owned(db, Article, article_id, user, not_found="文章不存在", forbidden="只能操作自己的文章")
     payload = data.model_dump(exclude_unset=True)
 
-    # 草稿转发布时补上 published_at(status 合法性由 schema 的 Literal 保证)
-    if payload.get("status") == STATUS_PUBLISHED and article.published_at is None:
-        payload["published_at"] = datetime.now(timezone.utc)
+    # 状态转换(需在 setattr 覆盖前读取 DB 旧值):
+    #   → scheduled:必须有定时时间(没传则沿用历史值);定时即未发布,清 published_at
+    #   → published:published_at 为空才补 now(重复保存不刷时间);清 scheduled_at
+    #   → draft:取消定时,清 scheduled_at(published_at 保留,与下架语义一致)
+    was_status = article.status
+    new_status = payload.get("status")
+    if new_status == STATUS_SCHEDULED:
+        scheduled_at = payload.get("scheduled_at", article.scheduled_at)
+        if scheduled_at is None:
+            raise AppException(422, "定时发布必须指定时间", "SCHEDULED_AT_REQUIRED")
+        payload["scheduled_at"] = scheduled_at
+        payload["published_at"] = None
+    elif new_status == STATUS_PUBLISHED:
+        if article.published_at is None:
+            payload["published_at"] = datetime.now(timezone.utc)
+        payload["scheduled_at"] = None
+    elif new_status is not None:  # draft
+        payload["scheduled_at"] = None
 
     for k, v in payload.items():
         setattr(article, k, v)
     await db.commit()
     await db.refresh(article)
+    if was_status != STATUS_PUBLISHED and article.status == STATUS_PUBLISHED:
+        asyncio.create_task(notify_new_article(article.id))
     author = await db.get(User, article.author_id)
     liked_by_me = await db.scalar(
         select(ArticleLike.id).where(

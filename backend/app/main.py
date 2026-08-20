@@ -9,7 +9,9 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import func
 from sqlalchemy import text as sa_text
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.models  # noqa: F401  (确保所有模型被注册到 Base.metadata)
@@ -18,7 +20,9 @@ from app.config import settings
 from app.core.exceptions import AppException
 from app.database import AsyncSessionLocal, get_db
 from app.logging_config import LOG_NAMESPACE, setup_logging
+from app.models.article import STATUS_PUBLISHED, STATUS_SCHEDULED, Article
 from app.redis_client import redis
+from app.services.email import notify_new_article
 from app.services.view_counter import archive_daily_views, flush_pending
 from app.startup import bootstrap
 
@@ -63,6 +67,40 @@ async def _daily_archiver():
             logger.exception("daily_archiver failed")
 
 
+async def _article_publisher():
+    """后台任务:每 30 秒把到期的定时文章(status='scheduled')置为已发布。
+
+    多 worker(生产 --workers 4)安全性:UPDATE ... WHERE status='scheduled'
+    是原子认领 —— 行被 A worker 翻转后其它 worker 的 UPDATE 不再命中,
+    RETURNING 只出现在一个进程,天然去重,无需 Redis/PG 锁。
+    scheduled_at 同步清 NULL,重启后也不会重复匹配。commit 成功后、邮件
+    派发前崩溃最多丢一封邮件(best-effort,可接受)。
+    """
+    while True:
+        await asyncio.sleep(30)
+        try:
+            async with AsyncSessionLocal() as db:
+                res = await db.execute(
+                    update(Article)
+                    .where(Article.status == STATUS_SCHEDULED, Article.scheduled_at <= func.now())
+                    .values(
+                        status=STATUS_PUBLISHED,
+                        published_at=func.now(),
+                        scheduled_at=None,
+                    )
+                    .returning(Article.id)
+                    .execution_options(synchronize_session=False)
+                )
+                ids = [r[0] for r in res.all()]
+                await db.commit()
+            for aid in ids:
+                asyncio.create_task(notify_new_article(aid))
+            if ids:
+                logger.info("article_publisher published %d articles", len(ids))
+        except Exception:  # noqa: BLE001
+            logger.exception("article_publisher failed")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     setup_logging()
@@ -70,9 +108,11 @@ async def lifespan(_app: FastAPI):
     await bootstrap()
     flusher = asyncio.create_task(_view_flusher())
     archiver = asyncio.create_task(_daily_archiver())
+    publisher = asyncio.create_task(_article_publisher())
     yield
     flusher.cancel()
     archiver.cancel()
+    publisher.cancel()
     await redis.aclose()
     logger.info("app stopped")
 

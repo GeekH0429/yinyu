@@ -8,6 +8,7 @@ from app.models.base import Base, TimestampMixin
 
 STATUS_DRAFT = "draft"
 STATUS_PUBLISHED = "published"
+STATUS_SCHEDULED = "scheduled"
 
 
 class Article(TimestampMixin, Base):
@@ -28,6 +29,12 @@ class Article(TimestampMixin, Base):
         ),
         # stats 趋势/概览热路径:WHERE created_at >= ? / GROUP BY created_at
         Index("ix_articles_created_at", "created_at"),
+        # 定时发布器扫描:WHERE status='scheduled' AND scheduled_at <= now()
+        Index(
+            "ix_articles_scheduled",
+            "scheduled_at",
+            postgresql_where=text("status = 'scheduled'"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -52,6 +59,9 @@ class Article(TimestampMixin, Base):
     comment_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
 
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # 定时发布时间(status='scheduled' 时有效,到期由后台任务翻转并清空)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ArticleLike(TimestampMixin, Base):

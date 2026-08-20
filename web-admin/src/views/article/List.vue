@@ -20,6 +20,7 @@
       >
         <el-option label="草稿" value="draft" />
         <el-option label="已发布" value="published" />
+        <el-option label="定时中" value="scheduled" />
       </el-select>
       <el-button type="primary" :icon="EditPen" @click="goNew">写新图文</el-button>
     </div>
@@ -47,6 +48,13 @@
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
           <el-tag v-if="row.status === 'published'" type="success" size="small">已发布</el-tag>
+          <el-tooltip
+            v-else-if="row.status === 'scheduled'"
+            :content="`定时发布于 ${formatTime(row.scheduled_at)}`"
+            placement="top"
+          >
+            <el-tag type="warning" size="small">定时中</el-tag>
+          </el-tooltip>
           <el-tag v-else type="info" size="small">草稿</el-tag>
         </template>
       </el-table-column>
@@ -63,7 +71,7 @@
             :type="row.status === 'published' ? 'warning' : 'success'"
             @click="togglePublish(row)"
           >
-            {{ row.status === 'published' ? '转草稿' : '发布' }}
+            {{ row.status === 'published' ? '转草稿' : row.status === 'scheduled' ? '立即发布' : '发布' }}
           </el-button>
           <el-button text type="danger" @click="onRemove(row)">删除</el-button>
         </template>

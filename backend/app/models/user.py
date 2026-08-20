@@ -38,5 +38,10 @@ class User(TimestampMixin, Base):
         Boolean, default=False, server_default="false", nullable=False
     )
 
+    # 是否订阅「新文章发布」邮件推送(独立于上面的互动提醒)。
+    article_notify_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+
     def is_admin(self) -> bool:
         return self.role == ROLE_ADMIN

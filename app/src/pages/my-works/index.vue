@@ -51,7 +51,7 @@
             >
               <text class="mini-title">{{ a.title }}</text>
               <view class="mini-meta">
-                <text>{{ a.status === 'published' ? '已发布' : '草稿' }} · ♡ {{ a.like_count }}</text>
+                <text>{{ a.status === 'published' ? '已发布' : a.status === 'scheduled' ? '定时中' : '草稿' }} · ♡ {{ a.like_count }}</text>
                 <view class="mini-right">
                   <text class="mini-edit" @tap.stop="goEdit(a)">编辑</text>
                   <text class="mini-time">{{ formatDate(a.created_at) }}</text>

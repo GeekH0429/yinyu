@@ -5,7 +5,7 @@
     <view class="topbar">
       <text class="back pressable" @tap="goBack">‹ 取消</text>
       <text class="topbar-title serif">{{ isEdit ? '编辑图文' : '写图文' }}</text>
-      <text class="publish pressable" @tap="onSubmit">{{ submitting ? '…' : isEdit ? '保存' : '发布' }}</text>
+      <text class="publish pressable" @tap="onSubmit">{{ submitting ? '…' : scheduleMode ? '定时' : isEdit ? '保存' : '发布' }}</text>
     </view>
 
     <view class="form anim-fade" v-if="!loadingDetail">
@@ -47,6 +47,16 @@
         <view class="row">
           <text class="row-label">标签</text>
           <input class="row-input" v-model="tagsText" placeholder="逗号分隔,如 治愈,夜读" @input="markDirty" />
+        </view>
+        <view v-if="scheduleMode" class="row">
+          <text class="row-label">发布时间</text>
+          <picker class="schedule-picker" mode="date" :value="scheduleDate" @change="onDateChange">
+            <view class="picker-value">{{ scheduleDate || '选择日期' }}</view>
+          </picker>
+          <picker class="schedule-picker" mode="time" :value="scheduleTime" @change="onTimeChange">
+            <view class="picker-value">{{ scheduleTime || '选择时间' }}</view>
+          </picker>
+          <text class="schedule-cancel pressable" @tap="cancelSchedule">取消</text>
         </view>
       </view>
     </view>
@@ -94,6 +104,30 @@ const form = reactive({
 })
 const tagsText = ref('')
 
+// 定时发布:actionSheet 选「定时发布」后展开时间行,填好后再点右上角提交
+const scheduleMode = ref(false)
+const scheduleDate = ref('')
+const scheduleTime = ref('')
+
+function onDateChange(e) {
+  scheduleDate.value = e.detail.value
+}
+function onTimeChange(e) {
+  scheduleTime.value = e.detail.value
+}
+function cancelSchedule() {
+  scheduleMode.value = false
+  scheduleDate.value = ''
+  scheduleTime.value = ''
+}
+
+function buildScheduledAt() {
+  // 'YYYY-MM-DD' + 'HH:mm' 按设备本地时区解析,toISOString() 自带 +08:00 offset
+  const d = new Date(`${scheduleDate.value}T${scheduleTime.value}`)
+  if (isNaN(d.getTime())) return null
+  return d.toISOString()
+}
+
 // 音频信息弹窗:选完音频上传后弹出,填写 名称/歌手/封面 再插入卡片
 const audioPopup = reactive({ visible: false, src: '' })
 
@@ -119,6 +153,13 @@ async function loadDetail(id) {
     form.cover_url = a.cover_url || ''
     form.summary = a.summary || ''
     tagsText.value = (a.tags || []).join(',')
+    if (a.status === 'scheduled' && a.scheduled_at) {
+      const d = new Date(a.scheduled_at)
+      const pad = (n) => String(n).padStart(2, '0')
+      scheduleMode.value = true
+      scheduleDate.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      scheduleTime.value = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+    }
   } catch {
     uni.showToast({ title: '加载失败', icon: 'none' })
   } finally {
@@ -171,13 +212,41 @@ async function chooseCover() {
   }
 }
 
-async function onSubmit() {
+function onSubmit() {
   if (submitting.value) return
   if (!form.title) {
     return uni.showToast({ title: '请填写标题', icon: 'none' })
   }
   if (!form.content_html.trim()) {
     return uni.showToast({ title: '写点什么吧', icon: 'none' })
+  }
+  // 已选「定时发布」:填好时间后再次点右上角即提交
+  if (scheduleMode.value) {
+    submitWith('scheduled')
+    return
+  }
+  uni.showActionSheet({
+    itemList: ['立即发布', '定时发布', '存草稿'],
+    success: ({ tapIndex }) => {
+      if (tapIndex === 0) submitWith('published')
+      else if (tapIndex === 1) {
+        scheduleMode.value = true
+        uni.showToast({ title: '请选择发布时间', icon: 'none' })
+      } else submitWith('draft')
+    }
+  })
+}
+
+async function submitWith(status) {
+  let scheduledAt = null
+  if (status === 'scheduled') {
+    if (!scheduleDate.value || !scheduleTime.value) {
+      return uni.showToast({ title: '请选择日期和时间', icon: 'none' })
+    }
+    scheduledAt = buildScheduledAt()
+    if (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now() + 60000) {
+      return uni.showToast({ title: '时间需晚于当前 1 分钟', icon: 'none' })
+    }
   }
   submitting.value = true
   try {
@@ -190,20 +259,23 @@ async function onSubmit() {
       summary: form.summary || null,
       cover_url: form.cover_url || null,
       tags,
-      content_html: normalizeContentHtml(form.content_html)
+      content_html: normalizeContentHtml(form.content_html),
+      status,
+      scheduled_at: scheduledAt
     }
+    const doneMsg =
+      status === 'scheduled' ? '已定时' : status === 'draft' ? '已存草稿' : '已发布'
     if (isEdit.value) {
-      // 编辑:不传 status,保持原文(草稿/已发布)状态不变
       const fresh = await api.write.updateArticle(articleId.value, payload)
       setArticleSnap(articleId.value, fresh) // 阅读页 SWR 快照同步更新
       invalidateMe()
       invalidateFeed()
-      uni.showToast({ title: '已保存', icon: 'success' })
+      uni.showToast({ title: doneMsg, icon: 'success' })
     } else {
-      await api.write.createArticle({ ...payload, status: 'published' })
+      await api.write.createArticle(payload)
       invalidateFeed()
       invalidateMe()
-      uni.showToast({ title: '已发布', icon: 'success' })
+      uni.showToast({ title: doneMsg, icon: 'success' })
     }
     setTimeout(() => uni.navigateBack(), 500)
   } catch {
@@ -360,6 +432,21 @@ onUnmounted(() => {
 .cover-add {
   color: #c4a882;
   font-size: 28rpx;
+}
+.schedule-picker {
+  margin-right: 24rpx;
+}
+.picker-value {
+  padding: 8rpx 20rpx;
+  background: #f3eee5;
+  color: #4a4a4a;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+}
+.schedule-cancel {
+  margin-left: auto;
+  color: #8d8d8d;
+  font-size: 26rpx;
 }
 .loading {
   padding: 200rpx 0;

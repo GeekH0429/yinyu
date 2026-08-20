@@ -82,6 +82,18 @@
           />
         </view>
       </view>
+      <view class="row">
+        <text class="row-label">新文章邮件订阅</text>
+        <view class="row-value">
+          <switch
+            class="anim-switch"
+            :checked="!!user?.article_notify_enabled"
+            :disabled="!user?.email"
+            color="#C4A882"
+            @change="onArticleNotifyChange"
+          />
+        </view>
+      </view>
       <view v-if="!user?.email" class="row-hint">
         请先在「个人资料」绑定邮箱后再开启邮件提醒
       </view>
@@ -273,6 +285,24 @@ async function onEmailNotifyChange(e) {
   } catch {
     // 回滚 switch 视觉态:reassign user 让 :checked 重新渲染
     user.value = { ...user.value, email_notify_enabled: prev }
+    /* request 拦截器已 toast 错误 */
+  }
+}
+
+/* ---- 新文章邮件订阅开关 ----
+ * 与后端 user.article_notify_enabled 双向同步,模式同上(失败回滚视觉态)。
+ */
+async function onArticleNotifyChange(e) {
+  const next = e.detail.value
+  const prev = !!user.value?.article_notify_enabled
+  if (next === prev) return
+  try {
+    const me = await api.me.update({ article_notify_enabled: next })
+    uni.setStorageSync('userInfo', me)
+    user.value = me
+    uni.showToast({ title: next ? '已订阅' : '已取消', icon: 'none' })
+  } catch {
+    user.value = { ...user.value, article_notify_enabled: prev }
     /* request 拦截器已 toast 错误 */
   }
 }

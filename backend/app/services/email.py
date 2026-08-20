@@ -9,7 +9,8 @@
 
 对外两个函数:
   - send_email(to, subject, html_body):通用底层发送。
-  - notify_interaction_email(...):按事件类型组装中文文案后发送。
+  - notify_interaction_email(...):按互动类型组装中文文案后发送。
+  - notify_new_article(article_id):文章发布后给订阅用户群发通知。
 """
 from __future__ import annotations
 
@@ -19,8 +20,12 @@ from email.message import EmailMessage
 from typing import Literal
 
 import aiosmtplib
+from sqlalchemy import select
 
 from app.config import settings
+from app.database import AsyncSessionLocal
+from app.models.article import Article
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -124,3 +129,73 @@ def _strip_tags_fallback(html_body: str) -> str:
     text = re.sub(r"<[^>]+>", "", html_body)
     text = html.unescape(text)
     return text.strip()
+
+
+async def notify_new_article(article_id: int) -> None:
+    """文章发布后,给订阅「新文章推送」的用户群发邮件。
+
+    调用时机(均在 db.commit() 成功之后):
+      - api/articles.py 立即发布 / scheduled 转发布
+      - main.py _article_publisher 定时到期翻转
+    只接收纯值 article_id,自开会话查最新数据;收件人 = 开启订阅且
+    绑定邮箱的用户(排除作者本人)。任何异常只记日志,永不抛。
+    """
+    try:
+        if not settings.smtp_enabled or not settings.smtp_host:
+            return
+        async with AsyncSessionLocal() as db:
+            row = (
+                await db.execute(
+                    select(Article.title, Article.summary, Article.author_id, User.nickname)
+                    .join(User, User.id == Article.author_id)
+                    .where(Article.id == article_id)
+                )
+            ).first()
+            if row is None:
+                return
+            title, summary, author_id, author_nickname = row
+            if not title:
+                return
+            recipients = (
+                (
+                    await db.execute(
+                        select(User.email).where(
+                            User.article_notify_enabled.is_(True),
+                            User.email.is_not(None),
+                            User.id != author_id,
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+        if not recipients:
+            return
+
+        actor = html.escape(author_nickname or "某位同学")
+        art_title = html.escape(title)
+        art_summary = html.escape((summary or "").strip())
+        subject = f"{author_nickname} 发布了新文章《{title}》"
+        summary_html = (
+            f'<blockquote style="margin:0 0 16px;padding:12px 16px;background:#fdfbf7;'
+            f'border-left:3px solid #c4a882;color:#5a5a5a;font-size:14px;'
+            f'border-radius:4px;">{art_summary}</blockquote>'
+            if art_summary
+            else ""
+        )
+        body = f"""\
+<div style="font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+            max-width:560px;margin:0 auto;padding:24px;color:#3a3a3a;line-height:1.6;">
+  <p style="margin:0 0 12px;">嗨,</p>
+  <p style="margin:0 0 16px;font-size:15px;"><b>{actor}</b> 发布了新文章《{art_title}》</p>
+  {summary_html}
+  <p style="margin:0;font-size:13px;color:#999;">
+    —— 来自 yinyu,一个治愈的角落
+  </p>
+</div>
+"""
+        for to in recipients:
+            await send_email(to, subject, body)
+        logger.info("new article notify sent article_id=%s recipients=%d", article_id, len(recipients))
+    except Exception:  # noqa: BLE001 - 邮件失败不能影响发布流程
+        logger.exception("notify_new_article failed article_id=%s", article_id)

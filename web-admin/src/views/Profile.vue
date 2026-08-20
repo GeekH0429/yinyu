@@ -49,6 +49,14 @@
         <el-form-item label="简介">
           <el-input v-model="form.bio" type="textarea" :rows="3" maxlength="500" show-word-limit />
         </el-form-item>
+        <el-form-item label="新文章邮件订阅">
+          <div class="notify-wrap">
+            <el-switch v-model="form.article_notify_enabled" :disabled="!form.email" />
+            <span class="notify-hint">
+              {{ form.email ? '有新文章发布时发送邮件提醒' : '请先填写邮箱后再开启订阅' }}
+            </span>
+          </div>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="saving" @click="onSaveProfile">保存资料</el-button>
         </el-form-item>
@@ -89,7 +97,13 @@ const saving = ref(false)
 const avatarUploading = ref(false)
 const avatarZoneRef = ref()
 
-const form = reactive({ nickname: '', email: '', bio: '', avatar_url: '' })
+const form = reactive({
+  nickname: '',
+  email: '',
+  bio: '',
+  avatar_url: '',
+  article_notify_enabled: false
+})
 const pwd = reactive({ old: '', new1: '', new2: '' })
 
 async function loadProfile() {
@@ -100,6 +114,7 @@ async function loadProfile() {
     form.email = data.email || ''
     form.bio = data.bio || ''
     form.avatar_url = data.avatar_url || ''
+    form.article_notify_enabled = !!data.article_notify_enabled
   } finally {
     loading.value = false
   }
@@ -128,7 +143,8 @@ async function onSaveProfile() {
       nickname: form.nickname,
       email: form.email || null,
       bio: form.bio || null,
-      avatar_url: form.avatar_url || null
+      avatar_url: form.avatar_url || null,
+      article_notify_enabled: form.article_notify_enabled
     })
     auth.setUser(data)
     ElMessage.success('资料已保存')
@@ -176,5 +192,14 @@ onMounted(loadProfile)
   font-size: 12px;
   color: var(--text-tertiary);
   letter-spacing: 0.3px;
+}
+.notify-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.notify-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
 }
 </style>
