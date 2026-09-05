@@ -1,4 +1,4 @@
-import { ref, watch, onBeforeUnmount, unref } from 'vue'
+import { ref, watch, onBeforeUnmount, onActivated, onDeactivated, unref } from 'vue'
 
 /**
  * 从 DataTransfer 收集图片文件(paste/drop 共用)
@@ -76,29 +76,44 @@ export function useImageDropPaste(targetRef, onImage, opts = {}) {
     imgs.forEach(onImage)
   }
 
-  function bind(target) {
-    unbind()
-    el = target
-    if (!el) return
+  let listening = false
+
+  function attach() {
+    if (!el || listening) return
     el.addEventListener('dragenter', onDragEnter)
     el.addEventListener('dragover', onDragOver)
     el.addEventListener('dragleave', onDragLeave)
     el.addEventListener('drop', onDrop)
     if (usePaste) document.addEventListener('paste', onPaste)
+    listening = true
+  }
+  function detach() {
+    if (!listening) return
+    el?.removeEventListener('dragenter', onDragEnter)
+    el?.removeEventListener('dragover', onDragOver)
+    el?.removeEventListener('dragleave', onDragLeave)
+    el?.removeEventListener('drop', onDrop)
+    if (usePaste) document.removeEventListener('paste', onPaste)
+    listening = false
+  }
+  function bind(target) {
+    detach()
+    el = target
+    attach()
   }
   function unbind() {
-    if (!el) return
-    el.removeEventListener('dragenter', onDragEnter)
-    el.removeEventListener('dragover', onDragOver)
-    el.removeEventListener('dragleave', onDragLeave)
-    el.removeEventListener('drop', onDrop)
-    if (usePaste) document.removeEventListener('paste', onPaste)
+    detach()
     el = null
   }
 
   // 弹窗场景下 targetRef 在 dialog 首次打开后才指向真实 DOM
   watch(targetRef, (t) => bind(t), { immediate: true })
   onBeforeUnmount(unbind)
+  // keep-alive 场景:页面被缓存(切走但未卸载)时解绑 document 级监听,
+  // 避免隐藏页面的 paste 监听抢断其它页面的粘贴;回来时重绑。
+  // 非 keep-alive 组件这两个钩子不会触发,行为不变。
+  onActivated(attach)
+  onDeactivated(detach)
 
   return { isDragover }
 }

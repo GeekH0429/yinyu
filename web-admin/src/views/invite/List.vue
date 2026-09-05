@@ -72,7 +72,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onActivated } from 'vue'
+// keep-alive 缓存名(AdminLayout 的 CACHED_VIEWS 引用;文件名都是 List.vue,必须显式唯一名)
+defineOptions({ name: 'InviteList' })
 import { Plus, CopyDocument } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { api } from '@/api'
@@ -125,7 +127,8 @@ async function onCreate() {
   }
 }
 
-onMounted(loadData)
+// keep-alive 下首次进入与每次返回都触发:保住筛选/页码,同时回来刷新数据
+onActivated(loadData)
 </script>
 
 <style scoped>

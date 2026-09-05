@@ -15,7 +15,7 @@
       <button type="button" class="tb" :class="{ active: editor.isActive('blockquote') }" @click="editor.chain().focus().toggleBlockquote().run()" title="引用">❝ 引用</button>
       <button type="button" class="tb" @click="onLink" title="链接">🔗 链接</button>
       <span class="sep"></span>
-      <button type="button" class="tb" :class="{ uploading: uploadingCount > 0 }" @click="pickFile('image')" :title="uploadingCount > 0 ? `正在上传 ${uploadingCount} 张图片` : '上传图片（也可直接拖入）'">🖼 图片<span v-if="uploadingCount > 0" class="count">({{ uploadingCount }})</span></button>
+      <button type="button" class="tb" :class="{ uploading: batchTotal > batchDone }" @click="pickFile('image')" :title="batchTotal > batchDone ? `正在上传 ${batchDone}/${batchTotal} 张图片` : '上传图片（也可直接拖入）'">🖼 图片<span v-if="batchTotal > batchDone" class="count">({{ batchDone }}/{{ batchTotal }})</span></button>
       <button type="button" class="tb" :class="{ uploading: kind === 'audio' && uploading }" @click="pickFile('audio')" title="上传音频">🎵 音频</button>
       <button type="button" class="tb" @click="pickFile('video')" title="上传视频">🎬 视频</button>
       <span class="grow"></span>
@@ -194,7 +194,8 @@ const acceptMap = {
 }
 const kind = ref('image')
 const uploading = ref(false)
-const uploadingCount = ref(0) // 拖入并发上传计数,工具栏显示进度
+const batchDone = ref(0) // 批量拖图上传进度:已完成 / 总数(工具栏显示 X/N)
+const batchTotal = ref(0)
 const isDragover = ref(false) // 拖入高亮
 const fileInput = ref()
 // 单文件上传进度(图片几乎瞬时,主要为音视频显示)。批量拖入图片不显示进度。
@@ -249,24 +250,37 @@ async function onFile(e) {
   }
 }
 
-// 拖入多图:把光标移到 drop 位置,逐张上传依次插入
+// 拖入多图:并发上传(总时长 ≈ 最慢一张,而非逐张累加),全部完成后
+// 在 drop 位置按拖入顺序一次性插入 —— 单事务插入,顺序稳定且可整批撤销;
+// 失败的单张跳过并提示,不影响其余。上传期间跳走页面则放弃插入。
 async function uploadImagesAt(files, startPos) {
   const ed = editor.value
   if (!ed) return
-  ed.chain().setTextSelection(startPos).run()
-  for (const file of files) {
-    uploadingCount.value++
-    try {
-      const data = await api.upload(file)
-      const cur = editor.value
-      if (!cur) return
-      cur.chain().focus().setImage({ src: data.url }).run()
-    } catch {
-      ElMessage.error(`图片 "${file.name}" 上传失败`)
-    } finally {
-      uploadingCount.value = Math.max(0, uploadingCount.value - 1)
-    }
-  }
+  batchTotal.value = files.length
+  batchDone.value = 0
+  const urls = (
+    await Promise.all(
+      files.map((file) =>
+        api
+          .upload(file)
+          .then((data) => data.url)
+          .catch(() => {
+            ElMessage.error(`图片 "${file.name}" 上传失败`)
+            return null
+          })
+          .finally(() => {
+            batchDone.value++
+          })
+      )
+    )
+  ).filter(Boolean)
+  batchTotal.value = 0
+  batchDone.value = 0
+  const cur = editor.value
+  if (!cur || !urls.length) return
+  const chain = cur.chain().focus().setTextSelection(startPos)
+  urls.forEach((url) => chain.setImage({ src: url }))
+  chain.run()
 }
 
 // dragleave 在子元素间切换也会触发,只有真正离开 wrapper 才清除高亮

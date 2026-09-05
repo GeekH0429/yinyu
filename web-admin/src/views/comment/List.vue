@@ -68,7 +68,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onActivated } from 'vue'
+// keep-alive 缓存名(AdminLayout 的 CACHED_VIEWS 引用;文件名都是 List.vue,必须显式唯一名)
+defineOptions({ name: 'CommentList' })
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { api } from '@/api'
@@ -118,7 +120,8 @@ async function onRemove(row) {
   loadData()
 }
 
-onMounted(loadData)
+// keep-alive 下首次进入与每次返回都触发:保住筛选/页码,同时回来刷新数据
+onActivated(loadData)
 </script>
 
 <style scoped>

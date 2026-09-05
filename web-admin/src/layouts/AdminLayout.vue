@@ -68,15 +68,21 @@
         </el-dropdown>
       </el-header>
 
-      <el-main class="main">
-        <router-view />
+      <el-main ref="mainRef" class="main">
+        <router-view v-slot="{ Component }">
+          <!-- 列表页 keep-alive:切走再回来保住分页/筛选/滚动(滚动发生在 el-main 内,随 DOM 一起保住)。
+               数据新鲜度由各列表页 onActivated 重新拉取兜底;编辑/表单页不缓存,避免旧表单复活 -->
+          <keep-alive :include="CACHED_VIEWS">
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
       </el-main>
     </el-container>
   </el-container>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Document,
@@ -96,6 +102,28 @@ const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 const collapsed = ref(false)
+
+// keep-alive 只收列表页。列表页 SFC 文件名都叫 List.vue(Vue 按文件名推断的组件名会撞名),
+// 所以各页用 defineOptions 显式声明唯一名,这里 include 引用 —— 新增列表页两处都要加
+const CACHED_VIEWS = ['ArticleList', 'TreeholeList', 'CommentList', 'UserList', 'InviteList', 'DailyList']
+
+// 滚动还原:滚动容器 el-main 在 keep-alive 外面(属于本布局,各页共用),
+// keep-alive 只保组件 DOM 不保这个容器的 scrollTop —— 切页时手动按路径存取。
+// 编辑页等非缓存路径固定回顶部。
+const CACHED_PATHS = new Set(['/articles', '/treeholes', '/comments', '/users', '/invites', '/daily-images'])
+const mainRef = ref()
+const scrollMemo = new Map() // path -> 离开时的 scrollTop
+
+watch(
+  () => route.path,
+  async (_to, oldPath) => {
+    const main = mainRef.value?.$el // el-main 组件实例的根 DOM
+    if (!main) return
+    if (oldPath && CACHED_PATHS.has(oldPath)) scrollMemo.set(oldPath, main.scrollTop)
+    await nextTick() // 等新页面挂载撑起高度再还原
+    main.scrollTop = (CACHED_PATHS.has(route.path) && scrollMemo.get(route.path)) || 0
+  }
+)
 
 const activeMenu = computed(() => {
   // 文章编辑页高亮"图文管理"
