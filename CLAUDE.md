@@ -113,6 +113,8 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 **App 客户端(uni-app)**
 - 后端地址在 `app/src/config/index.js` 的 `SERVER_ORIGIN`(H5=127.0.0.1:8010;真机/小程序必须改局域网 IP 且同网段;生产改域名)。换环境只改这一处。
 - 富文本阅读用 `<mp-html>`(`pages.json` easycom 已注册),渲染 `content_html` 里的图/音/视频。
+- 正文可选中复制靠 `App.vue` 全局的 `.rich-content * / .mp-html *` 通配覆盖(直接声明必须打到 uni-text 元素,写在容器上会被继承规则之外的自体 `none` 压过);选中浮动菜单(摘抄/做卡片)状态在 `composables/useSelectionMenu.js`。
+- **App 端逻辑层没有 `document`/`window`**(页面 JS 跑在独立引擎,DOM 在视图层 WebView)——任何 DOM API(selectionchange、getSelection、canvas 的 document.createElement 等)必须放 **renderjs**(`components/SelectionObserver.vue` 是选区监听的范例:视图层监听 → `owner.callMethod` 回传逻辑层);逻辑层直接调会 `TypeError: Cannot read property of undefined`。
 - TabBar 是自定义组件 `components/TabBar.vue`(内联 SVG),三主页用 `uni.reLaunch` 切换;写作经首页 FAB 进入 `pages/write`。
 - @dcloudio 包用固定 alpha 版本 `3.0.0-5000720260410001`
 

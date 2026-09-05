@@ -102,6 +102,29 @@
         </view>
       </view>
 
+      <!-- 选中浮动菜单:长按/拖选正文后出现在选区上方(touchstart.prevent 防止点按钮时选区被清) -->
+      <view
+        v-if="menu.visible"
+        class="sel-menu"
+        :style="{ left: menu.x + 'px', top: menu.y + 'px' }"
+        @touchstart.prevent
+        @tap.stop
+      >
+        <text class="sel-btn" @tap="onMenuExcerpt">❝ 摘抄</text>
+        <view class="sel-div"></view>
+        <text class="sel-btn" @tap="onMenuCard">✦ 做成卡片</text>
+      </view>
+
+      <!-- 选区观察者(renderjs 在视图层监听 selectionchange,回传逻辑层) -->
+      <SelectionObserver @selection="handleSelection" @cleared="handleCleared" />
+
+      <!-- 卡片离屏画布:固定在视口外参与渲染,不能 v-if -->
+      <canvas
+        canvas-id="quoteCanvas"
+        class="quote-canvas"
+        :style="{ width: CARD_W + 'px', height: CARD_H + 'px' }"
+      />
+
       <CommentSection
         v-if="article.id"
         :article-id="article.id"
@@ -130,7 +153,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, getCurrentInstance } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
@@ -139,7 +162,10 @@ import { formatTime } from '../../utils/format'
 import { extractAudio } from '../../utils/audioCard'
 import { getArticleSnap, setArticleSnap } from '../../utils/articleCache'
 import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourceCache'
+import { makeQuoteCard, saveQuoteCard, CARD_W, CARD_H } from '../../utils/quoteCard'
+import { useSelectionMenu } from '../../composables/useSelectionMenu'
 import AudioPlayer from '../../components/AudioPlayer.vue'
+import SelectionObserver from '../../components/SelectionObserver.vue'
 import CachedImage from '../../components/CachedImage.vue'
 import StateView from '../../components/StateView.vue'
 import CommentSection from '../../components/CommentSection.vue'
@@ -314,6 +340,43 @@ async function saveExcerpt() {
     /* request 层已 toast */
   } finally {
     exPop.value.saving = false
+  }
+}
+
+/* ---- 选中浮动菜单:长按选中正文 → 摘抄 / 直接做成卡片 ---- */
+const inst = getCurrentInstance()
+const { menu, consumeSelection, handleSelection, handleCleared } = useSelectionMenu()
+
+async function onMenuExcerpt() {
+  const text = consumeSelection()
+  if (!text) return
+  try {
+    await api.excerpts.create({
+      article_id: article.value?.id || null,
+      article_title: article.value?.title || '',
+      content: text
+    })
+    uni.showToast({ title: '已收进摘抄本 ✦', icon: 'none' })
+  } catch {
+    /* request 层已 toast */
+  }
+}
+
+async function onMenuCard() {
+  const text = consumeSelection()
+  if (!text) return
+  uni.showLoading({ title: '正在铺纸…' })
+  try {
+    const tempPath = await makeQuoteCard({
+      canvasId: 'quoteCanvas',
+      proxy: inst.proxy,
+      text,
+      source: article.value?.title || ''
+    })
+    saveQuoteCard(tempPath)
+  } catch {
+    uni.hideLoading()
+    uni.showToast({ title: '卡片生成失败', icon: 'none' })
   }
 }
 </script>
@@ -554,6 +617,39 @@ async function saveExcerpt() {
   color: #c4a882;
   font-weight: 600;
   padding: 8rpx 12rpx;
+}
+/* 选中浮动菜单 */
+.sel-menu {
+  position: fixed;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: 0 10rpx;
+  height: 80rpx;
+  background: #c4a882;
+  border-radius: 40rpx;
+  box-shadow: 0 8rpx 24rpx rgba(196, 168, 130, 0.45);
+}
+.sel-btn {
+  font-size: 24rpx;
+  color: #fff;
+  padding: 12rpx 18rpx;
+  white-space: nowrap;
+}
+.sel-btn:active {
+  opacity: 0.7;
+}
+.sel-div {
+  width: 1rpx;
+  height: 28rpx;
+  background: rgba(255, 255, 255, 0.4);
+}
+/* 卡片离屏画布 */
+.quote-canvas {
+  position: fixed;
+  left: -9999px;
+  top: 0;
 }
 .font-mask {
   position: fixed;

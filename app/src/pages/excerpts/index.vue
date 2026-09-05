@@ -50,7 +50,7 @@
     <canvas
       canvas-id="cardCanvas"
       class="card-canvas"
-      :style="{ width: CW + 'px', height: CH + 'px' }"
+      :style="{ width: CARD_W + 'px', height: CARD_H + 'px' }"
     />
   </view>
 </template>
@@ -61,6 +61,7 @@ import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { formatRelative } from '../../utils/format'
+import { makeQuoteCard, saveQuoteCard, CARD_W, CARD_H } from '../../utils/quoteCard'
 import StateView from '../../components/StateView.vue'
 
 const inst = getCurrentInstance()
@@ -70,10 +71,6 @@ const loading = ref(false)
 const error = ref(false)
 const page = ref(1)
 const noMore = ref(false)
-
-/* ---- 卡片画布(老 canvas API,H5 / App 双端可用) ---- */
-const CW = 600 // 逻辑宽高,导出时 destWidth×2 保证清晰度
-const CH = 840
 
 onShow(() => reload())
 onReachBottom(() => loadMore())
@@ -128,130 +125,21 @@ function delExcerpt(e) {
   })
 }
 
-/* ---- 生成分享卡片 ---- */
-function makeCard(e) {
+/* ---- 生成分享卡片(绘制逻辑在 utils/quoteCard.js,与阅读页选中菜单共用) ---- */
+async function makeCard(e) {
   uni.showLoading({ title: '正在铺纸…' })
-  const ctx = uni.createCanvasContext('cardCanvas', inst.proxy)
-
-  // 暖色信纸底 + 内框
-  ctx.setFillStyle('#FDFBF7')
-  ctx.fillRect(0, 0, CW, CH)
-  ctx.setStrokeStyle('rgba(196,168,130,0.4)')
-  ctx.setLineWidth(2)
-  ctx.strokeRect(18, 18, CW - 36, CH - 36)
-
-  // 顶部品牌
-  ctx.setFillStyle('#C4A882')
-  ctx.setFontSize(30)
-  ctx.font = '30px serif'
-  ctx.setTextAlign('center')
-  ctx.fillText('隐 语', CW / 2, 100)
-  ctx.setFontSize(16)
-  ctx.font = '16px sans-serif'
-  ctx.fillText('✦', CW / 2, 130)
-
-  // 引号
-  ctx.setFillStyle('#E8D9BE')
-  ctx.setFontSize(72)
-  ctx.font = '72px serif'
-  ctx.setTextAlign('left')
-  ctx.fillText('❝', 56, 226)
-
-  // 句子(手动换行;超长截断)
-  ctx.setFillStyle('#4A4A4A')
-  ctx.setFontSize(30)
-  ctx.font = '30px serif'
-  const maxLines = 12
-  let lines = wrapText(ctx, e.content, CW - 130)
-  if (lines.length > maxLines) lines = [...lines.slice(0, maxLines - 1), '……']
-  let y = 286
-  for (const ln of lines) {
-    ctx.fillText(ln, 64, y)
-    y += 52
+  try {
+    const tempPath = await makeQuoteCard({
+      canvasId: 'cardCanvas',
+      proxy: inst.proxy,
+      text: e.content,
+      source: e.article_title || ''
+    })
+    saveQuoteCard(tempPath)
+  } catch {
+    uni.hideLoading()
+    uni.showToast({ title: '卡片生成失败', icon: 'none' })
   }
-
-  // 出处(右对齐,压在句子下方固定位置)
-  if (e.article_title) {
-    ctx.setFillStyle('#B0B0B0')
-    ctx.setFontSize(24)
-    ctx.font = '24px serif'
-    ctx.setTextAlign('right')
-    ctx.fillText('——《' + e.article_title.slice(0, 18) + '》', CW - 60, CH - 150)
-  }
-
-  // 底部签名
-  ctx.setStrokeStyle('rgba(196,168,130,0.3)')
-  ctx.setLineWidth(1)
-  ctx.beginPath()
-  ctx.moveTo(CW / 2 - 40, CH - 96)
-  ctx.lineTo(CW / 2 + 40, CH - 96)
-  ctx.stroke()
-  ctx.setFillStyle('#C4A882')
-  ctx.setFontSize(20)
-  ctx.font = '20px sans-serif'
-  ctx.setTextAlign('center')
-  ctx.fillText('yinyu · 慢慢读,慢慢治愈', CW / 2, CH - 60)
-
-  ctx.draw(false, () => {
-    setTimeout(() => {
-      uni.canvasToTempFilePath(
-        {
-          canvasId: 'cardCanvas',
-          width: CW,
-          height: CH,
-          destWidth: CW * 2,
-          destHeight: CH * 2,
-          success: (r) => saveCard(r.tempFilePath),
-          fail: () => {
-            uni.hideLoading()
-            uni.showToast({ title: '卡片生成失败', icon: 'none' })
-          }
-        },
-        inst.proxy
-      )
-    }, 300) // 等 draw 完成帧
-  })
-}
-
-/** 中文友好按字符换行(measureText 逐字累积) */
-function wrapText(ctx, text, maxWidth) {
-  const lines = []
-  let line = ''
-  for (const ch of String(text || '')) {
-    if (ch === '\n') {
-      lines.push(line)
-      line = ''
-      continue
-    }
-    if (ctx.measureText(line + ch).width > maxWidth) {
-      lines.push(line)
-      line = ch
-    } else {
-      line += ch
-    }
-  }
-  if (line) lines.push(line)
-  return lines
-}
-
-function saveCard(tempPath) {
-  uni.hideLoading()
-  // #ifdef H5
-  const a = document.createElement('a')
-  a.href = tempPath
-  a.download = 'yinyu-quote.png'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  uni.showToast({ title: '卡片已生成,正在下载 ✦', icon: 'none' })
-  // #endif
-  // #ifndef H5
-  uni.saveImageToPhotosAlbum({
-    filePath: tempPath,
-    success: () => uni.showToast({ title: '已保存到相册 ✦', icon: 'none' }),
-    fail: () => uni.showToast({ title: '保存失败,请检查相册权限', icon: 'none' })
-  })
-  // #endif
 }
 
 function goBack() {
