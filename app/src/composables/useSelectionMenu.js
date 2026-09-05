@@ -21,6 +21,12 @@ const MENU_H = 40
 export function useSelectionMenu() {
   const menu = ref({ visible: false, x: 0, y: 0, text: '' })
 
+  // 清除原生选区的信号:自增触发 SelectionObserver 的 :change:clear-signal(renderjs 执行 removeAllRanges)
+  const clearSignal = ref(0)
+  function clearSelection() {
+    clearSignal.value++
+  }
+
   let lastText = ''
   let acting = false // 按钮动作进行中:不响应隐藏
   let hideTimer = null
@@ -51,16 +57,18 @@ export function useSelectionMenu() {
     menu.value.visible = false
   })
 
-  /** 按钮动作入口:取走最近一次选中文本并收起菜单。 */
+  /** 按钮动作入口:取走最近一次选中文本,收起菜单并清除原生选区
+   (不清的话选择手柄和系统复制菜单会一直挂着)。 */
   function consumeSelection() {
     const t = lastText
     acting = true
     menu.value.visible = false
+    clearSelection()
     setTimeout(() => {
       acting = false
     }, 600)
     return t
   }
 
-  return { menu, consumeSelection, handleSelection, handleCleared }
+  return { menu, clearSignal, clearSelection, consumeSelection, handleSelection, handleCleared }
 }

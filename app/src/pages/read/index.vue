@@ -117,8 +117,12 @@
         <text class="sel-btn" @tap="onMenuCard">✦ 做成卡片</text>
       </view>
 
-      <!-- 选区观察者(renderjs 在视图层监听 selectionchange,回传逻辑层) -->
-      <SelectionObserver @selection="handleSelection" @cleared="handleCleared" />
+      <!-- 选区观察者(renderjs 在视图层监听 selectionchange,回传逻辑层;clearSignal 供反向清选区) -->
+      <SelectionObserver
+        :clear-signal="clearSignal"
+        @selection="handleSelection"
+        @cleared="handleCleared"
+      />
 
       <!-- 卡片预览弹层:转发 / 保存 -->
       <QuoteCardPreview :visible="cardPreview.visible" :src="cardPreview.src" @close="cardPreview.visible = false" />
@@ -328,6 +332,7 @@ function openExcerpt() {
   }
   exPop.value.text = sel.slice(0, 500)
   exPop.value.visible = true
+  clearSelection() // 弹层打开即清原生选区,系统菜单/手柄不再悬在弹层下
 }
 
 async function saveExcerpt() {
@@ -351,7 +356,8 @@ async function saveExcerpt() {
 
 /* ---- 选中浮动菜单:长按选中正文 → 摘抄 / 直接做成卡片 ---- */
 const inst = getCurrentInstance()
-const { menu, consumeSelection, handleSelection, handleCleared } = useSelectionMenu()
+const { menu, clearSignal, clearSelection, consumeSelection, handleSelection, handleCleared } =
+  useSelectionMenu()
 
 async function onMenuExcerpt() {
   const text = consumeSelection()
