@@ -15,7 +15,7 @@ let EXPORT_WAIT_MS = 120 // 兜底(小程序等其它端)
 EXPORT_WAIT_MS = 0 // draw 回调即已落画布
 // #endif
 // #ifdef APP-PLUS
-EXPORT_WAIT_MS = 120 // 留一帧余量防原生截图截到半成品
+EXPORT_WAIT_MS = 60 // 留一帧余量防原生截图截到半成品
 // #endif
 
 /** 绘制并导出卡片,resolve 临时文件路径。text=句子,source=出处文章标题(可空)。 */
