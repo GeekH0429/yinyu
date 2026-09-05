@@ -52,6 +52,9 @@
       class="card-canvas"
       :style="{ width: CARD_W + 'px', height: CARD_H + 'px' }"
     />
+
+    <!-- 卡片预览弹层:转发 / 保存 -->
+    <QuoteCardPreview :visible="cardPreview.visible" :src="cardPreview.src" @close="cardPreview.visible = false" />
   </view>
 </template>
 
@@ -61,8 +64,9 @@ import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { formatRelative } from '../../utils/format'
-import { makeQuoteCard, saveQuoteCard, CARD_W, CARD_H } from '../../utils/quoteCard'
+import { makeQuoteCard, CARD_W, CARD_H } from '../../utils/quoteCard'
 import StateView from '../../components/StateView.vue'
+import QuoteCardPreview from '../../components/QuoteCardPreview.vue'
 
 const inst = getCurrentInstance()
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
@@ -126,6 +130,8 @@ function delExcerpt(e) {
 }
 
 /* ---- 生成分享卡片(绘制逻辑在 utils/quoteCard.js,与阅读页选中菜单共用) ---- */
+const cardPreview = ref({ visible: false, src: '' })
+
 async function makeCard(e) {
   uni.showLoading({ title: '正在铺纸…' })
   try {
@@ -135,7 +141,8 @@ async function makeCard(e) {
       text: e.content,
       source: e.article_title || ''
     })
-    saveQuoteCard(tempPath)
+    uni.hideLoading()
+    cardPreview.value = { visible: true, src: tempPath }
   } catch {
     uni.hideLoading()
     uni.showToast({ title: '卡片生成失败', icon: 'none' })

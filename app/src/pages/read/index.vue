@@ -120,6 +120,9 @@
       <!-- 选区观察者(renderjs 在视图层监听 selectionchange,回传逻辑层) -->
       <SelectionObserver @selection="handleSelection" @cleared="handleCleared" />
 
+      <!-- 卡片预览弹层:转发 / 保存 -->
+      <QuoteCardPreview :visible="cardPreview.visible" :src="cardPreview.src" @close="cardPreview.visible = false" />
+
       <!-- 卡片离屏画布:固定在视口外参与渲染,不能 v-if -->
       <canvas
         canvas-id="quoteCanvas"
@@ -164,10 +167,11 @@ import { formatTime } from '../../utils/format'
 import { extractAudio } from '../../utils/audioCard'
 import { getArticleSnap, setArticleSnap } from '../../utils/articleCache'
 import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourceCache'
-import { makeQuoteCard, saveQuoteCard, CARD_W, CARD_H } from '../../utils/quoteCard'
+import { makeQuoteCard, CARD_W, CARD_H } from '../../utils/quoteCard'
 import { useSelectionMenu } from '../../composables/useSelectionMenu'
 import AudioPlayer from '../../components/AudioPlayer.vue'
 import SelectionObserver from '../../components/SelectionObserver.vue'
+import QuoteCardPreview from '../../components/QuoteCardPreview.vue'
 import CachedImage from '../../components/CachedImage.vue'
 import StateView from '../../components/StateView.vue'
 import CommentSection from '../../components/CommentSection.vue'
@@ -375,12 +379,16 @@ async function onMenuCard() {
       text,
       source: article.value?.title || ''
     })
-    saveQuoteCard(tempPath)
+    uni.hideLoading()
+    cardPreview.value = { visible: true, src: tempPath }
   } catch {
     uni.hideLoading()
     uni.showToast({ title: '卡片生成失败', icon: 'none' })
   }
 }
+
+// 卡片预览弹层
+const cardPreview = ref({ visible: false, src: '' })
 </script>
 
 <style scoped>

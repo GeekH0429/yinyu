@@ -97,13 +97,8 @@ export function makeQuoteCard({ canvasId, proxy, text, source = '' }) {
 export function saveQuoteCard(tempPath) {
   uni.hideLoading()
   // #ifdef H5
-  const a = document.createElement('a')
-  a.href = tempPath
-  a.download = 'yinyu-quote.png'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  uni.showToast({ title: '卡片已生成,正在下载 ✦', icon: 'none' })
+  downloadDataUrl(tempPath)
+  uni.showToast({ title: '卡片已保存到下载 ✦', icon: 'none' })
   // #endif
   // #ifndef H5
   uni.saveImageToPhotosAlbum({
@@ -112,6 +107,53 @@ export function saveQuoteCard(tempPath) {
     fail: () => uni.showToast({ title: '保存失败,请检查相册权限', icon: 'none' })
   })
   // #endif
+}
+
+/** 转发卡片:App 调系统分享面板(用户自选微信/QQ 等任意 App);H5 优先 Web Share API,不支持则下载兜底。 */
+export function shareQuoteCard(tempPath) {
+  // #ifdef APP-PLUS
+  uni.shareWithSystem({
+    type: 'image',
+    imageUrl: tempPath,
+    success: () => {},
+    fail: () => uni.showToast({ title: '分享已取消', icon: 'none' })
+  })
+  // #endif
+  // #ifdef H5
+  // navigator.share 需在用户手势激活期内同步调用:dataURL→File 转换保持同步
+  try {
+    const file = dataUrlToFile(tempPath, 'yinyu-quote.png')
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: '隐语' }).catch(() => {})
+      return
+    }
+  } catch (e) {
+    /* 走下载兜底 */
+  }
+  downloadDataUrl(tempPath)
+  uni.showToast({ title: '当前浏览器不支持直接转发,已下载图片,去聊天里发送吧', icon: 'none', duration: 2500 })
+  // #endif
+}
+
+/** H5:data URL 触发浏览器下载 */
+function downloadDataUrl(dataUrl) {
+  const a = document.createElement('a')
+  a.href = dataUrl
+  a.download = 'yinyu-quote.png'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
+/** H5:data URL 同步转 File(供 Web Share API) */
+function dataUrlToFile(dataUrl, name) {
+  if (!dataUrl || dataUrl.indexOf(',') < 0) return null
+  const [meta, b64] = dataUrl.split(',')
+  const m = /data:(.*?)(;|$)/.exec(meta)
+  const bin = atob(b64)
+  const arr = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+  return new File([arr], name, { type: (m && m[1]) || 'image/png' })
 }
 
 /** 中文友好按字符换行(measureText 逐字累积) */
