@@ -37,8 +37,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     proxy: {
-      '/api': { target: 'http://localhost:8000', changeOrigin: true },
-      '/uploads': { target: 'http://localhost:8000', changeOrigin: true }
+      // 显式 127.0.0.1:localhost 在新版 Node 会解析成 ::1 优先,
+      // 而 HBuilderX 内置服务占着 [::]:8000,会把请求劫走(回字面量 404)
+      '/api': { target: 'http://127.0.0.1:8010', changeOrigin: true },
+      '/uploads': { target: 'http://127.0.0.1:8010', changeOrigin: true }
     }
   },
   build: {

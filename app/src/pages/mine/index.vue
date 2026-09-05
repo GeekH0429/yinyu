@@ -66,6 +66,15 @@
       <text class="entry-arrow">›</text>
     </view>
 
+    <!-- 摘抄本入口 -->
+    <view class="card entry-card pressable anim-rise delay-5" @tap="goExcerpts">
+      <view class="entry-left">
+        <text class="entry-title">摘抄本</text>
+        <text class="entry-sub">舍不得忘记的句子</text>
+      </view>
+      <text class="entry-arrow">›</text>
+    </view>
+
     <TabBar />
   </view>
 </template>
@@ -119,6 +128,11 @@ function goWarmWords() {
 function goCapsules() {
   if (!isLoggedIn()) return uni.reLaunch({ url: '/pages/login/index' })
   uni.navigateTo({ url: '/pages/capsule/index' })
+}
+
+function goExcerpts() {
+  if (!isLoggedIn()) return uni.reLaunch({ url: '/pages/login/index' })
+  uni.navigateTo({ url: '/pages/excerpts/index' })
 }
 </script>
 

@@ -4,6 +4,7 @@ from app.models.article_daily_view import ArticleDailyView
 from app.models.base import Base
 from app.models.comment import Comment, CommentLike
 from app.models.daily_image import DailyImage
+from app.models.excerpt import Excerpt
 from app.models.invite import InviteCode
 from app.models.media import Media
 from app.models.notification import Notification
@@ -29,6 +30,7 @@ __all__ = [
     "TimeCapsule",
     "Media",
     "DailyImage",
+    "Excerpt",
     "WarmWord",
     "WarmWordFavorite",
 ]

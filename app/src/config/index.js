@@ -1,17 +1,20 @@
 /**
  * 后端地址配置。
- * - H5 调试:127.0.0.1:8000(浏览器与本机后端直连)
- * - 真机 / 小程序:电脑局域网 IP(如 192.168.x.x:8000),且手机与电脑同网段
+ * - H5 调试:127.0.0.1:8010(浏览器与本机后端直连)
+ * - 真机 / 小程序:电脑局域网 IP(如 192.168.x.x:8010),且手机与电脑同网段
  * - 生产:改成线上域名(https)
  *
  * 按平台条件编译:H5 默认走 localhost;App/小程序走局域网 IP。
  * 换机器改 IP 时只改 NON_H5_SERVER_ORIGIN 一处即可。
+ *
+ * 注意:本机 dev 端口用 8010——8000 会被 HBuilderX 内置 httpServer 抢占
+ * (还独占 IPv6 [::]:8000),localhost 解析到 ::1 的请求会被它劫走。
  */
 // #ifdef H5
-const SERVER_ORIGIN = 'http://127.0.0.1:8000'
+const SERVER_ORIGIN = 'http://127.0.0.1:8010'
 // #endif
 // #ifndef H5
-const NON_H5_SERVER_ORIGIN = 'http://192.168.1.5:8000'
+const NON_H5_SERVER_ORIGIN = 'http://192.168.1.5:8010'
 const SERVER_ORIGIN = NON_H5_SERVER_ORIGIN
 // #endif
 export { SERVER_ORIGIN }

@@ -8,6 +8,7 @@ from app.api import (
     capsule,
     comments,
     daily_image,
+    excerpt,
     me,
     notifications,
     stats,
@@ -26,6 +27,7 @@ api_router.include_router(comments.router)
 api_router.include_router(notifications.router)
 api_router.include_router(treehole.router)
 api_router.include_router(capsule.router)
+api_router.include_router(excerpt.router)
 api_router.include_router(daily_image.router)
 api_router.include_router(upload.router)
 api_router.include_router(admin.router)

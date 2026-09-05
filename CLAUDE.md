@@ -29,7 +29,7 @@ cd /d/code/yinyu/backend
 cp .env.example .env            # 首次:填 DB / JWT_SECRET_KEY / 超管账密
 "$PY" -m pip install -r requirements.txt
 "$PY" -m alembic upgrade head   # 建表 / 迁移
-"$PY" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload   # 开发
+"$PY" -m uvicorn app.main:app --host 127.0.0.1 --port 8010 --reload   # 开发(本地 dev 用 8010:8000 会被 HBuilderX 内置 httpServer 抢占并独占 IPv6,劫走 localhost 请求)
 
 # 语法/import 自检(不需要 DB)
 "$PY" -m compileall -q app
@@ -38,20 +38,20 @@ DATABASE_URL="postgresql+asyncpg://u:p@127.0.0.1/db" DATABASE_URL_SYNC="postgres
 # 前端(web 后台)
 cd /d/code/yinyu/web-admin
 npm install
-npm run dev      # :5173,自动代理 /api 与 /uploads 到后端 :8000
+npm run dev      # :5173,自动代理 /api 与 /uploads 到后端 :8010
 npm run build    # 生产构建到 dist/(部署到宝塔 /www/wwwroot/yinyu-admin)
 
 # App 客户端(uni-app)
 cd /d/code/yinyu/app
 npm install
-# 先改 src/config/index.js 的 SERVER_ORIGIN(H5 调试 127.0.0.1:8000;真机改局域网 IP;生产改域名)
+# 先改 src/config/index.js 的 SERVER_ORIGIN(H5 调试 127.0.0.1:8010;真机改局域网 IP;生产改域名)
 npm run dev:h5       # H5,默认 :8080
 npm run build:h5     # 编译验证;产物 dist/build/h5
 # 小程序 / App 用 HBuilderX 或 npm run dev:mp-weixin / dev:app-android
 ```
 
 - 后端启动会自动 bootstrap:建超管(见 `.env` 的 `SUPERADMIN_*`)+ 打印一个引导邀请码到控制台。
-- 手动测 API:启动后访问 `http://localhost:8000/docs`(Swagger)。默认本地凭据:`yinyu/yinyu/yinyu`(user/pass/db),超管 `admin/admin123`。
+- 手动测 API:启动后访问 `http://localhost:8010/docs`(Swagger)。默认本地凭据:`yinyu/yinyu/yinyu`(user/pass/db),超管 `admin/admin123`。
 - 没有 pytest 测试套件;端到端验证靠走通真实 PG+Redis 后调接口(参见本文件「关键坑」理解 async 用法)。
 
 ## 架构(大图景)
@@ -84,6 +84,10 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 - 写给未来自己的信:`time_capsules`(content / unlock_at / notified_at),封存后不可改,未到期**任何接口不下发 content**(服务端强制)。
 - 到期邮件由 `main.py` 的 `_capsule_notifier` 调度器发(与 `_article_publisher` 同款 UPDATE 原子认领 + RETURNING,多 worker 安全);邮件不含信件内容,开启仪式留在 App 内。
 
+### 摘抄本
+- `excerpts`(≤500 字纯文本句子);**article_id 不做外键级联**(文章删除摘抄仍在),冗余 `article_title` 快照供展示。
+- 阅读页「摘抄」按钮抓 `window.getSelection()` 选区(H5/App webview 均可用),抓不到手输;摘抄本里 canvas(老 API)生成暖色卡片,H5 下载 / App 存相册。
+
 ### 前端(web-admin)
 - `src/api/request.js`:axios 实例,注入 Bearer token,401 时自动用 refresh token 续期并重放,失败跳登录。**响应拦截器直接返回 `resp.data`**,所以 API 封装拿到的是业务对象。
 - `src/api/index.js`:按模块组织的 API 封装(注意 `auth.me` → `/me`,后端无 `/auth/me`)。
@@ -107,7 +111,7 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 - web-admin 的 `api.upload` 内置客户端图片压缩(`utils/imageCompress.js`,最大边 2000/webp q0.85,gif/svg/小文件跳过);所有上传都走这个漏斗,不要再在上传前自行压缩或绕过它。
 
 **App 客户端(uni-app)**
-- 后端地址在 `app/src/config/index.js` 的 `SERVER_ORIGIN`(H5=127.0.0.1:8000;真机/小程序必须改局域网 IP 且同网段;生产改域名)。换环境只改这一处。
+- 后端地址在 `app/src/config/index.js` 的 `SERVER_ORIGIN`(H5=127.0.0.1:8010;真机/小程序必须改局域网 IP 且同网段;生产改域名)。换环境只改这一处。
 - 富文本阅读用 `<mp-html>`(`pages.json` easycom 已注册),渲染 `content_html` 里的图/音/视频。
 - TabBar 是自定义组件 `components/TabBar.vue`(内联 SVG),三主页用 `uni.reLaunch` 切换;写作经首页 FAB 进入 `pages/write`。
 - @dcloudio 包用固定 alpha 版本 `3.0.0-5000720260410001`

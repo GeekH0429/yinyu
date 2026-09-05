@@ -54,6 +54,12 @@ export const api = {
     remove: (id) => http.delete('/capsules/' + id)
   },
 
+  excerpts: {
+    list: (params) => http.get('/excerpts', params),
+    create: (data) => http.post('/excerpts', data),
+    remove: (id) => http.delete('/excerpts/' + id)
+  },
+
   daily: {
     today: () => http.get('/daily-images/today'),
     history: (params) => http.get('/daily-images/history', params)
