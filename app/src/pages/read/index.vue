@@ -442,11 +442,11 @@ const cardPreview = ref({ visible: false, src: '' })
   padding: 12rpx 0 12rpx 40rpx; /* 扩大可点区域,主要向左扩展,不顶到 title */
 }
 .content {
-  padding: 24rpx 48rpx 120rpx;
+  padding: 24rpx 30rpx 120rpx 40rpx;
 }
 /* 骨架屏(阅读) */
 .read-skeleton {
-  padding: 32rpx 48rpx;
+  padding: 24rpx 30rpx 120rpx 40rpx;
 }
 .sk-rd-title {
   height: 48rpx;
