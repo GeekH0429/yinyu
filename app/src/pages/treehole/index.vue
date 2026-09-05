@@ -80,6 +80,19 @@
         <view class="hole-foot">
           <text>已被阅读 {{ revealed.view_count }} 次</text>
         </view>
+
+        <!-- 回音:读完留一句温柔给作者(匿名,仅预设短句;凭解锁签发的 echo_token) -->
+        <view class="echo-area" v-if="revealed.echo_token">
+          <text class="echo-area-title">{{ echoSent ? '你的回音已送达 ✦' : '留下一枚回音,让 TA 知道有人听见了' }}</text>
+          <view class="echo-chips">
+            <text
+              v-for="p in ECHO_PRESETS"
+              :key="p"
+              :class="['echo-chip', { chosen: echoSent === p, dim: echoSent && echoSent !== p }]"
+              @tap="sendEcho(p)"
+            >{{ p }}</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -216,6 +229,30 @@ function reset() {
   enteredCode.value = ''
   code.value = ''
   pinShake.value = false
+  echoSent.value = ''
+}
+
+/* ---- 回音(匿名预设短句,一人一洞一枚、可改) ---- */
+// 与服务端白名单保持同步:backend/app/services/treehole_echo.py 的 ECHO_PRESETS
+const ECHO_PRESETS = ['我听见了', '抱抱你', '我也曾这样', '会好的', '陪你到天亮']
+const echoSent = ref('')
+const echoSending = ref(false)
+
+async function sendEcho(msg) {
+  if (echoSending.value) return
+  if (echoSent.value === msg) return // 已选过同一句,不重复请求
+  const token = revealed.value?.echo_token
+  if (!token) return
+  echoSending.value = true
+  try {
+    await api.treeholes.echo(token, msg)
+    echoSent.value = msg
+    uni.showToast({ title: '回音已送达 ✦', icon: 'none' })
+  } catch {
+    /* 失效/限流:request 层已 toast */
+  } finally {
+    echoSending.value = false
+  }
 }
 
 /* 切 tab 保活模式下,树洞页不再重挂载 → 已解锁的内容会一直停留。
@@ -557,6 +594,43 @@ function onImgTap(e) {
   border-top: 1rpx solid rgba(255, 255, 255, 0.06);
   font-size: 24rpx;
   color: #555568;
+}
+
+/* 回音区 */
+.echo-area {
+  margin-top: 32rpx;
+  padding: 28rpx;
+  border-radius: 28rpx;
+  background: rgba(123, 140, 196, 0.08);
+  border: 2rpx solid rgba(123, 140, 196, 0.18);
+}
+.echo-area-title {
+  display: block;
+  font-size: 24rpx;
+  color: #8a97c4;
+  margin-bottom: 22rpx;
+}
+.echo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.echo-chip {
+  padding: 14rpx 30rpx;
+  border-radius: 40rpx;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2rpx solid rgba(123, 140, 196, 0.35);
+  color: #a8b2d8;
+  font-size: 26rpx;
+}
+.echo-chip.chosen {
+  background: rgba(123, 140, 196, 0.28);
+  border-color: #7b8cc4;
+  color: #e0e4f4;
+  font-weight: 600;
+}
+.echo-chip.dim {
+  opacity: 0.4;
 }
 
 /* 写树洞 FAB */

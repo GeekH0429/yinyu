@@ -37,6 +37,7 @@ class TreeHoleOut(BaseModel):
     code: str
     is_active: bool
     view_count: int
+    echo_count: int = 0
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -47,9 +48,26 @@ class TreeHoleUnlockIn(BaseModel):
 
 
 class TreeHolePublicOut(BaseModel):
-    """暗号读者视角:全量隐匿,无 author、无 code。"""
+    """暗号读者视角:全量隐匿,无 author、无 code。
+    echo_token:解锁成功时签发的回音令牌(30 分钟有效),回音接口凭它调用。"""
     id: int
     title: str | None = None
     content_html: str
     view_count: int
+    echo_token: str | None = None
     created_at: datetime
+
+
+class EchoCreate(BaseModel):
+    """留一枚回音:message 必须命中预设白清单(services/treehole_echo.py)。"""
+    echo_token: str = Field(..., min_length=8, max_length=64)
+    message: str = Field(..., max_length=30)
+
+
+class EchoOut(BaseModel):
+    """作者视角的回音条目:只有预设短句与时间,无任何读者信息。"""
+    id: int
+    message: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

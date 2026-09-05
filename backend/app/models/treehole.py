@@ -34,3 +34,5 @@ class TreeHole(TimestampMixin, Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     view_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    # 回音数(反范式计数,与 treehole_echoes 表保持一致,作者视角展示用)
+    echo_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)

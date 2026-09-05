@@ -4,21 +4,26 @@
     - 无列表 / 无标签 / 全量隐匿:不提供任何集合接口给读者。
     - 读者唯一入口:POST /treeholes/unlock 输入 6 位暗号解锁单篇(限流防爆破)。
     - 暗号读者看不到作者、看不到 code(返回 TreeHolePublicOut)。
+    - 回音:POST /treeholes/echo,凭 unlock 签发的 echo_token 调用(见下)。
     - 作者可在"我的"里管理自己的树洞(见 me.py)。
 """
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFound
+from app.config import settings
+from app.core.exceptions import BadRequest, NotFound
 from app.core.ownership import get_owned
 from app.database import get_db
 from app.deps import get_current_user
-from app.config import settings
+from app.models.notification import NOTI_TREEHOLE_ECHO, Notification
 from app.models.treehole import TreeHole
+from app.models.treehole_echo import TreeHoleEcho
 from app.redis_client import get_redis
 from app.schemas.treehole import (
     CodeUpdate,
+    EchoCreate,
+    EchoOut,
     TreeHoleCreate,
     TreeHoleOut,
     TreeHolePublicOut,
@@ -27,6 +32,7 @@ from app.schemas.treehole import (
 )
 from app.services.rate_limit import get_client_ip, sliding_limit
 from app.services.treehole_code import allocate_code, assert_unlock_allowed
+from app.services.treehole_echo import ECHO_PRESETS, grant_echo_token, resolve_echo_token
 from app.services.view_counter import incr_view
 
 router = APIRouter(prefix="/treeholes", tags=["树洞"])
@@ -39,7 +45,10 @@ async def unlock(
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ):
-    """凭 6 位暗号解锁单篇。无论暗号对错都计入限流,且不回显"存在/不存在"差异。"""
+    """凭 6 位暗号解锁单篇。无论暗号对错都计入限流,且不回显"存在/不存在"差异。
+
+    成功时签发 echo_token(30 分钟):回音接口凭它调用,证明"我解过这个洞",
+    防止登录用户枚举 treehole_id 直接给任意树洞塞回音。"""
     client_ip = get_client_ip(request)
     await assert_unlock_allowed(redis, client_ip)
 
@@ -53,13 +62,87 @@ async def unlock(
     await incr_view(redis, "treehole", th.id, "ip:" + client_ip)
     th.view_count = (th.view_count or 0) + 1  # 内存校正(显示用),实际落库由后台回写
 
+    echo_token = await grant_echo_token(redis, th.id)
     return TreeHolePublicOut(
         id=th.id,
         title=th.title,
         content_html=th.content_html,
         view_count=th.view_count,
+        echo_token=echo_token,
         created_at=th.created_at,
     )
+
+
+@router.post("/echo", response_model=EchoOut)
+async def leave_echo(
+    data: EchoCreate,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+):
+    """给刚解锁的树洞留一枚匿名回音(预设短句白名单,一人一洞一枚、可改)。
+
+    只认 echo_token 不认 treehole_id:没有暗号就解不开、也就拿不到 token。
+    首次回音给作者发一条站内通知(actor 为空,保护读者匿名);修改回音不再发。
+    """
+    if data.message not in ECHO_PRESETS:
+        raise BadRequest("只能从预设回音里选一句")
+
+    # 轻量限流:同用户 60s 内最多 20 次(防脚本刷)
+    await sliding_limit(
+        redis,
+        f"th:echo:u:{user.id}",
+        max_attempts=20,
+        window_seconds=60,
+        lock_seconds=60,
+        message="回音太频繁了,歇一歇",
+    )
+
+    treehole_id = await resolve_echo_token(redis, data.echo_token)
+    if treehole_id is None:
+        raise NotFound("回音已失效,请重新解锁")
+
+    th = await db.scalar(select(TreeHole).where(TreeHole.id == treehole_id, TreeHole.is_active.is_(True)))
+    if th is None:
+        raise NotFound("树洞已不存在")
+
+    existed = await db.scalar(
+        select(TreeHoleEcho).where(
+            TreeHoleEcho.treehole_id == treehole_id, TreeHoleEcho.user_id == user.id
+        )
+    )
+    if existed:
+        existed.message = data.message
+        echo = existed
+        first_time = False
+    else:
+        echo = TreeHoleEcho(treehole_id=treehole_id, user_id=user.id, message=data.message)
+        db.add(echo)
+        first_time = True
+
+    if first_time:
+        # 反范式计数:原子自增 + 内存校正(async 姿势见 CLAUDE.md「关键坑」)
+        await db.execute(
+            update(TreeHole)
+            .where(TreeHole.id == treehole_id)
+            .values(echo_count=TreeHole.echo_count + 1)
+            .execution_options(synchronize_session=False)
+        )
+        th.echo_count = (th.echo_count or 0) + 1
+        if user.id != th.author_id:
+            # 作者收通知:actor 留空(系统事件),读者身份不进通知
+            db.add(
+                Notification(
+                    recipient_id=th.author_id,
+                    actor_id=None,
+                    type=NOTI_TREEHOLE_ECHO,
+                    treehole_id=treehole_id,
+                    summary=data.message,
+                )
+            )
+    await db.commit()
+    await db.refresh(echo)
+    return echo
 
 
 @router.post("", response_model=TreeHoleOut, status_code=201)

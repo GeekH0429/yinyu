@@ -8,7 +8,7 @@ from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.user import AuthorBrief
 
-NotificationType = Literal["comment", "reply", "comment_like", "mention"]
+NotificationType = Literal["comment", "reply", "comment_like", "mention", "treehole_echo"]
 
 
 class _ArticleRef(BaseModel):
@@ -27,6 +27,10 @@ class NotificationOut(BaseModel):
     actor: AuthorBrief | None = None
     article: _ArticleRef | None = None
     comment: _CommentRef | None = None
+    # 仅 treehole_echo:收到回音的树洞 id(客户端跳树洞页用,不回传标题等)
+    treehole_id: int | None = None
+    # 反范式快照:treehole_echo 存回音预设短句(其它类型用 comment.snippet,不用此字段)
+    summary: str = ""
     is_read: bool
     created_at: datetime
 
@@ -57,6 +61,8 @@ def to_notification_out(
         actor=AuthorBrief.model_validate(actor) if actor else None,
         article=article,
         comment=comment,
+        treehole_id=n.treehole_id,
+        summary=n.summary or "",
         is_read=n.is_read,
         created_at=n.created_at,
     )

@@ -21,8 +21,9 @@ from app.core.exceptions import AppException
 from app.database import AsyncSessionLocal, get_db
 from app.logging_config import LOG_NAMESPACE, setup_logging
 from app.models.article import STATUS_PUBLISHED, STATUS_SCHEDULED, Article
+from app.models.time_capsule import TimeCapsule
 from app.redis_client import redis
-from app.services.email import notify_new_article
+from app.services.email import notify_capsule_opened, notify_new_article
 from app.services.view_counter import archive_daily_views, flush_pending
 from app.startup import bootstrap
 
@@ -101,6 +102,37 @@ async def _article_publisher():
             logger.exception("article_publisher failed")
 
 
+async def _capsule_notifier():
+    """后台任务:每 60 秒把到期的时光胶囊(notified_at IS NULL)认领并发邮件。
+
+    与 _article_publisher 同款的多 worker 安全姿势:UPDATE ... WHERE notified_at IS NULL
+    原子认领 + RETURNING,行被 A worker 置位后其它 worker 不再命中。
+    邮件 best-effort:认领成功后发送失败不重试(可接受,App 内本来也能开启)。
+    """
+    while True:
+        await asyncio.sleep(60)
+        try:
+            async with AsyncSessionLocal() as db:
+                res = await db.execute(
+                    update(TimeCapsule)
+                    .where(
+                        TimeCapsule.notified_at.is_(None),
+                        TimeCapsule.unlock_at <= func.now(),
+                    )
+                    .values(notified_at=func.now())
+                    .returning(TimeCapsule.id)
+                    .execution_options(synchronize_session=False)
+                )
+                ids = [r[0] for r in res.all()]
+                await db.commit()
+            for cid in ids:
+                asyncio.create_task(notify_capsule_opened(cid))
+            if ids:
+                logger.info("capsule_notifier notified %d capsules", len(ids))
+        except Exception:  # noqa: BLE001
+            logger.exception("capsule_notifier failed")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     setup_logging()
@@ -109,10 +141,12 @@ async def lifespan(_app: FastAPI):
     flusher = asyncio.create_task(_view_flusher())
     archiver = asyncio.create_task(_daily_archiver())
     publisher = asyncio.create_task(_article_publisher())
+    capsule_notifier = asyncio.create_task(_capsule_notifier())
     yield
     flusher.cancel()
     archiver.cancel()
     publisher.cancel()
+    capsule_notifier.cancel()
     await redis.aclose()
     logger.info("app stopped")
 

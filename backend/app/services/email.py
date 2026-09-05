@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import html
 import logging
+from datetime import timedelta, timezone
 from email.message import EmailMessage
 from typing import Literal
 
@@ -25,11 +26,15 @@ from sqlalchemy import select
 from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models.article import Article
+from app.models.time_capsule import TimeCapsule
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
 InteractionKind = Literal["comment", "reply", "mention"]
+
+# 北京时区(邮件文案里的日期用东八区展示)
+_CN_TZ_MAIL = timezone(timedelta(hours=8))
 
 
 async def send_email(to: str, subject: str, html_body: str) -> None:
@@ -199,3 +204,56 @@ async def notify_new_article(article_id: int) -> None:
         logger.info("new article notify sent article_id=%s recipients=%d", article_id, len(recipients))
     except Exception:  # noqa: BLE001 - 邮件失败不能影响发布流程
         logger.exception("notify_new_article failed article_id=%s", article_id)
+
+
+async def notify_capsule_opened(capsule_id: int) -> None:
+    """时光胶囊到期:给主人发一封开启提醒。
+
+    调用时机:main.py _capsule_notifier 原子认领(notified_at 置位)成功之后。
+    收件条件:绑定邮箱且开启互动邮件通知(email_notify_enabled)。
+    邮件不携带信件内容 —— 开启这件事必须回到 App 里完成,仪式感留给本人。
+    任何异常只记日志,永不抛。
+    """
+    try:
+        if not settings.smtp_enabled or not settings.smtp_host:
+            return
+        async with AsyncSessionLocal() as db:
+            row = (
+                await db.execute(
+                    select(TimeCapsule, User.nickname, User.email)
+                    .join(User, User.id == TimeCapsule.user_id)
+                    .where(
+                        TimeCapsule.id == capsule_id,
+                        User.email.is_not(None),
+                        User.email_notify_enabled.is_(True),
+                    )
+                )
+            ).first()
+        if row is None:
+            return
+        capsule, nickname, to = row
+        if not to:
+            return
+
+        nick = html.escape(nickname or "你")
+        title = html.escape(capsule.title or "一封没有名字的信")
+        sealed_on = capsule.created_at.astimezone(_CN_TZ_MAIL).strftime("%Y 年 %m 月 %d 日")
+        unlock_on = capsule.unlock_at.astimezone(_CN_TZ_MAIL).strftime("%Y 年 %m 月 %d 日")
+        subject = "你有一枚时光胶囊可以开启了 ✦"
+        body = f"""\
+<div style="font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+            max-width:560px;margin:0 auto;padding:24px;color:#3a3a3a;line-height:1.6;">
+  <p style="margin:0 0 12px;">嗨,{nick},</p>
+  <p style="margin:0 0 16px;font-size:15px;">
+    你在 <b>{sealed_on}</b> 封存的《{title}》,已于 <b>{unlock_on}</b> 到期,
+    现在可以开启了。去隐语里,见一见那时写下它的自己。
+  </p>
+  <p style="margin:0;font-size:13px;color:#999;">
+    —— 来自 yinyu,一个治愈的角落
+  </p>
+</div>
+"""
+        await send_email(to, subject, body)
+        logger.info("capsule open notify sent capsule_id=%s", capsule_id)
+    except Exception:  # noqa: BLE001 - 邮件失败不能影响调度器
+        logger.exception("notify_capsule_opened failed capsule_id=%s", capsule_id)

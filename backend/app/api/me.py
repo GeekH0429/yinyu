@@ -5,16 +5,18 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import Conflict
+from app.core.ownership import get_owned
 from app.database import get_db
 from app.deps import get_current_user
 from app.models.article import Article, ArticleLike
 from app.models.comment import Comment
 from app.models.treehole import TreeHole
+from app.models.treehole_echo import TreeHoleEcho
 from app.models.user import User
 from app.schemas.article import ArticleBrief, to_brief
 from app.schemas.comment import CommentOut, to_comment_out
 from app.schemas.common import Page, offset_of
-from app.schemas.treehole import TreeHoleOut
+from app.schemas.treehole import EchoOut, TreeHoleOut
 from app.schemas.user import UserOut, UserUpdate
 
 router = APIRouter(prefix="/me", tags=["我的"])
@@ -104,6 +106,25 @@ async def my_treeholes(
     )
     items = [TreeHoleOut.model_validate(t) for t in rows.scalars().all()]
     return Page[TreeHoleOut](items=items, total=total or 0, page=page, page_size=page_size)
+
+
+@router.get("/treeholes/{treehole_id}/echoes", response_model=list[EchoOut])
+async def my_treehole_echoes(
+    treehole_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """我的某个树洞收到的回音(仅作者本人/管理员;只有预设短句与时间,无读者信息)。
+
+    最近 200 条,倒序。"""
+    await get_owned(db, TreeHole, treehole_id, user, not_found="树洞不存在", forbidden="只能查看自己的树洞")
+    rows = await db.execute(
+        select(TreeHoleEcho)
+        .where(TreeHoleEcho.treehole_id == treehole_id)
+        .order_by(TreeHoleEcho.created_at.desc())
+        .limit(200)
+    )
+    return [EchoOut.model_validate(e) for e in rows.scalars().all()]
 
 
 @router.get("/likes", response_model=Page[ArticleBrief])

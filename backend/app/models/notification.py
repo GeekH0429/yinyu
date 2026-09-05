@@ -9,6 +9,7 @@ NOTI_COMMENT = "comment"            # 有人评论了我的图文
 NOTI_REPLY = "reply"                # 有人回复了我的评论
 NOTI_COMMENT_LIKE = "comment_like"  # 有人点赞了我的评论
 NOTI_MENTION = "mention"            # 在评论里 @了我
+NOTI_TREEHOLE_ECHO = "treehole_echo"  # 我的树洞收到了回音(无 actor,保护读者匿名)
 
 
 class Notification(TimestampMixin, Base):
@@ -38,6 +39,10 @@ class Notification(TimestampMixin, Base):
     # 仅 type=reply 有值:指向触发回复本身(区别于 comment_id=被回复的评论)
     reply_comment_id: Mapped[int | None] = mapped_column(
         ForeignKey("comments.id", ondelete="CASCADE"), nullable=True
+    )
+    # 仅 type=treehole_echo 有值:收到回音的树洞(树洞被删 → 通知级联删除)
+    treehole_id: Mapped[int | None] = mapped_column(
+        ForeignKey("treeholes.id", ondelete="CASCADE"), nullable=True
     )
     is_read: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False

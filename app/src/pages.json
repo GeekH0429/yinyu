@@ -17,7 +17,9 @@
     { "path": "pages/settings/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/login/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/warm-words/index", "style": { "navigationStyle": "custom" } },
-    { "path": "pages/warm-words/favorites", "style": { "navigationStyle": "custom" } }
+    { "path": "pages/warm-words/favorites", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/capsule/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/capsule/write", "style": { "navigationStyle": "custom", "app-plus": { "softinputMode": "adjustResize" } } }
   ],
   "tabBar": {
     "custom": true,

@@ -7,7 +7,9 @@ from app.models.daily_image import DailyImage
 from app.models.invite import InviteCode
 from app.models.media import Media
 from app.models.notification import Notification
+from app.models.time_capsule import TimeCapsule
 from app.models.treehole import TreeHole
+from app.models.treehole_echo import TreeHoleEcho
 from app.models.user import User
 from app.models.warm_word import WarmWord
 from app.models.warm_word_favorite import WarmWordFavorite
@@ -23,6 +25,8 @@ __all__ = [
     "CommentLike",
     "Notification",
     "TreeHole",
+    "TreeHoleEcho",
+    "TimeCapsule",
     "Media",
     "DailyImage",
     "WarmWord",

@@ -33,6 +33,8 @@ export const api = {
 
   treeholes: {
     unlock: (code) => http.post('/treeholes/unlock', { code }),
+    echo: (echoToken, message) =>
+      http.post('/treeholes/echo', { echo_token: echoToken, message }),
     create: (data) => http.post('/treeholes', data),
     changeCode: (id, code) => http.put('/treeholes/' + id + '/code', { code })
   },
@@ -41,7 +43,15 @@ export const api = {
     get: () => http.get('/me'),
     update: (data) => http.put('/me', data),
     myArticles: (params) => http.get('/me/articles', params),
-    myTreeholes: (params) => http.get('/me/treeholes', params)
+    myTreeholes: (params) => http.get('/me/treeholes', params),
+    treeholeEchoes: (id) => http.get('/me/treeholes/' + id + '/echoes')
+  },
+
+  capsules: {
+    list: (params) => http.get('/capsules', params),
+    get: (id) => http.get('/capsules/' + id),
+    create: (data) => http.post('/capsules', data),
+    remove: (id) => http.delete('/capsules/' + id)
   },
 
   daily: {

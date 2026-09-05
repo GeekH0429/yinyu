@@ -153,6 +153,9 @@ async function onTap(n) {
   // 跳转到关联文章
   if (n.article) {
     uni.navigateTo({ url: '/pages/read/index?id=' + n.article.id })
+  } else if (n.type === 'treehole_echo') {
+    // 树洞回音:回树洞页看「我的树洞」(入口在 我的→我的作品)
+    uni.switchTab({ url: '/pages/treehole/index' })
   }
 }
 
@@ -167,6 +170,9 @@ function describe(n) {
       return actor + ' 赞了你的评论'
     case 'mention':
       return actor + ' 在评论里 @ 了你'
+    case 'treehole_echo':
+      // 回音通知无 actor(读者匿名),summary 是预设短句
+      return '你的树洞收到了一枚回音:「' + (n.summary || '我听见了') + '」'
     default:
       return actor + ' 与你有互动'
   }

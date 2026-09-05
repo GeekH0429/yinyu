@@ -108,7 +108,14 @@
                   <text class="th-btn" @tap="refreshCode(t)">换暗号</text>
                 </view>
               </view>
-              <text class="mini-time">被阅读 {{ t.view_count }} 次</text>
+              <view class="th-stat-row">
+                <text class="mini-time">被阅读 {{ t.view_count }} 次</text>
+                <text
+                  v-if="t.echo_count > 0"
+                  class="th-echo-link"
+                  @tap="openEchoes(t)"
+                >🌙 回音 {{ t.echo_count }} 枚 ›</text>
+              </view>
             </view>
             <StateView
               v-if="thError && !treeholes.length"
@@ -135,6 +142,26 @@
 
     <!-- 编辑树洞(复用与「我的」页同一组件) -->
     <TreeholeEditor v-model:visible="thEditorVisible" :editing="thEditing" @updated="onThUpdated" />
+
+    <!-- 树洞回音:收到的匿名短句列表 -->
+    <view class="echo-pop-mask" v-if="echoPop.visible" @tap="echoPop.visible = false">
+      <view class="echo-pop" @tap.stop>
+        <view class="echo-pop-head">
+          <text class="echo-pop-title serif">🌙 收到的回音</text>
+          <text class="echo-pop-close" @tap="echoPop.visible = false">×</text>
+        </view>
+        <view v-if="echoPop.loading" class="echo-pop-state">
+          <text class="load-text">加载中…</text>
+        </view>
+        <scroll-view v-else scroll-y class="echo-pop-list">
+          <view v-for="e in echoPop.items" :key="e.id" class="echo-item">
+            <text class="echo-item-msg">{{ e.message }}</text>
+            <text class="echo-item-time">{{ formatRelative(e.created_at) }}</text>
+          </view>
+          <text v-if="!echoPop.items.length" class="echo-pop-empty">还没有回音,把暗号分享出去吧</text>
+        </scroll-view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -143,7 +170,7 @@ import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
-import { formatDate } from '../../utils/format'
+import { formatDate, formatRelative } from '../../utils/format'
 import { isLoggedIn } from '../../store/user'
 import {
   articles, treeholes,
@@ -177,6 +204,19 @@ const currentTabIndex = computed(() => (currentTab.value === 'articles' ? 0 : 1)
 // 树洞编辑弹窗
 const thEditorVisible = ref(false)
 const thEditing = ref(null)
+
+// 树洞回音弹窗
+const echoPop = ref({ visible: false, loading: false, items: [] })
+
+async function openEchoes(t) {
+  echoPop.value = { visible: true, loading: true, items: [] }
+  try {
+    const items = await api.me.treeholeEchoes(t.id)
+    echoPop.value = { visible: true, loading: false, items: items || [] }
+  } catch {
+    echoPop.value.visible = false
+  }
+}
 
 onShow(async () => {
   if (!isLoggedIn()) {
@@ -495,6 +535,84 @@ function goBack() {
   color: #8d8d8d;
   border-radius: 24rpx;
   font-size: 24rpx;
+}
+.th-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.th-echo-link {
+  font-size: 24rpx;
+  color: #7b8cc4;
+}
+
+/* 回音弹窗 */
+.echo-pop-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 26, 0.55);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+}
+.echo-pop {
+  width: 100%;
+  max-height: 64vh;
+  background: #fffdf8;
+  border-radius: 32rpx;
+  padding: 36rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+}
+.echo-pop-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+.echo-pop-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #4a4a4a;
+}
+.echo-pop-close {
+  font-size: 44rpx;
+  color: #b8b8b8;
+  padding: 0 8rpx;
+  line-height: 1;
+}
+.echo-pop-state {
+  padding: 40rpx 0;
+  text-align: center;
+}
+.echo-pop-list {
+  max-height: 50vh;
+}
+.echo-item {
+  padding: 20rpx 4rpx;
+  border-bottom: 1rpx solid rgba(196, 168, 130, 0.12);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.echo-item-msg {
+  font-size: 28rpx;
+  color: #4a4a4a;
+}
+.echo-item-time {
+  font-size: 22rpx;
+  color: #b8b8b8;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+.echo-pop-empty {
+  display: block;
+  padding: 40rpx 0;
+  text-align: center;
+  font-size: 24rpx;
+  color: #b8b8b8;
 }
 
 /* 骨架屏(mini 卡片) */

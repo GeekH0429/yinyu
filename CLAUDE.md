@@ -78,6 +78,11 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 - 解锁返回 `TreeHolePublicOut`:**不含 author、不含 code**(全量隐匿);暗号无效与不存在回包一致(统一 `NotFound("暗号无效")`)。
 - 限流在 `services/treehole_code.assert_unlock_allowed`:Redis 滑动窗口(默认 60s 内 10 次,超限锁 30min),**对错都计数**,防 6 位枚举。
 - 作者可在 `me/treeholes` 看到自己写的(含 code)。
+- **回音**:解锁响应带 30 分钟 `echo_token`(Redis 绑定树洞 id);`POST /treeholes/echo` 只认 token 不认裸 id(防枚举刷通知),message 必须命中 `services/treehole_echo.py` 的预设白名单;一人一洞一枚可改;作者收匿名通知(actor 空),`GET /me/treeholes/{id}/echoes` 查看。
+
+### 时光胶囊
+- 写给未来自己的信:`time_capsules`(content / unlock_at / notified_at),封存后不可改,未到期**任何接口不下发 content**(服务端强制)。
+- 到期邮件由 `main.py` 的 `_capsule_notifier` 调度器发(与 `_article_publisher` 同款 UPDATE 原子认领 + RETURNING,多 worker 安全);邮件不含信件内容,开启仪式留在 App 内。
 
 ### 前端(web-admin)
 - `src/api/request.js`:axios 实例,注入 Bearer token,401 时自动用 refresh token 续期并重放,失败跳登录。**响应拦截器直接返回 `resp.data`**,所以 API 封装拿到的是业务对象。

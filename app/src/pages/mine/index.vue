@@ -57,6 +57,15 @@
       <text class="entry-arrow">›</text>
     </view>
 
+    <!-- 时光胶囊入口 -->
+    <view class="card entry-card pressable anim-rise delay-4" @tap="goCapsules">
+      <view class="entry-left">
+        <text class="entry-title">时光胶囊</text>
+        <text class="entry-sub">给未来自己的一封信</text>
+      </view>
+      <text class="entry-arrow">›</text>
+    </view>
+
     <TabBar />
   </view>
 </template>
@@ -105,6 +114,11 @@ function goMyWorks() {
 function goWarmWords() {
   if (!isLoggedIn()) return uni.reLaunch({ url: '/pages/login/index' })
   uni.navigateTo({ url: '/pages/warm-words/index' })
+}
+
+function goCapsules() {
+  if (!isLoggedIn()) return uni.reLaunch({ url: '/pages/login/index' })
+  uni.navigateTo({ url: '/pages/capsule/index' })
 }
 </script>
 
