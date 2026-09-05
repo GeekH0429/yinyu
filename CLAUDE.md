@@ -113,10 +113,11 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 **App 客户端(uni-app)**
 - 后端地址在 `app/src/config/index.js` 的 `SERVER_ORIGIN`(H5=127.0.0.1:8010;真机/小程序必须改局域网 IP 且同网段;生产改域名)。换环境只改这一处。
 - 富文本阅读用 `<mp-html>`(`pages.json` easycom 已注册),渲染 `content_html` 里的图/音/视频。
-- 正文可选中复制靠 `App.vue` 全局的 `.rich-content * / .mp-html *` 通配覆盖(直接声明必须打到 uni-text 元素,写在容器上会被继承规则之外的自体 `none` 压过);选中浮动菜单(摘抄/做卡片)状态在 `composables/useSelectionMenu.js`。
-- **App 端逻辑层没有 `document`/`window`**(页面 JS 跑在独立引擎,DOM 在视图层 WebView)——任何 DOM API(selectionchange、getSelection、canvas 的 document.createElement 等)必须放 **renderjs**(`components/SelectionObserver.vue` 是选区监听的范例:视图层监听 → `owner.callMethod` 回传逻辑层);逻辑层直接调会 `TypeError: Cannot read property of undefined`。
+- 正文选中用**原生选区**(`user-select: text`,长按出手柄可自由拖拽;系统复制/分享工具栏是 WebView 外的系统 UI,网页层无法隐藏)。`components/SelectionObserver.vue` 的 renderjs 监听 `selectionchange` 回传逻辑层,浮动菜单状态在 `composables/useSelectionMenu.js`,定位**选区下方**与系统工具栏(在上方)错开。微信式"原生手柄 + 自定义工具栏"需要 uni 原生插件(Android 替换 ActionMode / iOS UIEditMenuInteraction),未做。
+- **App 端逻辑层没有 `document`/`window`**(页面 JS 跑在独立引擎,DOM 在视图层 WebView)——任何 DOM API(selectionchange、getSelection 等)必须放 **renderjs**(`SelectionObserver.vue` 是范例:视图层监听 → `owner.callMethod` 回传逻辑层);逻辑层直接调会 `TypeError: Cannot read property of undefined`。
 - TabBar 是自定义组件 `components/TabBar.vue`(内联 SVG),三主页用 `uni.reLaunch` 切换;写作经首页 FAB 进入 `pages/write`。
 - @dcloudio 包用固定 alpha 版本 `3.0.0-5000720260410001`
+- **`@tap` 在 H5/App 编译为原生 `click`** —— 给元素加 `@touchstart.prevent` 会把浏览器由 touch 合成的 click 一并吞掉,该元素及子元素的 `@tap` 全部静默失效(桌面鼠标路径不受影响,只在真机暴露)。要"点按钮时保留选区"应改用缓存快照,不要 prevent touchstart。
 
 ## dev 与生产差异
 - 开发期 `main.py` 在 `APP_ENV=dev` 时挂 `/uploads` 静态(`StaticFiles`),前端能直接预览上传文件;**生产由 Nginx 直接 alias `/data/uploads/`**,不走 Python。`.env` 的 `UPLOAD_DIR` 在 Windows dev 下用相对路径(如 `./_uploads`)避开 `/data/uploads` 在 Windows 的路径问题。

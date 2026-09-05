@@ -29,12 +29,13 @@ export function useSelectionMenu() {
   function handleSelection(p) {
     if (acting || !p || !p.text) return
     lastText = String(p.text)
-    // 选区上方居中;顶部放不下挪到下方;整体 clamp 进视口
+    // 系统复制/分享工具栏固定出现在选区上方(iOS/Android 一致)→ 我方菜单放下方错开;
+    // 下方放不下(选区贴屏底)才回上方,并额外抬升一个系统工具栏的高度继续错开
     let x = p.left + (p.right - p.left) / 2 - MENU_W / 2
-    let y = p.top - MENU_H - 12
-    if (y < 10) y = p.bottom + 12
+    let y = p.bottom + 12
+    if (y + MENU_H > p.vh - 10) y = p.top - MENU_H - 56
     x = Math.max(10, Math.min(x, p.vw - MENU_W - 10))
-    y = Math.min(y, p.vh - MENU_H - 10)
+    y = Math.max(10, Math.min(y, p.vh - MENU_H - 10))
     menu.value = { visible: true, x, y, text: lastText }
   }
 

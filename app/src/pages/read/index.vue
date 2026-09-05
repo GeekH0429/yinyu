@@ -102,12 +102,14 @@
         </view>
       </view>
 
-      <!-- 选中浮动菜单:长按/拖选正文后出现在选区上方(touchstart.prevent 防止点按钮时选区被清) -->
+      <!-- 选中浮动菜单:放选区下方与系统工具栏错开。
+           注意不能加 touchstart.prevent —— @tap 在 H5/App 编译为 click,
+           touchstart 的 preventDefault 会吞掉浏览器合成的 click,按钮全部失效;
+           点按钮时选区被清没关系,文本已缓存在 useSelectionMenu,动作取快照执行 -->
       <view
         v-if="menu.visible"
         class="sel-menu"
         :style="{ left: menu.x + 'px', top: menu.y + 'px' }"
-        @touchstart.prevent
         @tap.stop
       >
         <text class="sel-btn" @tap="onMenuExcerpt">❝ 摘抄</text>

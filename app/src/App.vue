@@ -221,10 +221,12 @@ textarea {
   user-select: text;
 }
 
-/* 富文本区允许选中复制。必须覆盖到「全部后代」:
-   上面 view/text 的 user-select:none 编译后是 uni-text{...none},直接命中
-   mp-html 内部的每个文本节点;而元素自身的直接声明永远赢过从容器继承的值,
-   所以只写在 .mp-html 容器上无效 —— 容器 + 通配后代一起声明才能生效。 */
+/* 富文本区允许选中复制(原生长按选区,手柄可自由拖拽微调)。
+   必须覆盖到「全部后代」:上面 view/text 的 user-select:none 编译后是
+   uni-text{...none},直接命中 mp-html 内部的每个文本节点;而元素自身的直接声明
+   永远赢过从容器继承的值,所以只写在 .mp-html 容器上无效 —— 容器 + 通配后代一起声明。
+   系统复制/分享工具栏是 WebView 外的系统 UI,无法从网页层隐藏;
+   我方浮动菜单放选区下方与之错开(见 composables/useSelectionMenu.js)。 */
 .rich-content,
 .rich-content *,
 .mp-html,
