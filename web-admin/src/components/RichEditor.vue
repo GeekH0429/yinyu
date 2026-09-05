@@ -111,6 +111,20 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue'])
 
+// emit 防抖:getHTML() 是整篇文档序列化,长文下每次击键都跑会拖慢输入。
+// 300ms 合并;blur 立即 flush;保存时父组件可通过 ref 的 getHTML() 直读最新值兜底。
+const EMIT_DEBOUNCE = 300
+let emitTimer = null
+function flushHTML() {
+  clearTimeout(emitTimer)
+  if (!editor.value) return
+  emit('update:modelValue', editor.value.getHTML())
+}
+function scheduleEmit() {
+  clearTimeout(emitTimer)
+  emitTimer = setTimeout(flushHTML, EMIT_DEBOUNCE)
+}
+
 const editor = useEditor({
   content: props.modelValue || '',
   extensions: [
@@ -149,9 +163,9 @@ const editor = useEditor({
       }
     }
   },
-  onUpdate: ({ editor }) => {
-    emit('update:modelValue', editor.getHTML())
-  }
+  onUpdate: () => scheduleEmit(),
+  // 失焦即 flush:点"保存"等按钮通常伴随失焦,赶在防抖窗口前同步最新值
+  onBlur: () => flushHTML()
 })
 
 // 外部传入变化时同步(如加载已有文章),不触发回写
@@ -165,8 +179,12 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  clearTimeout(emitTimer)
   editor.value?.destroy()
 })
+
+// 供父组件在防抖窗口内直读最新 HTML(如保存按钮点击时),避免 300ms 内停笔丢尾部
+defineExpose({ getHTML: () => editor.value?.getHTML() || '' })
 
 // ---- 文件上传 ----
 const acceptMap = {

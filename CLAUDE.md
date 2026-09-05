@@ -98,6 +98,8 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 
 **前端(TipTap v3)**
 - 很多扩展是**命名导出**(无 default),例如 `@tiptap/extension-text-style` 只能 `import { TextStyle }`。`@tiptap/starter-kit` **已内置 underline + link**(不要再单独装/导入,会重复注册)。
+- `RichEditor` 的 `update:modelValue` 是 300ms 防抖的(`getHTML()` 是整篇文档序列化,每次击键跑一遍长文会卡);父组件保存时**必须**经 `ref.getHTML()` 直读最新值(article/Edit.vue 有示例),否则停笔 300ms 内保存会丢尾部。
+- web-admin 的 `api.upload` 内置客户端图片压缩(`utils/imageCompress.js`,最大边 2000/webp q0.85,gif/svg/小文件跳过);所有上传都走这个漏斗,不要再在上传前自行压缩或绕过它。
 
 **App 客户端(uni-app)**
 - 后端地址在 `app/src/config/index.js` 的 `SERVER_ORIGIN`(H5=127.0.0.1:8000;真机/小程序必须改局域网 IP 且同网段;生产改域名)。换环境只改这一处。

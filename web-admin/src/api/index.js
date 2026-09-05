@@ -1,4 +1,5 @@
 import request from './request'
+import { compressImage } from '../utils/imageCompress'
 
 export const api = {
   auth: {
@@ -51,9 +52,12 @@ export const api = {
     statsActiveUsers: (params) => request.get('/stats/active-users', { params })
   },
 
-  upload: (file, { onProgress } = {}) => {
+  upload: async (file, { onProgress } = {}) => {
+    // 先客户端压缩(仅图片且值得压;gif/svg/小文件与音视频原样通过,失败自动回退原文件),
+    // 所有上传调用点(正文图/封面/音频封面/头像/每日一图)统一走这里,无需各处处理
+    const payload = await compressImage(file)
     const form = new FormData()
-    form.append('file', file)
+    form.append('file', payload)
     return request.post('/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: onProgress

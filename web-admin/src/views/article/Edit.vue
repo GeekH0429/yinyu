@@ -79,7 +79,7 @@
       </el-form-item>
 
       <el-form-item label="正文">
-        <RichEditor v-model="form.content_html" style="width: 100%" />
+        <RichEditor ref="richRef" v-model="form.content_html" style="width: 100%" />
       </el-form-item>
 
       <el-form-item label="状态">
@@ -127,6 +127,7 @@ const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
 const loading = ref(false)
 const saving = ref(false)
+const richRef = ref() // RichEditor 实例:保存时直读最新 HTML(绕过 emit 防抖窗口)
 const coverUploading = ref(false)
 const coverZoneRef = ref()
 const formRef = ref()
@@ -203,7 +204,8 @@ async function onSave() {
       summary: form.summary || null,
       cover_url: form.cover_url || null,
       tags: form.tags,
-      content_html: form.content_html,
+      // 防抖窗口内可能未同步到 form,直读编辑器当前值
+      content_html: richRef.value ? richRef.value.getHTML() : form.content_html,
       status: form.status,
       scheduled_at: form.status === 'scheduled' ? scheduledAt.value.toISOString() : null
     }
