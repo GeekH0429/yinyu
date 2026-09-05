@@ -77,29 +77,6 @@
           <text :class="['like-icon', { pop: likePulse }]">{{ liked ? '♥' : '♡' }}</text>
           <text :class="['like-text', { pop: likePulse }]">{{ article.like_count }}</text>
         </view>
-        <view class="excerpt-btn" @tap="openExcerpt">
-          <text class="ex-icon">❝</text>
-          <text class="ex-text">摘抄</text>
-        </view>
-      </view>
-
-      <!-- 摘抄弹层:自动带入选中的正文,抓不到选区可手输 -->
-      <view class="ex-mask" v-if="exPop.visible" @tap="exPop.visible = false">
-        <view class="ex-pop" @tap.stop>
-          <text class="ex-pop-title serif">收藏这句话</text>
-          <textarea
-            class="ex-textarea serif"
-            v-model="exPop.text"
-            :maxlength="500"
-            placeholder="选中正文里的句子,或直接写下来"
-            placeholder-style="color:#c8c0b2;"
-            :show-confirm-bar="false"
-          />
-          <view class="ex-pop-foot">
-            <text class="ex-pop-cancel" @tap="exPop.visible = false">取消</text>
-            <text class="ex-pop-save" @tap="saveExcerpt">{{ exPop.saving ? '收藏中…' : '收进摘抄本' }}</text>
-          </view>
-        </view>
       </view>
 
       <!-- 选中浮动菜单:放选区下方与系统工具栏错开。
@@ -112,9 +89,9 @@
         :style="{ left: menu.x + 'px', top: menu.y + 'px' }"
         @tap.stop
       >
-        <text class="sel-btn" @tap="onMenuExcerpt">❝ 摘抄</text>
+        <text class="sel-btn" @tap="onMenuCard">✦ 卡片</text>
         <view class="sel-div"></view>
-        <text class="sel-btn" @tap="onMenuCard">✦ 做成卡片</text>
+        <text class="sel-btn" @tap="onMenuExcerpt">❝ 摘抄</text>
       </view>
 
       <!-- 选区观察者(renderjs 在视图层监听 selectionchange,回传逻辑层;clearSignal 供反向清选区) -->
@@ -317,46 +294,9 @@ function goBack() {
   })
 }
 
-/* ---- 摘抄:抓当前选区(mp-html selectable 已开启),抓不到则手输 ---- */
-const exPop = ref({ visible: false, text: '', saving: false })
-
-function openExcerpt() {
-  let sel = ''
-  try {
-    // App vue 页运行在 WebView 里,window.getSelection 同样可用
-    sel = typeof window !== 'undefined' && window.getSelection
-      ? String(window.getSelection().toString() || '').trim()
-      : ''
-  } catch (e) {
-    sel = ''
-  }
-  exPop.value.text = sel.slice(0, 500)
-  exPop.value.visible = true
-  clearSelection() // 弹层打开即清原生选区,系统菜单/手柄不再悬在弹层下
-}
-
-async function saveExcerpt() {
-  const text = exPop.value.text.trim()
-  if (!text || exPop.value.saving) return
-  exPop.value.saving = true
-  try {
-    await api.excerpts.create({
-      article_id: article.value?.id || null,
-      article_title: article.value?.title || '',
-      content: text
-    })
-    exPop.value.visible = false
-    uni.showToast({ title: '已收进摘抄本 ✦', icon: 'none' })
-  } catch {
-    /* request 层已 toast */
-  } finally {
-    exPop.value.saving = false
-  }
-}
-
 /* ---- 选中浮动菜单:长按选中正文 → 摘抄 / 直接做成卡片 ---- */
 const inst = getCurrentInstance()
-const { menu, clearSignal, clearSelection, consumeSelection, handleSelection, handleCleared } =
+const { menu, clearSignal, consumeSelection, handleSelection, handleCleared } =
   useSelectionMenu()
 
 async function onMenuExcerpt() {
@@ -561,78 +501,6 @@ const cardPreview = ref({ visible: false, src: '' })
   justify-content: center;
   gap: 32rpx;
   animation: rise 0.6s 0.5s ease-out both;
-}
-.excerpt-btn {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  padding: 18rpx 56rpx;
-  background: #fff;
-  border-radius: 48rpx;
-  box-shadow: 0 8rpx 32rpx rgba(196, 168, 130, 0.18);
-  color: #b0b0b0;
-}
-.excerpt-btn:active {
-  transform: scale(0.94);
-}
-.ex-icon {
-  font-size: 32rpx;
-  color: #c4a882;
-}
-.ex-text {
-  font-size: 28rpx;
-}
-/* 摘抄弹层 */
-.ex-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(20, 20, 26, 0.55);
-  z-index: 1001;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 48rpx;
-}
-.ex-pop {
-  width: 100%;
-  background: #fffdf8;
-  border-radius: 32rpx;
-  padding: 36rpx 40rpx;
-}
-.ex-pop-title {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #4a4a4a;
-}
-.ex-textarea {
-  width: 100%;
-  box-sizing: border-box;
-  height: 260rpx;
-  margin-top: 24rpx;
-  padding: 24rpx;
-  background: #f7f2ea;
-  border-radius: 24rpx;
-  font-size: 28rpx;
-  line-height: 1.7;
-  color: #4a4a4a;
-}
-.ex-pop-foot {
-  margin-top: 24rpx;
-  display: flex;
-  justify-content: flex-end;
-  gap: 32rpx;
-}
-.ex-pop-cancel {
-  font-size: 26rpx;
-  color: #b0b0b0;
-  padding: 8rpx 12rpx;
-}
-.ex-pop-save {
-  font-size: 26rpx;
-  color: #c4a882;
-  font-weight: 600;
-  padding: 8rpx 12rpx;
 }
 /* 选中浮动菜单 */
 .sel-menu {
