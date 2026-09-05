@@ -73,6 +73,7 @@ import { ref } from 'vue'
 import { onLoad, onShow, onReachBottom } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
+import { formatDate } from '../../utils/format'
 import StateView from '../../components/StateView.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
@@ -125,10 +126,7 @@ async function loadMore() {
 }
 
 function fmtDate(t) {
-  if (!t) return ''
-  const d = new Date(t)
-  const p = (n) => String(n).padStart(2, '0')
-  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
+  return formatDate(t) // 北京时间 YYYY-MM-DD
 }
 
 function daysUntil(t) {

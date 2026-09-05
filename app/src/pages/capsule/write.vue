@@ -63,6 +63,7 @@
 import { ref, computed } from 'vue'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
+import { formatDate, formatTime } from '../../utils/format'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 
@@ -80,18 +81,14 @@ const presets = [
   { label: '一年后', days: 365 }
 ]
 
-const todayStr = (() => {
-  const d = new Date()
-  const p = (n) => String(n).padStart(2, '0')
-  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
-})()
+const todayStr = formatDate(Date.now()) // 北京时间的今天
 
-// 计算开启时间:预设按天数;自选按当天 08:00(当地)
+// 计算开启时间:预设按天数;自选按当天北京时间 08:00
 const unlockAt = computed(() => {
   if (chosen.value === '自选日期') {
     if (!customDate.value) return null
     // 允许选今天:今天 08:00 可能已过 → 顺延到明天 08:00,保证 > now + 10min
-    const d = new Date(customDate.value + 'T08:00:00')
+    const d = new Date(customDate.value + 'T08:00:00+08:00')
     if (d.getTime() < Date.now() + 20 * 60 * 1000) d.setTime(d.getTime() + DAY)
     return d
   }
@@ -101,9 +98,7 @@ const unlockAt = computed(() => {
 
 const unlockAtText = computed(() => {
   const d = unlockAt.value
-  if (!d) return ''
-  const p = (n) => String(n).padStart(2, '0')
-  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes())
+  return d ? formatTime(d) : '' // 北京时间 YYYY-MM-DD HH:mm
 })
 
 const canSeal = computed(() => content.value.trim() && unlockAt.value)

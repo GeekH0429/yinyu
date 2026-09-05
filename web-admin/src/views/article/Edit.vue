@@ -119,6 +119,7 @@ import { Picture, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import RichEditor from '@/components/RichEditor.vue'
 import { api } from '@/api'
+import { toBeijingWall, fromBeijingWall } from '@/utils/format'
 import { useImageDropPaste } from '@/composables/useImageDropPaste'
 
 const route = useRoute()
@@ -166,7 +167,8 @@ async function loadArticle() {
     form.tags = data.tags || []
     form.content_html = data.content_html || ''
     form.status = data.status
-    scheduledAt.value = data.scheduled_at ? new Date(data.scheduled_at) : null
+    // picker 按浏览器时区渲染,平移成北京墙上时间显示
+    scheduledAt.value = data.scheduled_at ? toBeijingWall(new Date(data.scheduled_at)) : null
   } finally {
     loading.value = false
   }
@@ -191,9 +193,12 @@ const { isDragover: coverDrag } = useImageDropPaste(coverZoneRef, onCoverUpload)
 async function onSave() {
   await formRef.value.validate().catch(() => {})
   if (!form.title) return
+  let scheduledInstant = null
   if (form.status === 'scheduled') {
     if (!scheduledAt.value) return ElMessage.warning('请选择定时发布时间')
-    if (scheduledAt.value.getTime() <= Date.now() + 60000) {
+    // picker 选的是北京墙上时间,先还原成真实时刻再校验/提交
+    scheduledInstant = fromBeijingWall(scheduledAt.value)
+    if (scheduledInstant.getTime() <= Date.now() + 60000) {
       return ElMessage.warning('定时发布时间需晚于当前时间 1 分钟')
     }
   }
@@ -207,7 +212,7 @@ async function onSave() {
       // 防抖窗口内可能未同步到 form,直读编辑器当前值
       content_html: richRef.value ? richRef.value.getHTML() : form.content_html,
       status: form.status,
-      scheduled_at: form.status === 'scheduled' ? scheduledAt.value.toISOString() : null
+      scheduled_at: scheduledInstant ? scheduledInstant.toISOString() : null
     }
     if (isEdit.value) {
       await api.articles.update(route.params.id, payload)

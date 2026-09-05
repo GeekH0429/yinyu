@@ -59,6 +59,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { isLoggedIn } from '../../store/user'
+import { formatDate } from '../../utils/format'
 
 // 场景 key → 中文 label(前端硬编码,后端 scenes 接口也是同源 SCENES dict)
 const SCENE_LABELS = {
@@ -96,9 +97,8 @@ function formatTime(iso) {
   if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前'
   if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前'
   if (diff < 86400 * 7) return Math.floor(diff / 86400) + ' 天前'
-  const m = (d.getMonth() || 0) + 1
-  const day = d.getDate()
-  return `${m}月${day}日`
+  const s = formatDate(iso) // 北京时间 YYYY-MM-DD
+  return s ? `${+s.slice(5, 7)}月${+s.slice(8, 10)}日` : ''
 }
 
 async function load(reset = false) {

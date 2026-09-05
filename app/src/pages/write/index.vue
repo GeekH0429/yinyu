@@ -78,6 +78,7 @@ import { resourceUrl } from '../../config'
 import { chooseImage, pickAudio } from '../../utils/pick'
 import { buildAudioCard } from '../../utils/audioCard'
 import { normalizeContentHtml } from '../../utils/content'
+import { formatDate, formatHM } from '../../utils/format'
 import { invalidateFeed } from '../../store/feed'
 import { invalidateMe } from '../../store/me'
 import { setArticleSnap } from '../../utils/articleCache'
@@ -122,8 +123,8 @@ function cancelSchedule() {
 }
 
 function buildScheduledAt() {
-  // 'YYYY-MM-DD' + 'HH:mm' 按设备本地时区解析,toISOString() 自带 +08:00 offset
-  const d = new Date(`${scheduleDate.value}T${scheduleTime.value}`)
+  // 选择器选的是北京时间墙上时钟,显式按 +08:00 解析成绝对时刻再 toISOString
+  const d = new Date(`${scheduleDate.value}T${scheduleTime.value}:00+08:00`)
   if (isNaN(d.getTime())) return null
   return d.toISOString()
 }
@@ -154,11 +155,9 @@ async function loadDetail(id) {
     form.summary = a.summary || ''
     tagsText.value = (a.tags || []).join(',')
     if (a.status === 'scheduled' && a.scheduled_at) {
-      const d = new Date(a.scheduled_at)
-      const pad = (n) => String(n).padStart(2, '0')
       scheduleMode.value = true
-      scheduleDate.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-      scheduleTime.value = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+      scheduleDate.value = formatDate(a.scheduled_at) // 北京时间回显进选择器
+      scheduleTime.value = formatHM(a.scheduled_at)
     }
   } catch {
     uni.showToast({ title: '加载失败', icon: 'none' })
