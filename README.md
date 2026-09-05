@@ -205,6 +205,14 @@ mkdir -p /data/uploads && chown -R www:www /data/uploads
 ```
 (若想放在网站目录,改 `.env` 的 `UPLOAD_DIR=/www/wwwroot/yinyu/uploads` 并同步改 Nginx。)
 
+已有存量图片的话,跑一次缩略档回填(App 列表封面用,文件名约定 `_s`,幂等可重跑):
+```bash
+cd /www/wwwroot/yinyu/backend
+python -m scripts.backfill_thumbs --dir /data/uploads           # 先预览
+python -m scripts.backfill_thumbs --dir /data/uploads --apply   # 实际生成
+```
+新上传的图片由后端自动生成缩略档,无需再跑。
+
 ### 6. 前端构建与上传
 - **Web 管理后台**:本地 `cd web-admin && npm run build`,把 `dist/` 上传到服务器 `/www/wwwroot/yinyu-admin/`。
 - **App**:微信小程序 / App 用 HBuilderX 打包后发布;若出 H5 版,`cd app && npm run build:h5`,把 `dist/build/h5/` 上传到站点目录(记得先把 `app/src/config/index.js` 的 `SERVER_ORIGIN` 改成线上域名)。

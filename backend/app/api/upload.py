@@ -28,9 +28,16 @@ _ALLOWED = set(settings.allowed_mimes)
 _MAX_BYTES = settings.max_upload_mb * 1024 * 1024
 _CHUNK = 1024 * 1024  # 1MB / 块,流式读写,避免整文件入内存 + 阻塞事件循环
 
+# 列表缩略档:文件名约定为扩展名前插 `_s`(abc.webp → abc_s.webp),
+# 与 App 端 thumbUrl()(app/src/config/index.js)配套;历史文件用 scripts/backfill_thumbs.py 补齐
+_THUMB_MAX_SIDE = 800
+_THUMB_QUALITY = 78
+
 
 def _save_image(src: io.BytesIO, save_dir: str, mime: str) -> tuple[str, int, str]:
-    """图片压缩为 webp(最大边 1280 / 质量 82)落盘;gif 或处理失败则原样保留。
+    """图片压缩为 webp(最大边 1280 / 质量 82)落盘;同时为最大边超过 800 的图
+    生成缩略档 `{stem}_s.webp`(最大边 800 / 质量 78,App 列表封面用,流量省 60%+)。
+    gif 或处理失败则原样保留(缩略档同样跳过,App 端 fallback 回原图)。
 
     接收已做完大小检查的 BytesIO,内部按需 seek(0) 二次读取
     (Pillow 失败时 fallback 路径需重新读全量字节)。
@@ -43,6 +50,13 @@ def _save_image(src: io.BytesIO, save_dir: str, mime: str) -> tuple[str, int, st
         img = Image.open(src)
         img.load()
         img = img.convert("RGBA")
+        # 缩略档先做:resize 返回新图(不复制全尺寸,峰值内存 ≈ 原解码大小 + 缩略图);
+        # 主档的 thumbnail() 原地缩小会破坏原始尺寸,所以顺序不能颠倒
+        w, h = img.size
+        if max(w, h) > _THUMB_MAX_SIDE:
+            scale = _THUMB_MAX_SIDE / max(w, h)
+            thumb = img.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS)
+            thumb.save(os.path.join(save_dir, f"{stem}_s.webp"), "WEBP", quality=_THUMB_QUALITY, method=4)
         if max(img.size) > 1280:
             img.thumbnail((1280, 1280))
         name = f"{stem}.webp"

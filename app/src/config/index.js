@@ -31,3 +31,18 @@ export function resourceUrl(p) {
 export function isRemoteUrl(p) {
   return /^(https?:)?\/\//.test(p || '')
 }
+
+/**
+ * 列表缩略图 URL:上传管线为最大边 >800 的图生成缩略档,文件名约定为
+ * 扩展名前插 `_s`(abc.webp → abc_s.webp)。只做纯字符串变换,不看格式大小。
+ * 仅对指向本服务的相对路径(/uploads/...)生效;外部图与本地路径原样返回。
+ * 历史图可能没有缩略档(404)→ 给 CachedImage 传 fallback 回原图兜底;
+ * 存量文件可用 backend/scripts/backfill_thumbs.py 一次性补齐。
+ */
+export function thumbUrl(p) {
+  if (!p) return ''
+  if (isRemoteUrl(p)) return p
+  if (/^(blob:|wxfile:|file:|_doc|_www)/.test(p)) return p
+  const i = String(p).lastIndexOf('.')
+  return i > String(p).lastIndexOf('/') ? p.slice(0, i) + '_s' + p.slice(i) : p
+}

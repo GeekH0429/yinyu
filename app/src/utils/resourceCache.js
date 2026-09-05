@@ -194,12 +194,33 @@ export function getCachedResource(remoteUrl, type = 'image') {
   // #endif
 }
 
-/** 预热(如文章详情加载后后台下载封面/音频),不阻塞渲染 */
+// 预热并发限流:同时最多 2 张。不限流时一整篇文章的图会同时下载,
+// 抢占首屏可见图的带宽,弱网下正文反而更慢(预热收益主要在"下次进入",慢一点无所谓)
+const PREFETCH_CONCURRENCY = 2
+let prefetchActive = 0
+const prefetchPending = new Map() // url -> type,排队去重(重复入队只算一次)
+
+function pumpPrefetch() {
+  while (prefetchActive < PREFETCH_CONCURRENCY && prefetchPending.size) {
+    const [url, type] = prefetchPending.entries().next().value
+    prefetchPending.delete(url)
+    prefetchActive++
+    getCachedResource(url, type)
+      .catch(() => {})
+      .finally(() => {
+        prefetchActive--
+        pumpPrefetch()
+      })
+  }
+}
+
+/** 预热(如文章详情加载后后台下载封面/音频),不阻塞渲染;排队依次下载,同时最多 2 张 */
 export function prefetch(urls, type = 'image') {
   if (!Array.isArray(urls)) return
   urls.filter(Boolean).forEach((u) => {
-    getCachedResource(u, type).catch(() => {})
+    if (!prefetchPending.has(u)) prefetchPending.set(u, type)
   })
+  pumpPrefetch()
 }
 
 /** 清除全部资源缓存(设置页"清除缓存"用) */

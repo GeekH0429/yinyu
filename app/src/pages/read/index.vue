@@ -67,6 +67,7 @@
           :content="parsedContent"
           selectable
           :domain="serverOrigin"
+          lazy-load
           @imgtap="onImgTap"
         />
       </view>

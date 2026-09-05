@@ -55,7 +55,8 @@
       >
         <CachedImage
           v-if="a.cover_url"
-          :src="a.cover_url"
+          :src="thumbUrl(a.cover_url)"
+          :fallback="a.cover_url"
           class="cover"
           mode="aspectFill"
           :ratio="2"
@@ -111,6 +112,7 @@
 import { ref, nextTick } from 'vue'
 import { onShow, onReachBottom, onPullDownRefresh, onPageScroll } from '@dcloudio/uni-app'
 import { api } from '../../api'
+import { thumbUrl } from '../../config'
 import { formatDate } from '../../utils/format'
 import { isLoggedIn, refreshUser } from '../../store/user'
 import { effectiveTheme } from '../../store/theme'
