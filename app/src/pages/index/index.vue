@@ -391,6 +391,9 @@ function goWrite() {
   margin-bottom: 32rpx;
   overflow: hidden;
   box-shadow: 0 8rpx 64rpx rgba(196, 168, 130, 0.15);
+  /* 清掉 App.vue 全局 .card 的 40rpx 内边距:封面要贴边通栏,卡片上半截全是封面图,
+     文字区的留白由 .body 自己的 padding 提供 */
+  padding: 0;
 }
 .cover {
   width: 100%;
