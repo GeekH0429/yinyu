@@ -4,7 +4,9 @@
     - ROLE_USER  普通用户(可发布图文 / 树洞)
     - ROLE_ADMIN 管理员(可管理全部内容 + 后台)
 """
-from sqlalchemy import Boolean, Index, String
+from datetime import date
+
+from sqlalchemy import Boolean, Date, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -31,6 +33,10 @@ class User(TimestampMixin, Base):
 
     role: Mapped[str] = mapped_column(String(20), nullable=False, default=ROLE_USER, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # 人生时光轴:生日(可空,未设置则时光轴引导填写)与预期人生长度(岁)。
+    birthday: Mapped[date | None] = mapped_column(Date, nullable=True)
+    lifespan_years: Mapped[int] = mapped_column(Integer, nullable=False, default=80, server_default="80")
 
     # 是否在「被评论 / 被回复 / 被 @提及」时发送邮件提醒。
     # 收件邮箱取 self.email;为空则不发。

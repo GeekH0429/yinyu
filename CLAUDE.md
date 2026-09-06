@@ -88,6 +88,13 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 - `excerpts`(≤500 字纯文本句子);**article_id 不做外键级联**(文章删除摘抄仍在),冗余 `article_title` 快照供展示。
 - 阅读页「摘抄」按钮抓 `window.getSelection()` 选区(H5/App webview 均可用),抓不到手输;摘抄本里 canvas(老 API)生成暖色卡片,H5 下载 / App 存相册。
 
+### 人生时光轴
+- 移植自 lifetime-visualization:「我的」入口,纯个人私密页(无他人可见入口,同树洞理念)。
+- `users.birthday/lifespan_years` + `life_milestones`(label/color/start/end/site/images);**默认学制节点(童年→大学,9 月入学推算)不入库**——App 端 `utils/lifeTimeline.js` 按生日纯函数推算,改生日零成本重算;仅自定义节点走 `/me/life/milestones` CRUD。
+- `GET /me/life` 一次聚合:设置 + 节点 + 胶囊落点(只回 unlock_at/title,**content 服务端强制不下发**)+ 写作足迹(published_at+标题)。
+- 格子墙**必须 canvas 窗口化渲染**(`utils/lifeTimeline.js` + `pages/life/index.vue`):日粒度 2.9 万格,view 循环必卡且画布高度受限;canvas 固定可视高,透明 scroll-view(占位 view 撑总高)叠在上层接管滚动手势,scroll 事件节流重绘窗口;tap 命中用 e.detail 坐标反算格子索引。单位偏好存本地 storage(`life_unit`)。
+- 人生进度卡复用摘抄卡 canvas 管线(`utils/lifeCard.js` + quoteCard 的 save/share)。
+
 ### 前端(web-admin)
 - `src/api/request.js`:axios 实例,注入 Bearer token,401 时自动用 refresh token 续期并重放,失败跳登录。**响应拦截器直接返回 `resp.data`**,所以 API 封装拿到的是业务对象。
 - `src/api/index.js`:按模块组织的 API 封装(注意 `auth.me` → `/me`,后端无 `/auth/me`)。

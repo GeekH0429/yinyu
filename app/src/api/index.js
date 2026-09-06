@@ -60,6 +60,14 @@ export const api = {
     remove: (id) => http.delete('/excerpts/' + id)
   },
 
+  life: {
+    get: () => http.get('/me/life'),
+    updateSettings: (data) => http.put('/me/life', data),
+    createMilestone: (data) => http.post('/me/life/milestones', data),
+    updateMilestone: (id, data) => http.put('/me/life/milestones/' + id, data),
+    removeMilestone: (id) => http.delete('/me/life/milestones/' + id)
+  },
+
   daily: {
     today: () => http.get('/daily-images/today'),
     history: (params) => http.get('/daily-images/history', params)

@@ -75,6 +75,15 @@
       <text class="entry-arrow">›</text>
     </view>
 
+    <!-- 人生时光轴入口 -->
+    <view class="card entry-card pressable anim-rise delay-6" @tap="goLife">
+      <view class="entry-left">
+        <text class="entry-title">人生时光轴</text>
+        <text class="entry-sub">看看这一生铺开的样子</text>
+      </view>
+      <text class="entry-arrow">›</text>
+    </view>
+
     <TabBar />
   </view>
 </template>
@@ -133,6 +142,11 @@ function goCapsules() {
 function goExcerpts() {
   if (!isLoggedIn()) return uni.reLaunch({ url: '/pages/login/index' })
   uni.navigateTo({ url: '/pages/excerpts/index' })
+}
+
+function goLife() {
+  if (!isLoggedIn()) return uni.reLaunch({ url: '/pages/login/index' })
+  uni.navigateTo({ url: '/pages/life/index' })
 }
 </script>
 

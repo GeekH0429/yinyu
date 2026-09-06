@@ -20,7 +20,8 @@
     { "path": "pages/warm-words/favorites", "style": { "navigationStyle": "custom" } },
     { "path": "pages/capsule/index", "style": { "navigationStyle": "custom" } },
     { "path": "pages/capsule/write", "style": { "navigationStyle": "custom", "app-plus": { "softinputMode": "adjustResize" } } },
-    { "path": "pages/excerpts/index", "style": { "navigationStyle": "custom" } }
+    { "path": "pages/excerpts/index", "style": { "navigationStyle": "custom" } },
+    { "path": "pages/life/index", "style": { "navigationStyle": "custom" } }
   ],
   "tabBar": {
     "custom": true,

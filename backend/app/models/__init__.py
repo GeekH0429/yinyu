@@ -6,6 +6,7 @@ from app.models.comment import Comment, CommentLike
 from app.models.daily_image import DailyImage
 from app.models.excerpt import Excerpt
 from app.models.invite import InviteCode
+from app.models.life_milestone import LifeMilestone
 from app.models.media import Media
 from app.models.notification import Notification
 from app.models.time_capsule import TimeCapsule
@@ -30,6 +31,7 @@ __all__ = [
     "TimeCapsule",
     "Media",
     "DailyImage",
+    "LifeMilestone",
     "Excerpt",
     "WarmWord",
     "WarmWordFavorite",
