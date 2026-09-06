@@ -91,7 +91,12 @@
             {{ u.label }}
           </view>
         </view>
-        <view class="legend">
+        <!-- 日粒度:视角切换(总览格子墙 / 月历);其他粒度显示图例 -->
+        <view class="vswitch" v-if="unit === 365">
+          <view :class="['vbtn', { on: viewMode === 'overview' }]" @tap="setViewMode('overview')">总览</view>
+          <view :class="['vbtn', { on: viewMode === 'calendar' }]" @tap="setViewMode('calendar')">日历</view>
+        </view>
+        <view class="legend" v-else>
           <view class="lg"><view class="lg-dot today"></view>今天</view>
           <view class="lg"><view class="lg-dot past"></view>已过</view>
           <view class="lg"><view class="lg-dot future"></view>未来</view>
@@ -102,14 +107,57 @@
 
       <!-- 格子墙:canvas 底层绘制,透明 scroll-view 上层接管手势 -->
       <view class="grid-area" id="gridArea">
+        <!-- 月历视角(仅日粒度):一次一个月,箭头/左右滑动翻页(swiper 三页循环) -->
+        <view class="calendar" v-if="unit === 365 && viewMode === 'calendar'">
+          <view class="cal-nav">
+            <text :class="['cal-arrow', { dim: !canPrevMonth }]" @tap="prevMonth">‹</text>
+            <text class="cal-title serif">{{ calYear }} 年 {{ calMonth + 1 }} 月</text>
+            <text :class="['cal-arrow', { dim: !canNextMonth }]" @tap="nextMonth">›</text>
+          </view>
+          <swiper class="cal-swiper" :current="swiperCurrent" @change="onSwiperChange">
+            <swiper-item v-for="(p, pi) in threePages" :key="pi">
+              <view class="cal-page" v-if="!p.out">
+                <view class="cal-week">
+                  <text class="cal-wd" v-for="w in weekNames" :key="w">{{ w }}</text>
+                </view>
+                <view class="cal-grid">
+                  <view
+                    v-for="(c, idx) in makeCells(p.year, p.month)"
+                    :key="idx"
+                    :class="['cal-cell', { blank: !c }]"
+                    @tap="c && onTapDay(c, $event)"
+                  >
+                    <view v-if="c" class="cal-inner" :style="c.bg ? { background: c.bg } : {}">
+                      <text :class="['cal-num', { today: c.isToday, future: c.future }]">{{ c.day }}</text>
+                      <text class="cal-cake" v-if="c.isBirthday">🎂</text>
+                      <view class="cal-marks">
+                        <view class="cal-dot cap" v-if="c.hasCapsule"></view>
+                        <view class="cal-dot art" v-if="c.hasArticle"></view>
+                      </view>
+                    </view>
+                  </view>
+                </view>
+              </view>
+              <view class="cal-out" v-else>
+                <text class="cal-out-text">{{ p.off < 0 ? '故事要从生日之后才开始' : '把眼前的日子过好,就是在到未来了' }}</text>
+              </view>
+            </swiper-item>
+          </swiper>
+          <view class="cal-today pressable" @tap="backToToday">回到今天 ✦</view>
+        </view>
+
+        <!-- 总览格子墙(v-show:与月历互斥切换时不销毁画布) -->
         <canvas
+          v-show="!(unit === 365 && viewMode === 'calendar')"
           canvas-id="lifeGrid"
           class="grid-canvas"
           :style="{ width: canvasW + 'px', height: canvasH + 'px' }"
         ></canvas>
         <scroll-view
+          v-show="!(unit === 365 && viewMode === 'calendar')"
           class="grid-scroll"
           scroll-y
+          :scroll-top="jumpTop"
           :style="{ height: canvasH + 'px' }"
           @scroll="onGridScroll"
           @tap="onGridTap"
@@ -250,6 +298,7 @@ import {
   milestonesAt,
   buildMarkIndex,
   cellLabel,
+  parseDate,
   lifeProgress,
   daysLived
 } from '../../utils/lifeTimeline'
@@ -265,6 +314,12 @@ const loading = ref(false)
 const error = ref(false)
 const units = UNITS
 const unit = ref(12)
+// 日粒度下的视角:overview 总览格子墙 / calendar 月历
+const viewMode = ref('overview')
+const weekNames = ['一', '二', '三', '四', '五', '六', '日']
+const now = new Date()
+const calYear = ref(now.getFullYear())
+const calMonth = ref(now.getMonth())
 const palette = ['#C4A882', '#A8C6A1', '#9CB8CE', '#E8B4A0', '#B5A8CE', '#D9A8C0', '#E5CD9A', '#CEA8A8', '#8FB8A8', '#A89CB8']
 const yearRange = Array.from({ length: 61 }, (_, i) => String(i + 60))
 const todayStr = (() => {
@@ -281,6 +336,9 @@ const milestones = computed(() => mergeMilestones(defaultMilestones(life.birthda
 const canvasW = ref(0)
 const canvasH = ref(0)
 const scrollTop = ref(0)
+// scroll-view 跳转锚点:只在主动定位时赋值(与滚动的 scrollTop 分离,
+// 避免滚动回写绑定量在 iOS 上打断惯性滚动)
+const jumpTop = ref(0)
 let cellPx = 16
 let gapPx = 4
 let cols = 1
@@ -315,8 +373,16 @@ function layout() {
     life.articles.map((a) => ({ ...a, cnDate: formatDate(a.published_at) })),
     life.birthday, unit.value, gridCount
   )
-  scrollTop.value = 0
+  scrollToToday()
   drawGrid()
+}
+
+/** 总览定位:把今天滚进可视区中间(周/日粒度格子多,从头看起太远)。 */
+function scrollToToday() {
+  if (tIdx < 0) return
+  const target = Math.max(0, Math.min(Math.floor(tIdx / cols) * rowH - canvasH.value / 2, Math.max(0, totalH - canvasH.value)))
+  scrollTop.value = target
+  jumpTop.value = target
 }
 
 function drawGrid() {
@@ -405,12 +471,14 @@ function onGridTap(e) {
   if (col >= cols) return
   const i = row * cols + col
   if (i < 0 || i >= gridCount) return
-  // 气泡内容:日期 + 覆盖节点 + 胶囊落点 + 写作足迹
   const hitMs = milestonesAt(milestones.value, life.birthday, unit.value, i)
   const caps = capsuleMap.get(i) || []
   const arts = articleMap.get(i) || []
-  const label = cellLabel(life.birthday, unit.value, i)
-  // 定位:tap 的 e.detail 是页面坐标,页面无外滚,近似视口坐标
+  showBubble(e, cellLabel(life.birthday, unit.value, i), hitMs, caps, arts)
+}
+
+/** 弹格子气泡:总览与月历共用。e 的 detail.x/y 是页面坐标(页面无外滚,近似视口)。 */
+function showBubble(e, label, hitMs, caps, arts) {
   const bw = 280
   const left = Math.min(Math.max(12, e.detail.x - bw / 2), uni.getSystemInfoSync().windowWidth - bw - 12)
   const top = Math.max(80, e.detail.y - 190)
@@ -420,7 +488,152 @@ function onGridTap(e) {
 function setUnit(u) {
   unit.value = u
   uni.setStorageSync('life_unit', u)
+  // 不清 viewMode:月历只在 unit===365 时渲染(模板 v-if 保证),
+  // 切回「日」时沿用用户上次的视角偏好(无偏好则 onLoad 已默认 calendar)
   layout()
+}
+
+// ---- 视角切换 & 月历(日粒度) ----
+function setViewMode(v) {
+  viewMode.value = v
+  uni.setStorageSync('life_view_mode', v)
+  if (v === 'calendar') {
+    // 进月历默认落在今天所在月
+    const t = new Date()
+    calYear.value = t.getFullYear()
+    calMonth.value = t.getMonth()
+  } else {
+    // 总览画布在月历期间被 v-show 隐藏,内容仍在;切回重绘一次保险
+    drawGrid()
+  }
+}
+
+// 月历可翻页边界:[生日所在月, 人生终点月]
+const calBounds = computed(() => {
+  if (!life.birthday) return null
+  const b = parseDate(life.birthday)
+  const end = new Date(b.getFullYear() + life.lifespan_years, b.getMonth(), 1)
+  return { start: new Date(b.getFullYear(), b.getMonth(), 1), end }
+})
+const canPrevMonth = computed(() => {
+  if (!calBounds.value) return false
+  return new Date(calYear.value, calMonth.value, 1) > calBounds.value.start
+})
+const canNextMonth = computed(() => {
+  if (!calBounds.value) return false
+  return new Date(calYear.value, calMonth.value, 1) < calBounds.value.end
+})
+
+function prevMonth() {
+  if (!canPrevMonth.value) return
+  shiftMonth(-1)
+}
+
+function nextMonth() {
+  if (!canNextMonth.value) return
+  shiftMonth(1)
+}
+
+/** 月份步进(处理跨年) */
+function shiftMonth(n) {
+  let y = calYear.value
+  let m = calMonth.value + n
+  y += Math.floor(m / 12)
+  m = ((m % 12) + 12) % 12
+  calYear.value = y
+  calMonth.value = m
+}
+
+// ---- 月历 swiper(三页循环:[上月, 当月, 下月],滑完归位中间页) ----
+const swiperCurrent = ref(1)
+
+const threePages = computed(() => {
+  if (!life.birthday) return []
+  return [-1, 0, 1].map((off) => {
+    let y = calYear.value
+    let m = calMonth.value + off
+    y += Math.floor(m / 12)
+    m = ((m % 12) + 12) % 12
+    return { off, year: y, month: m, out: monthOutOfRange(y, m) }
+  })
+})
+
+function monthOutOfRange(y, m) {
+  const b = calBounds.value
+  if (!b) return true
+  const cur = new Date(y, m, 1)
+  return cur < b.start || cur > b.end
+}
+
+function onSwiperChange(e) {
+  const idx = e.detail.current
+  // 归位重置触发的 change(current 回到 1)直接忽略,防循环
+  if (idx === 1) return
+  // ① 先把 props 同步到 swiper 内部所在页(值 1→0/2 才有变化),
+  //    否则下一步归位赋 1 是同值赋值,Vue 不更新,swiper 不会跳回中间页
+  swiperCurrent.value = idx
+  if (idx === 0) {
+    if (canPrevMonth.value) shiftMonth(-1)
+  } else if (canNextMonth.value) {
+    shiftMonth(1)
+  }
+  // ② 三页内容随月份移位后,把 current 瞬切回中间页(页 1 内容 = 刚滑到的月,视觉无缝)
+  nextTick(() => {
+    swiperCurrent.value = 1
+  })
+}
+
+function backToToday() {
+  const t = new Date()
+  calYear.value = t.getFullYear()
+  calMonth.value = t.getMonth()
+}
+
+// 标记索引:cnDate -> 命中(月历按日期直查,不需要格子墙的 cellIndex Map)
+const capsuleDaySet = computed(() => new Set(life.capsules.map((c) => formatDate(c.unlock_at))))
+const articleDaySet = computed(() => new Set(life.articles.map((a) => formatDate(a.published_at))))
+
+// 月历格子:前置空白 + 指定月每天 {day, iso, isToday, future, isBirthday, bg, hasCapsule, hasArticle}
+// (swiper 三页各自调用,按参数生成)
+function makeCells(y, m) {
+  const lead = (new Date(y, m, 1).getDay() + 6) % 7 // 周一开头
+  const days = new Date(y, m + 1, 0).getDate()
+  const ms = milestones.value
+  const cells = []
+  for (let i = 0; i < lead; i++) cells.push(null)
+  for (let d = 1; d <= days; d++) {
+    const date = new Date(y, m, d)
+    const iso = fmtISO(date)
+    const isToday = iso === todayStr
+    const future = iso > todayStr
+    // 着色:节点覆盖(取首个,色值带透明度做淡染) > 已过暖沙 > 未来留白
+    let bg = ''
+    if (!isToday) {
+      const hit = ms.filter((mm) => date >= mm.start && date <= mm.end)
+      bg = hit.length ? hit[0].color + '4D' : future ? '' : '#EAD9C2' + '40'
+    }
+    cells.push({
+      day: d,
+      iso,
+      isToday,
+      future,
+      isBirthday: iso === life.birthday,
+      bg,
+      hasCapsule: capsuleDaySet.value.has(iso),
+      hasArticle: articleDaySet.value.has(iso)
+    })
+  }
+  return cells
+}
+
+function onTapDay(c, e) {
+  const d = parseDate(c.iso)
+  const hitMs = milestones.value.filter((m) => d >= m.start && d <= m.end)
+  const caps = life.capsules
+    .filter((x) => formatDate(x.unlock_at) === c.iso)
+    .map((x) => ({ ...x, isFuture: new Date(x.unlock_at).getTime() > Date.now() }))
+  const arts = life.articles.filter((x) => formatDate(x.published_at) === c.iso)
+  showBubble(e, c.iso, hitMs, caps, arts)
 }
 
 async function measure() {
@@ -660,7 +873,9 @@ function goBack() {
 }
 
 onLoad(() => {
-  unit.value = uni.getStorageSync('life_unit') || 12
+  // 默认落在最常用的「日 · 日历」视角;用户切换单位/视角后记住偏好
+  unit.value = uni.getStorageSync('life_unit') || 365
+  viewMode.value = uni.getStorageSync('life_view_mode') || 'calendar'
 })
 
 onShow(() => {
@@ -937,6 +1152,162 @@ onShow(() => {
   position: absolute;
   inset: 0;
   width: 100%;
+}
+
+/* 视角切换 */
+.vswitch {
+  display: flex;
+  background: #f2ece1;
+  border-radius: 16rpx;
+  padding: 4rpx;
+}
+.vbtn {
+  padding: 8rpx 22rpx;
+  font-size: 24rpx;
+  color: #8d8d8d;
+  border-radius: 13rpx;
+}
+.vbtn.on {
+  background: #fffdf8;
+  color: #c4a882;
+  font-weight: 600;
+}
+
+/* 月历视角 */
+.calendar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 20rpx 20rpx 12rpx;
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4rpx 8rpx 14rpx;
+}
+.cal-arrow {
+  font-size: 44rpx;
+  color: #c4a882;
+  padding: 0 24rpx;
+  line-height: 1;
+}
+.cal-arrow.dim {
+  opacity: 0.22;
+}
+.cal-title {
+  font-size: 30rpx;
+  color: #4a4a4a;
+  font-weight: 600;
+}
+.cal-swiper {
+  flex: 1;
+  min-height: 0;
+}
+.cal-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.cal-out {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 60rpx;
+}
+.cal-out-text {
+  font-size: 24rpx;
+  color: #c9c2b4;
+  line-height: 1.8;
+  text-align: center;
+}
+.cal-week {
+  display: flex;
+  padding-bottom: 10rpx;
+  border-bottom: 1rpx solid rgba(196, 168, 130, 0.18);
+}
+.cal-wd {
+  flex: 1;
+  text-align: center;
+  font-size: 22rpx;
+  color: #b8b8b8;
+}
+.cal-grid {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  padding-top: 10rpx;
+}
+.cal-cell {
+  width: 14.2857%;
+  height: 96rpx;
+  display: flex;
+  justify-content: center;
+  padding: 4rpx;
+  box-sizing: border-box;
+}
+.cal-inner {
+  position: relative;
+  width: 100%;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cal-num {
+  font-size: 26rpx;
+  color: #4a4a4a;
+}
+.cal-num.future {
+  color: #cfc8bb;
+}
+.cal-num.today {
+  width: 48rpx;
+  height: 48rpx;
+  line-height: 48rpx;
+  text-align: center;
+  background: #c4a882;
+  color: #fff;
+  border-radius: 24rpx;
+  font-weight: 700;
+}
+.cal-cake {
+  position: absolute;
+  top: 2rpx;
+  right: 8rpx;
+  font-size: 20rpx;
+}
+.cal-marks {
+  position: absolute;
+  bottom: 8rpx;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 8rpx;
+}
+.cal-dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 5rpx;
+}
+.cal-dot.cap {
+  background: #d4a95c;
+}
+.cal-dot.art {
+  background: #8d7b64;
+}
+.cal-today {
+  align-self: center;
+  margin-top: 8rpx;
+  padding: 10rpx 40rpx;
+  font-size: 22rpx;
+  color: #c4a882;
+  background: #f2ece1;
+  border-radius: 30rpx;
 }
 
 /* 格子气泡 */

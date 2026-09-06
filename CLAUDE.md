@@ -92,7 +92,8 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 - 移植自 lifetime-visualization:「我的」入口,纯个人私密页(无他人可见入口,同树洞理念)。
 - `users.birthday/lifespan_years` + `life_milestones`(label/color/start/end/site/images);**默认学制节点(童年→大学,9 月入学推算)不入库**——App 端 `utils/lifeTimeline.js` 按生日纯函数推算,改生日零成本重算;仅自定义节点走 `/me/life/milestones` CRUD。
 - `GET /me/life` 一次聚合:设置 + 节点 + 胶囊落点(只回 unlock_at/title,**content 服务端强制不下发**)+ 写作足迹(published_at+标题)。
-- 格子墙**必须 canvas 窗口化渲染**(`utils/lifeTimeline.js` + `pages/life/index.vue`):日粒度 2.9 万格,view 循环必卡且画布高度受限;canvas 固定可视高,透明 scroll-view(占位 view 撑总高)叠在上层接管滚动手势,scroll 事件节流重绘窗口;tap 命中用 e.detail 坐标反算格子索引。单位偏好存本地 storage(`life_unit`)。
+- 格子墙**必须 canvas 窗口化渲染**(`utils/lifeTimeline.js` + `pages/life/index.vue`):日粒度 2.9 万格,view 循环必卡且画布高度受限;canvas 固定可视高,透明 scroll-view(占位 view 撑总高)叠在上层接管滚动手势,scroll 事件节流重绘窗口;tap 命中用 e.detail 坐标反算格子索引。定位今天用独立的 `jumpTop` 绑 `:scroll-top`(**不能**直接绑滚动状态 scrollTop——滚动回写绑定量会在 iOS 打断惯性滚动)。单位/视角偏好存本地 storage(`life_unit` / `life_view_mode`)。
+- 日粒度双视角:**总览**(canvas 格子墙)与**日历**(月历 view 渲染,一次一个月,周一开头,箭头/左右滑动翻页,clamp 在 [生日月, 寿命终点月],「回到今天」);月历每月仅 42 格故用 view 即可,与总览互斥时 canvas 用 v-show 藏(不销毁画布)。滑动翻页用 **swiper 三页循环**([上月,当月,下月],change 后内容移位+归位中间页):归位必须**两步赋值**——先把 `current` 同步成 `e.detail.current`(1→0/2 产生变化),nextTick 内容移位后再赋回 1;直接赋 1 是同值赋值,Vue 不触发更新,swiper 不归位。
 - 人生进度卡复用摘抄卡 canvas 管线(`utils/lifeCard.js` + quoteCard 的 save/share)。
 
 ### 前端(web-admin)
