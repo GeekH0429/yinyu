@@ -105,8 +105,11 @@
         </view>
       </view>
 
-      <!-- 格子墙:canvas 底层绘制,透明 scroll-view 上层接管手势 -->
-      <view class="grid-area" id="gridArea">
+      <!-- 格子墙:canvas 底层绘制,透明 scroll-view 上层接管手势。
+           边框放外层 frame:boundingClientRect 含 border,若 grid-area 自带边框,
+           测出的尺寸会让 canvas 溢出内容区 ~1px,H5 下 scroll-view 底部会冒横向滚动条 -->
+      <view class="grid-frame">
+        <view class="grid-area" id="gridArea">
         <!-- 月历视角(仅日粒度):一次一个月,箭头/左右滑动翻页(swiper 三页循环) -->
         <view class="calendar" v-if="unit === 365 && viewMode === 'calendar'">
           <view class="cal-nav">
@@ -191,6 +194,7 @@
               <text class="bubble-text">{{ a.title }}</text>
             </view>
           </view>
+        </view>
         </view>
       </view>
 
@@ -297,6 +301,7 @@ import {
   todayIndex,
   milestonesAt,
   buildMarkIndex,
+  cellIndexOf,
   cellLabel,
   parseDate,
   lifeProgress,
@@ -350,15 +355,18 @@ let capsuleMap = new Map()
 let articleMap = new Map()
 let areaRect = { left: 0, top: 0 }
 let drawScheduled = false
+// 绘制去重:位移不足一行且数据未变时跳过(scroll 事件频率常高于格子行高,白画)
+let lastDrawnTop = -1e9
+let gridDirty = true
 
 const theme = { today: '#C4A882', future: '#FFFFFF', past: '#EAD9C2' }
 
 function layout() {
   if (!life.birthday) return
   const availW = canvasW.value
-  // 各粒度格子尺寸(逻辑 px):年大月中周小日密
-  cellPx = { 1: 26, 12: 15, 52: 8.5, 365: 4.5 }[unit.value] || 15
-  gapPx = { 1: 7, 12: 4.5, 52: 2.5, 365: 1.2 }[unit.value] || 4
+  // 各粒度格子尺寸(逻辑 px):年大月中周小日密;日/周 gap 占比大一些,点阵感才可见
+  cellPx = { 1: 26, 12: 15, 52: 8, 365: 4 }[unit.value] || 15
+  gapPx = { 1: 7, 12: 4.5, 52: 3, 365: 2 }[unit.value] || 4
   cols = Math.max(1, Math.floor(availW / (cellPx + gapPx)))
   rowH = cellPx + gapPx
   gridCount = life.lifespan_years * unit.value
@@ -374,6 +382,7 @@ function layout() {
     life.birthday, unit.value, gridCount
   )
   scrollToToday()
+  gridDirty = true // 布局/数据已变,强制重绘(绕过位移阈值)
   drawGrid()
 }
 
@@ -385,68 +394,184 @@ function scrollToToday() {
   jumpTop.value = target
 }
 
+/**
+ * 总览格子墙绘制(性能敏感,日粒度窗口内约 5-6 千格,但视觉必须是独立点阵格子):
+ *   1. 节点覆盖预转 int 索引区间 —— 不再逐格做 Date 区间过滤
+ *   2. 行内同色段合并填充(连续同色一个 fillRect),再在每列 gap 中心补一条
+ *      背景色宽线(贯穿式,一条 path)—— 精确恢复逐格点阵的间隙视觉
+ *   3. 未来区整行白底 + gap 中心淡棕竖线(贯穿多行一条 path);月/年大格子
+ *      数量少,未来格保持逐格描边(更精致)
+ *   4. 标记点遍历索引表(条目=胶囊/文章数)而非全窗口扫描
+ */
 function drawGrid() {
   if (!life.birthday || !canvasW.value) return
+  // canvas 处于 v-show 隐藏(日历视角)时绘制无意义(display:none 尺寸为 0),
+  // 切回总览时 setViewMode 会置 dirty 强制重绘
+  if (unit.value === 365 && viewMode.value === 'calendar') return
+  if (!gridDirty && Math.abs(scrollTop.value - lastDrawnTop) < rowH) return
+  lastDrawnTop = scrollTop.value
+  gridDirty = false
+
   const ctx = uni.createCanvasContext('lifeGrid', proxy)
-  const ms = milestones.value
+  const W = canvasW.value
+  const H = canvasH.value
+  const pitch = cellPx + gapPx
+  const mergeFuture = cellPx < 10
+
+  ctx.setFillStyle('#FFFDF8')
+  ctx.fillRect(0, 0, W, H)
+
+  const nodeRanges = milestones.value
+    .map((m) => ({
+      color: m.color,
+      s: cellIndexOf(life.birthday, unit.value, m.start, gridCount),
+      e: cellIndexOf(life.birthday, unit.value, m.end, gridCount)
+    }))
+    .filter((r) => r.s >= 0 && r.s < gridCount && r.e >= r.s)
+
+  // 格子着色 key:'T'今天 / 'F'未来 / 'P'已过 / 节点色(最多两段 '|' 连接,上下分半)
+  const keyOf = (i) => {
+    if (i === tIdx) return 'T'
+    if (i > tIdx) return 'F'
+    let k = ''
+    for (let r = 0; r < nodeRanges.length; r++) {
+      const nr = nodeRanges[r]
+      if (i >= nr.s && i <= nr.e) {
+        k += (k ? '|' : '') + nr.color
+        if (k.indexOf('|') >= 0) break
+      }
+    }
+    return k || 'P'
+  }
+
   const firstRow = Math.max(0, Math.floor(scrollTop.value / rowH) - 1)
-  const lastRow = Math.ceil((scrollTop.value + canvasH.value) / rowH) + 1
+  const lastRow = Math.ceil((scrollTop.value + H) / rowH) + 1
+  const todayRow = tIdx >= 0 ? Math.floor(tIdx / cols) : -1
+
+  // ---- 底色层:行内同色段合并 ----
   for (let row = firstRow; row <= lastRow; row++) {
-    for (let col = 0; col < cols; col++) {
-      const i = row * cols + col
-      if (i >= gridCount) break
-      const x = col * (cellPx + gapPx)
-      const y = row * rowH - scrollTop.value
-      // 底色:节点覆盖 > 今天 > 未来 > 已过
-      let c1 = theme.past
-      let c2 = null
-      if (i === tIdx) c1 = theme.today
-      else if (i > tIdx) c1 = theme.future
-      else {
-        const hit = milestonesAt(ms, life.birthday, unit.value, i)
-        if (hit.length) {
-          c1 = hit[0].color
-          c2 = hit[1] ? hit[1].color : null
+    const y = row * rowH - scrollTop.value
+    if (y + rowH < 0 || y > H) continue
+    const base = row * cols
+    let col = 0
+    while (col < cols && base + col < gridCount) {
+      const k0 = keyOf(base + col)
+      let end = col + 1
+      // 大格子的未来格不合并(逐格描边);其余 key 相同则连段
+      if (!(k0 === 'F' && !mergeFuture)) {
+        while (end < cols) {
+          const j = base + end
+          if (j >= gridCount || keyOf(j) !== k0) break
+          end++
         }
       }
-      if (c2) {
-        // 两节点叠加:上下各半
-        ctx.setFillStyle(c1)
-        ctx.fillRect(x, y, cellPx, cellPx / 2)
-        ctx.setFillStyle(c2)
-        ctx.fillRect(x, y + cellPx / 2, cellPx, cellPx / 2)
-      } else {
-        ctx.setFillStyle(c1)
+      const x = col * pitch
+      const w = (end - col) * pitch - gapPx
+      if (k0 === 'T') {
+        ctx.setFillStyle(theme.today)
         ctx.fillRect(x, y, cellPx, cellPx)
-      }
-      // 未来格描边(白格在米白底上可见)
-      if (i > tIdx) {
-        ctx.setStrokeStyle('rgba(196,168,130,0.25)')
-        ctx.setLineWidth(0.5)
-        ctx.strokeRect(x + 0.25, y + 0.25, cellPx - 0.5, cellPx - 0.5)
-      }
-      // 今天:白描边突出
-      if (i === tIdx) {
         ctx.setStrokeStyle('#FFFFFF')
         ctx.setLineWidth(1.2)
         ctx.strokeRect(x + 0.6, y + 0.6, cellPx - 1.2, cellPx - 1.2)
+      } else if (k0 === 'F') {
+        if (mergeFuture) {
+          ctx.setFillStyle(theme.future)
+          ctx.fillRect(x, y, w, cellPx)
+        } else {
+          // 大格子未来:白底 + 每格淡描边(原版观感)
+          for (let c = col; c < end; c++) {
+            const cx = c * pitch
+            ctx.setFillStyle(theme.future)
+            ctx.fillRect(cx, y, cellPx, cellPx)
+            ctx.setStrokeStyle('rgba(196,168,130,0.25)')
+            ctx.setLineWidth(0.5)
+            ctx.strokeRect(cx + 0.25, y + 0.25, cellPx - 0.5, cellPx - 0.5)
+          }
+        }
+      } else if (k0 === 'P') {
+        ctx.setFillStyle(theme.past)
+        ctx.fillRect(x, y, w, cellPx)
+      } else {
+        // 节点色:两节点叠加时上下各半;单节点整格
+        // (注意 colors[1] 可能 undefined,setFillStyle(undefined) 会画出黑色!)
+        const colors = k0.split('|')
+        if (colors.length > 1) {
+          ctx.setFillStyle(colors[0])
+          ctx.fillRect(x, y, w, cellPx / 2)
+          ctx.setFillStyle(colors[1])
+          ctx.fillRect(x, y + cellPx / 2, w, cellPx / 2)
+        } else {
+          ctx.setFillStyle(colors[0])
+          ctx.fillRect(x, y, w, cellPx)
+        }
       }
-      // 胶囊标记:格子中央金点
-      if (capsuleMap.has(i)) {
-        ctx.setFillStyle('#D4A95C')
-        ctx.beginPath()
-        ctx.arc(x + cellPx / 2, y + cellPx / 2, Math.max(1, cellPx * 0.18), 0, Math.PI * 2)
-        ctx.fill()
-      }
-      // 写作足迹:右上角小点
-      if (articleMap.has(i)) {
-        ctx.setFillStyle('#8D7B64')
-        ctx.beginPath()
-        ctx.arc(x + cellPx - Math.max(0.8, cellPx * 0.12), y + Math.max(0.8, cellPx * 0.12), Math.max(0.8, cellPx * 0.12), 0, Math.PI * 2)
-        ctx.fill()
-      }
+      col = end
     }
   }
+
+  // ---- 间隙层:恢复点阵视觉 ----
+  const yOfRow = (r) => r * rowH - scrollTop.value
+
+  // 已过区域:段 fillRect 盖住了格间 gap,补背景色宽线(窗口顶 -> 今天行底)
+  const pastBottom = todayRow < 0 ? H : Math.min(H, yOfRow(todayRow) + rowH)
+  if (pastBottom > 0) {
+    const startY = Math.max(-gapPx, yOfRow(firstRow))
+    ctx.setStrokeStyle('#FFFDF8')
+    ctx.setLineWidth(gapPx)
+    ctx.beginPath()
+    for (let c = 0; c < cols; c++) {
+      const lx = c * pitch + cellPx + gapPx / 2
+      ctx.moveTo(lx, startY)
+      ctx.lineTo(lx, pastBottom - 1)
+    }
+    ctx.stroke()
+  }
+
+  // 未来区域:白底整行盖住了格间 gap,补淡棕细线;起点含今天行内今天格右侧,
+  // 从 todayCol+1 起画避免穿到今天行的已过格上
+  if (mergeFuture) {
+    let startRow = firstRow
+    let fromCol = 0
+    if (todayRow >= firstRow) {
+      startRow = todayRow
+      fromCol = (tIdx % cols) + 1
+    }
+    const futureTop = Math.max(0, yOfRow(startRow))
+    if (futureTop < H) {
+      // 线要够粗够深(白底上 0.6px@0.3 视觉上"没有线"),与已过区的米白宽线观感对齐
+      ctx.setStrokeStyle('rgba(196, 168, 130, 0.5)')
+      ctx.setLineWidth(Math.max(1, gapPx * 0.6))
+      ctx.beginPath()
+      for (let c = fromCol; c < cols; c++) {
+        const lx = c * pitch + cellPx + gapPx / 2
+        ctx.moveTo(lx, futureTop)
+        ctx.lineTo(lx, H - 1)
+      }
+      ctx.stroke()
+    }
+  }
+
+  // ---- 标记点:遍历索引表(条目少),窗口内才画 ----
+  const drawDots = (map, color, atCorner) => {
+    if (!map || !map.size) return
+    ctx.setFillStyle(color)
+    map.forEach((v, i) => {
+      const y = yOfRow(Math.floor(i / cols))
+      if (y + rowH < 0 || y > H) return
+      const x = (i % cols) * pitch
+      ctx.beginPath()
+      if (atCorner) {
+        const r = Math.max(0.8, cellPx * 0.12)
+        ctx.arc(x + cellPx - r, y + r, r, 0, Math.PI * 2)
+      } else {
+        ctx.arc(x + cellPx / 2, y + cellPx / 2, Math.max(1, cellPx * 0.18), 0, Math.PI * 2)
+      }
+      ctx.fill()
+    })
+  }
+  drawDots(capsuleMap, '#D4A95C', false)
+  drawDots(articleMap, '#8D7B64', true)
+
   ctx.draw()
 }
 
@@ -503,8 +628,15 @@ function setViewMode(v) {
     calYear.value = t.getFullYear()
     calMonth.value = t.getMonth()
   } else {
-    // 总览画布在月历期间被 v-show 隐藏,内容仍在;切回重绘一次保险
+    // 切回总览:canvas 从 display:none 恢复,必须强制重绘
+    // (隐藏期间绘制落空,且位移阈值会跳过"以为没变"的重绘);
+    // display:none→block 后 uni-canvas 尺寸同步可能差一帧,延时再补一次
+    gridDirty = true
     drawGrid()
+    setTimeout(() => {
+      gridDirty = true
+      drawGrid()
+    }, 120)
   }
 }
 
@@ -646,6 +778,12 @@ async function measure() {
   canvasW.value = Math.floor(info.width)
   canvasH.value = Math.floor(info.height)
   layout()
+  // uni-canvas 首帧异步初始化(loading 态刚挂载 / CSS 尺寸刚从 0 变实际值),
+  // 立即 draw 可能落空 → 首屏空白、滚动才出格子;延时强制补画兜底
+  setTimeout(() => {
+    gridDirty = true
+    drawGrid()
+  }, 120)
 }
 
 // ---- 数据加载 / 设置 ----
@@ -1134,14 +1272,18 @@ onShow(() => {
 .lg-dot.art { color: #8d7b64; }
 
 /* 格子墙 */
-.grid-area {
+.grid-frame {
   flex: 1;
   min-height: 0;
-  position: relative;
-  background: #fffdf8;
   border: 1rpx solid rgba(196, 168, 130, 0.2);
   border-radius: 20rpx;
   overflow: hidden;
+  background: #fffdf8;
+}
+.grid-area {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 .grid-canvas {
   position: absolute;
