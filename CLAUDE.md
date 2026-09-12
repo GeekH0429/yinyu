@@ -84,9 +84,9 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 - 写给未来自己的信:`time_capsules`(content / unlock_at / notified_at),封存后不可改,未到期**任何接口不下发 content**(服务端强制)。
 - 到期邮件由 `main.py` 的 `_capsule_notifier` 调度器发(与 `_article_publisher` 同款 UPDATE 原子认领 + RETURNING,多 worker 安全);邮件不含信件内容,开启仪式留在 App 内。
 
-### 摘抄本
-- `excerpts`(≤500 字纯文本句子);**article_id 不做外键级联**(文章删除摘抄仍在),冗余 `article_title` 快照供展示。
-- 阅读页「摘抄」按钮抓 `window.getSelection()` 选区(H5/App webview 均可用),抓不到手输;摘抄本里 canvas(老 API)生成暖色卡片,H5 下载 / App 存相册。
+### 收藏(原「摘抄本」,2026-09 仅 UI 改名;表名/接口路径/页面路径仍为 excerpts)
+- `excerpts`(≤500 字纯文本句子);**article_id 不做外键级联**(文章删除收藏仍在),冗余 `article_title` 快照供展示。
+- 阅读页长按选中后点「收藏」按钮抓 `window.getSelection()` 选区(H5/App webview 均可用),抓不到手输;收藏页 canvas(老 API)生成暖色卡片,H5 下载 / App 存相册。
 
 ### 人生时光轴
 - 移植自 lifetime-visualization:「我的」入口,纯个人私密页(无他人可见入口,同树洞理念)。
@@ -96,7 +96,7 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 - drawGrid 是性能敏感路径(日粒度窗口约 5-6 千格),优化手段缺一不可:①节点覆盖**预转 int 索引区间**(`cellIndexOf`),绘制时不做 Date 区间过滤;②**行内同色段合并**(连续同色格一个 fillRect,命令数降一个数量级);③段合并会盖掉格间 gap,需**贯穿式补线恢复点阵视觉**——已过区在每列 gap 中心画背景色宽线(窗口顶→今天行底,一条 path),未来区画淡棕细线(今天行→窗口底,从 todayCol+1 起防穿色),月/年大格子(cellPx≥10)未来格保持逐格描边不合并;④标记点遍历 Map(条目=胶囊/文章数)而非全窗口扫描;⑤**位移不足一行且数据未变跳过重绘**(`lastDrawnTop`/`gridDirty`,layout 后置 dirty)。日/周 gap 占比要足够(cell 4/gap 2、cell 8/gap 3),太小点阵感不可见。若真机(老 canvas API 跨层通信)仍卡,下一步方案是 renderjs + `type="2d"` canvas 在视图层本地绘制。
 - 两个已踩的绘制坑:**`setFillStyle(undefined)` 会画出黑色**(非标准 canvas 忽略无效值的行为,uni 老 API 模拟层直接落成黑)——两节点叠加分半绘制时 `colors[1]` 可能 undefined,必须先判长度;**格子墙容器不能自带 border**——`boundingClientRect` 含边框,canvas 按它定尺寸会溢出内容区 ~1px,H5 下 scroll-view 底部冒横向滚动条(黑线),边框放外层 `.grid-frame`、`#gridArea` 做纯测量层。另:uni-canvas **首帧异步初始化**(loading 态挂载/尺寸 0→W 变化/display:none 恢复)时立即 `draw()` 会落空——首屏空白、滚动才出格子;measure 与切回总览后都要 `gridDirty=true` 立即画一次 + 120ms 延时补画一次,canvas 隐藏(日历视角)时 drawGrid 直接 return。
 - 日粒度双视角:**总览**(canvas 格子墙)与**日历**(月历 view 渲染,一次一个月,周一开头,箭头/左右滑动翻页,clamp 在 [生日月, 寿命终点月],「回到今天」);月历每月仅 42 格故用 view 即可,与总览互斥时 canvas 用 v-show 藏(不销毁画布)。滑动翻页用 **swiper 三页循环**([上月,当月,下月],change 后内容移位+归位中间页):归位必须**两步赋值**——先把 `current` 同步成 `e.detail.current`(1→0/2 产生变化),nextTick 内容移位后再赋回 1;直接赋 1 是同值赋值,Vue 不触发更新,swiper 不归位。
-- 人生进度卡复用摘抄卡 canvas 管线(`utils/lifeCard.js` + quoteCard 的 save/share)。
+- 人生进度卡复用收藏句子卡 canvas 管线(`utils/lifeCard.js` + quoteCard 的 save/share)。
 
 ### 前端(web-admin)
 - `src/api/request.js`:axios 实例,注入 Bearer token,401 时自动用 refresh token 续期并重放,失败跳登录。**响应拦截器直接返回 `resp.data`**,所以 API 封装拿到的是业务对象。

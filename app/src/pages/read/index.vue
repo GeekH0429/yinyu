@@ -91,7 +91,7 @@
       >
         <text class="sel-btn" @tap="onMenuCard">✦ 卡片</text>
         <view class="sel-div"></view>
-        <text class="sel-btn" @tap="onMenuExcerpt">❝ 摘抄</text>
+        <text class="sel-btn" @tap="onMenuExcerpt">❝ 收藏</text>
       </view>
 
       <!-- 选区观察者(renderjs 在视图层监听 selectionchange,回传逻辑层;clearSignal 供反向清选区) -->
@@ -294,7 +294,7 @@ function goBack() {
   })
 }
 
-/* ---- 选中浮动菜单:长按选中正文 → 摘抄 / 直接做成卡片 ---- */
+/* ---- 选中浮动菜单:长按选中正文 → 收藏 / 直接做成卡片 ---- */
 const inst = getCurrentInstance()
 const { menu, clearSignal, consumeSelection, handleSelection, handleCleared } =
   useSelectionMenu()
@@ -308,7 +308,7 @@ async function onMenuExcerpt() {
       article_title: article.value?.title || '',
       content: text
     })
-    uni.showToast({ title: '已收进摘抄本 ✦', icon: 'none' })
+    uni.showToast({ title: '已收藏 ✦', icon: 'none' })
   } catch {
     /* request 层已 toast */
   }

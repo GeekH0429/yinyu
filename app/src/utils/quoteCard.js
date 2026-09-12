@@ -1,9 +1,9 @@
 /**
- * 摘抄分享卡片:canvas 绘制暖色信纸(品牌 / 引号 / 句子 / 出处 / 签名),导出图片。
+ * 收藏句子分享卡:canvas 绘制暖色信纸(品牌 / 引号 / 句子 / 出处 / 签名),导出图片。
  *
  * 用老 canvas API(uni.createCanvasContext),H5 / App 双端可用;页面需自带一块
  * 离屏 <canvas canvas-id="...">(fixed 在视口外,不能 v-if,否则取不到上下文)。
- * 摘抄本页与阅读页选中菜单共用这一份绘制逻辑。
+ * 收藏页与阅读页选中菜单共用这一份绘制逻辑。
  */
 
 export const CARD_W = 600 // 逻辑宽高;导出 destWidth×2 保证清晰度

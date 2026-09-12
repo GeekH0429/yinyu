@@ -1,4 +1,4 @@
-"""摘抄 schema。"""
+"""收藏 schema(表/类名保持 Excerpt)。"""
 import re
 from datetime import datetime
 
@@ -13,7 +13,7 @@ class ExcerptCreate(BaseModel):
     @field_validator("content")
     @classmethod
     def _plain_text(cls, v: str) -> str:
-        """剥掉可能的标签形态内容(摘抄是纯文本句子,卡片按纯文本渲染)。"""
+        """剥掉可能的标签形态内容(收藏是纯文本句子,卡片按纯文本渲染)。"""
         return re.sub(r"<[^>]+>", "", v).strip()
 
 

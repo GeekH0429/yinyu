@@ -1,7 +1,7 @@
 /**
  * 人生进度分享卡:canvas 绘制暖色卡片(品牌 / 大百分比 / 已过天数 / 签名),导出图片。
  *
- * 与摘抄卡片(utils/quoteCard.js)同一套老 canvas API 管线:
+ * 与收藏句子卡(utils/quoteCard.js)同一套老 canvas API 管线:
  * 页面需自带一块离屏 <canvas canvas-id="lifeCard">(fixed 在视口外,不能 v-if)。
  */
 

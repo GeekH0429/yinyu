@@ -1,7 +1,7 @@
-"""摘抄路由:阅读时收藏的句子(个人笔记本)。
+"""收藏路由:阅读时收藏的句子(UI 名「收藏」,原「摘抄本」;表名/路径仍为 excerpts)。
 
     - 任何人只能读/删自己的(get_owned,user_id 归属)。
-    - article_id 只存快照不做外键;文章删除后摘抄仍在(见 models/excerpt.py)。
+    - article_id 只存快照不做外键;文章删除后收藏仍在(见 models/excerpt.py)。
 """
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -15,7 +15,7 @@ from app.models.user import User
 from app.schemas.common import Page, offset_of
 from app.schemas.excerpt import ExcerptCreate, ExcerptOut
 
-router = APIRouter(prefix="/excerpts", tags=["摘抄"])
+router = APIRouter(prefix="/excerpts", tags=["收藏"])
 
 
 @router.post("", response_model=ExcerptOut, status_code=201)
@@ -64,7 +64,7 @@ async def delete_excerpt(
 ):
     e = await get_owned(
         db, Excerpt, excerpt_id, user, owner_field="user_id",
-        not_found="摘抄不存在", forbidden="只能删除自己的摘抄",
+        not_found="收藏不存在", forbidden="只能删除自己的收藏",
     )
     await db.delete(e)
     await db.commit()

@@ -19,7 +19,7 @@
  * 双向通道:
  *   视图→逻辑:owner.callMethod(onRlSelection / onRlCleared)
  *   逻辑→视图:clearSignal prop 自增 → :change:clear-signal 触发 renderjs 清选区
- * (点摘抄/做卡片后必须清掉原生选区,否则选择手柄和系统复制菜单一直挂着)
+ * (点收藏/做卡片后必须清掉原生选区,否则选择手柄和系统复制菜单一直挂着)
  */
 export default {
   props: {

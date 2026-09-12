@@ -4,7 +4,7 @@
 
     <view class="topbar">
       <text class="back" @tap="goBack">‹ 返回</text>
-      <text class="topbar-title serif">摘抄本</text>
+      <text class="topbar-title serif">收藏</text>
       <view class="topbar-right"></view>
     </view>
 
@@ -40,7 +40,7 @@
         <StateView
           v-else-if="!items.length"
           type="empty"
-          text="还没有摘抄,阅读时点「摘抄」收藏喜欢的句子"
+          text="还没有收藏,阅读时长按选中喜欢的句子,点「收藏」存下来"
         />
         <text v-else-if="noMore" class="load-text">没有更多了 ✦</text>
       </view>
@@ -113,7 +113,7 @@ async function loadMore() {
 
 function delExcerpt(e) {
   uni.showModal({
-    title: '删除摘抄',
+    title: '删除收藏',
     content: '确定不再收藏这句话了吗?',
     confirmText: '删除',
     confirmColor: '#e0a8b0',
