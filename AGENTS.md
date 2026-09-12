@@ -1,0 +1,128 @@
+# AGENTS.md
+
+本文件为 AI 编码代理(Claude Code / Codex / Cursor 等)提供本仓库的工作指引。面向人的部署手册见 `README.md`。
+
+## 项目概览
+
+yinyu 是一个治愈系图文 App,提供极致私密、温暖治愈的精神角落。技术栈:
+- **后端**:`backend/` — FastAPI(Python 3.12)+ PostgreSQL(async SQLAlchemy / asyncpg)+ Redis
+- **Web 管理后台**:`web-admin/` — Vue 3 + Vite + Element Plus + **TipTap v3** 富文本(主力写作,图/音/视频)
+- **App 客户端**:`app/` — uni-app (Vue3 + Vite),暖色治愈 UI。阅读为主 + 轻量写作(图文/树洞)。已通过 `build:h5`。
+- **文件存储**:本地 `/data/uploads/`,生产由 Nginx 直接代理 `/uploads/`
+- **登录**:账号密码 + JWT(access + refresh)+ **邀请码注册**(封闭社区)
+- **部署目标**:**宝塔面板(BT Panel)Linux 服务器**,**坚决不用 Docker**(PG/Redis/Nginx/Python 项目都走宝塔)
+
+核心模块:
+- **图文阅读**:多用户共创平台,任何登录用户均可发布;支持图/音/视频混排、标签筛选、点赞、评论
+- **树洞**:无列表、无标签、全量隐匿;仅凭 **6 位数字暗号**解锁单篇;暗号默认系统生成、可刷新、可自定义(全局唯一);Redis 限流防爆破
+- **时光胶囊**:写给未来自己的信,到期前服务端强制不下发内容
+- **收藏**(原「摘抄本」):阅读时长按选中句子收藏,可生成暖色分享卡
+- **人生时光轴**:格子墙可视化人生,纯个人私密页
+- **我的**:个人资料、我的图文、我的树洞、我点赞的图文
+
+## 常用命令
+
+后端在 conda 环境 `blogPig312`(本机路径 `C:\Users\geekh\.conda\envs\blogPig312`,其它机器按实际用户名替换)。bash 里用绝对路径调用(CLI 代理的 shell 通常 cwd 不跨调用保留):
+
+```bash
+PY="/c/Users/geekh/.conda/envs/blogPig312/python.exe"
+
+# 后端(必须先 cd 到 backend,否则找不到 app 包 / .env)
+cd /d/code/yinyu/backend
+cp .env.example .env            # 首次:填 DB / JWT_SECRET_KEY / 超管账密
+"$PY" -m pip install -r requirements.txt
+"$PY" -m alembic upgrade head   # 建表 / 迁移
+"$PY" -m uvicorn app.main:app --host 127.0.0.1 --port 8010 --reload   # 开发(本地 dev 用 8010:8000 会被 HBuilderX 内置 httpServer 抢占并独占 IPv6,劫走 localhost 请求)
+
+# 语法/import 自检(不需要 DB)
+"$PY" -m compileall -q app
+DATABASE_URL="postgresql+asyncpg://u:p@127.0.0.1/db" DATABASE_URL_SYNC="postgresql://u:p@127.0.0.1/db" JWT_SECRET_KEY=x "$PY" -c "import app.main"
+
+# 前端(web 后台)
+cd /d/code/yinyu/web-admin
+npm install
+npm run dev      # :5173,自动代理 /api 与 /uploads 到后端 :8010
+npm run build    # 生产构建到 dist/(部署到宝塔 /www/wwwroot/yinyu-admin)
+
+# App 客户端(uni-app)
+cd /d/code/yinyu/app
+npm install
+# 先改 src/config/index.js 的 SERVER_ORIGIN(H5 调试 127.0.0.1:8010;真机改局域网 IP;生产改域名)
+npm run dev:h5       # H5,默认 :8080
+npm run build:h5     # 编译验证;产物 dist/build/h5
+# 小程序 / App 用 HBuilderX 或 npm run dev:mp-weixin / dev:app-android
+```
+
+- 后端启动会自动 bootstrap:建超管(见 `.env` 的 `SUPERADMIN_*`)+ 打印一个引导邀请码到控制台。
+- 手动测 API:启动后访问 `http://localhost:8010/docs`(Swagger)。默认本地凭据:`yinyu/yinyu/yinyu`(user/pass/db),超管 `admin/admin123`。
+- 没有 pytest 测试套件;端到端验证靠走通真实 PG+Redis 后调接口(参见本文件「关键坑」理解 async 用法)。
+
+## 架构(大图景)
+
+> 单模块深潜文档在 `docs/`:树洞 → `docs/treehole.md`、人生时光轴 → `docs/life-timeline.md`、web-admin → `docs/web-admin.md`。**动对应模块前先读**。
+
+### Monorepo 分层
+- `backend/app/`:`config.py`(pydantic-settings,读 `.env`)、`database.py`(async engine/session)、`redis_client.py`、`security.py`(pwdlib bcrypt + JWT)、`deps.py`(`get_current_user` / `require_admin`)、`startup.py`(首启 bootstrap)、`main.py`(装配 + dev 静态挂载)
+- `backend/app/models/`:SQLAlchemy 2.0 `Mapped` 风格;`models/__init__.py` 集中导出(Alembic autogenerate 与应用都从这里感知全部表)
+- `backend/app/schemas/`:Pydantic v2 入参/出参。**文章→ArticleBrief 的序列化集中在 `schemas/article.py` 的 `to_brief()` / `to_out()`**,所有路由复用,不要在新路由里重写映射
+- `backend/app/api/`:auth / me / users / articles / comments / notifications / treehole / capsule / excerpt(收藏)/ life / daily_image / warm_word / stats / admin / upload,在 `api/router.py` 聚合,统一挂 `/api/v1` 前缀
+- `backend/app/core/`:`exceptions.py`(业务异常基类 `AppException` + 子类)、`ownership.py`(**通用 `get_owned(db, model, id, user, ...)`** —— 加载→404→作者或管理员放行,文章/树洞共用)
+- `backend/app/services/`:`treehole_code.py`(暗号生成/校验/解锁限流)、`treehole_echo.py`(回音白名单/echo_token)、`invite_code.py`(邀请码生成,admin+startup 共用)、`email.py`(邮件,含胶囊到期通知)
+- `backend/alembic/`:迁移。首版 `0001_initial.py` 手写 baseline(匹配模型);`env.py` 是 async 版,从 `settings.database_url` 取连接
+
+### 数据模型
+核心表:`users` / `invite_codes`(邀请码,max_uses 计数,注册时消耗)/ `articles`(含 `tags` PG ARRAY、status draft/published、view/like 计数)/ `article_likes`(user×article 唯一)/ `treeholes`(6 位 `code` 全局唯一、`author_id` 仅作者/管理员可见)/ `media`(上传记录);另有 `time_capsules`(时光胶囊)、`excerpts`(收藏的句子)、`life_milestones`(时光轴自定义节点)、`comments`/`comment_likes`(评论)、`notifications`(通知)、`treehole_echoes`(回音)、`daily_images`/`article_daily_views`(每日一图)、`warm_words`/`warm_word_favorites`(暖言)及 `users.birthday/lifespan_years` 扩展字段——全量以 `models/__init__.py` 为准。计数(view/like)用原子 `UPDATE ... SET x = x + 1`,不读改写。
+
+### 鉴权与权限
+- 免鉴权仅:`POST /auth/register|login|refresh`、`POST /treeholes/unlock`,以及公开只读的 `GET /articles/tags`、`GET /daily-images/today|history`;其余接口都需 `Authorization: Bearer <access_token>`。`get_current_user` 解 JWT;`require_admin` 加角色校验。
+- **admin 路由**用 `APIRouter(dependencies=[Depends(require_admin)])` 路由级守卫;handler 内只取 `get_current_user`,**不要**再 `Depends(require_admin)`(会双重校验)。
+- 资源归属:`get_owned(db, Model, id, user, not_found=, forbidden=)` 统一处理「作者本人或管理员」。
+
+### 树洞(动前必读 `docs/treehole.md`)
+读者侧**零集合接口**,唯一入口 `POST /treeholes/unlock`;隐匿回包、暗号限流防枚举、回音 `echo_token` 等安全设计清单见 `docs/treehole.md`。
+
+### 时光胶囊
+- 写给未来自己的信:`time_capsules`(content / unlock_at / notified_at),封存后不可改,未到期**任何接口不下发 content**(服务端强制)。
+- 到期邮件由 `main.py` 的 `_capsule_notifier` 调度器发(与 `_article_publisher` 同款 UPDATE 原子认领 + RETURNING,多 worker 安全);邮件不含信件内容,开启仪式留在 App 内。
+
+### 收藏(原「摘抄本」,2026-09 仅 UI 改名;表名/接口路径/页面路径仍为 excerpts)
+- `excerpts`(≤500 字纯文本句子);**article_id 不做外键级联**(文章删除收藏仍在),冗余 `article_title` 快照供展示。
+- 阅读页长按选中后点「收藏」按钮抓 `window.getSelection()` 选区(H5/App webview 均可用;**选区是唯一来源,没有手输入口**);收藏页 canvas(老 API)生成暖色卡片,H5 下载 / App 存相册。
+
+### 人生时光轴(动前必读 `docs/life-timeline.md`)
+「我的」里的纯个人私密格子墙(`utils/lifeTimeline.js` + `pages/life/index.vue`),canvas 窗口化渲染,性能约束与已踩绘制坑极多——改前逐条读 `docs/life-timeline.md`。
+
+### 前端(web-admin)
+请求层 401 续期/重放约定、API 封装注意点、RichEditor(TipTap 自定义音/视频节点)见 `docs/web-admin.md`。
+
+## 关键坑(踩过、已修,务必遵守)
+
+**后端(async SQLAlchemy + asyncpg)**
+- ORM 批量自增 `update(Model).values(x = Model.x + 1)` **必须**加 `.execution_options(synchronize_session=False)`,然后**内存校正** `obj.x = (obj.x or 0) + 1` 再返回。否则默认 `synchronize_session='auto'` 会把会话内对象属性标记过期,async 下后续属性访问触发懒加载 → `MissingGreenlet`。
+- **不要**开 `pool_pre_ping`(asyncpg 的 `do_ping` 同样触发 `MissingGreenlet`)。需要连接健康用 `pool_recycle`。
+- PG 数组(ARRAY)按元素筛选用 `Column.any(value)`(生成 `value = ANY(col)`),**不要**用 `.contains([...])`(基础 ARRAY 未实现,会 500)。
+- pydantic-settings 的 `List[str]` 字段若想接受逗号分隔或 `*`,必须用 `Annotated[List[str], NoDecode]` + `@field_validator(mode="before")` 切分;否则会被当 JSON 解析报错。
+- `alembic.ini` 等 `.ini` **必须纯 ASCII**(Windows 中文系统 configparser 用 GBK 读,中文注释会炸)。
+- 首页 feed 依赖部分索引 `ix_articles_feed`(`WHERE status='published'` 上的 `(published_at, id)`)。`list_published` 的 `ORDER BY` 必须是 `published_at.desc(), id.desc()`,**不要加 `nulls_last()`**——否则规划器无法按索引顺序返回,会退化成 Sort(已用 EXPLAIN 验证:加 nulls_last→Sort,去掉→Index Only Scan Backward 无 Sort)。
+- 上传(`api/upload.py`)用 `aiofiles` **分块流式**写盘(`await file.read(1MB)` + `await f.write`)。**不要** `await file.read()` 整文件入内存 + 同步 `open().write()`——50MB 视频会阻塞事件循环、卡住其它请求。
+- 图片缩略档约定:上传时为最大边 >800 的图同时生成 `{stem}_s.webp`(最大边 800,`_save_image`);App 列表封面用 `config/index.js` 的 `thumbUrl()` 引用,CachedImage 传 `:fallback` 回原图兜底(历史图无 `_s`)。存量图用 `backend/scripts/backfill_thumbs.py` 补齐(幂等)。
+
+**前端(TipTap v3)**
+- 很多扩展是**命名导出**(无 default),例如 `@tiptap/extension-text-style` 只能 `import { TextStyle }`。`@tiptap/starter-kit` **已内置 underline + link**(不要再单独装/导入,会重复注册)。
+- `RichEditor` 的 `update:modelValue` 是 300ms 防抖的(`getHTML()` 是整篇文档序列化,每次击键跑一遍长文会卡);父组件保存时**必须**经 `ref.getHTML()` 直读最新值(article/Edit.vue 有示例),否则停笔 300ms 内保存会丢尾部。
+- web-admin 的 `api.upload` 内置客户端图片压缩(`utils/imageCompress.js`,最大边 2000/webp q0.85,gif/svg/小文件跳过);所有上传都走这个漏斗,不要再在上传前自行压缩或绕过它。
+
+**App 客户端(uni-app)**
+- 后端地址在 `app/src/config/index.js` 的 `SERVER_ORIGIN`(H5=127.0.0.1:8010;真机/小程序必须改局域网 IP 且同网段;生产改域名)。换环境只改这一处。
+- 富文本阅读用 `<mp-html>`(`pages.json` easycom 已注册),渲染 `content_html` 里的图/音/视频。
+- 正文选中用**原生选区**(`user-select: text`,长按出手柄可自由拖拽;系统复制/分享工具栏是 WebView 外的系统 UI,网页层无法隐藏)。`components/SelectionObserver.vue` 的 renderjs 监听 `selectionchange` 回传逻辑层,浮动菜单状态在 `composables/useSelectionMenu.js`,定位**选区下方**与系统工具栏(在上方)错开。微信式"原生手柄 + 自定义工具栏"需要 uni 原生插件(Android 替换 ActionMode / iOS UIEditMenuInteraction),未做。
+- **App 端逻辑层没有 `document`/`window`**(页面 JS 跑在独立引擎,DOM 在视图层 WebView)——任何 DOM API(selectionchange、getSelection 等)必须放 **renderjs**(`SelectionObserver.vue` 是范例:视图层监听 → `owner.callMethod` 回传逻辑层);逻辑层直接调会 `TypeError: Cannot read property of undefined`。
+- TabBar 是自定义组件 `components/TabBar.vue`(内联 SVG),三主页用 `uni.switchTab` 切换(失败 reLaunch 兜底);写作经首页 FAB 进入 `pages/write`。
+- @dcloudio 包用固定 alpha 版本 `3.0.0-5000720260410001`
+- **`@tap` 在 H5/App 编译为原生 `click`** —— 给元素加 `@touchstart.prevent` 会把浏览器由 touch 合成的 click 一并吞掉,该元素及子元素的 `@tap` 全部静默失效(桌面鼠标路径不受影响,只在真机暴露)。要"点按钮时保留选区"应改用缓存快照,不要 prevent touchstart。
+
+## dev 与生产差异
+- 开发期 `main.py` 在 `APP_ENV=dev` 时挂 `/uploads` 静态(`StaticFiles`),前端能直接预览上传文件;**生产由 Nginx 直接 alias `/data/uploads/`**,不走 Python。`.env` 的 `UPLOAD_DIR` 在 Windows dev 下用相对路径(如 `./_uploads`)避开 `/data/uploads` 在 Windows 的路径问题。
+
+## 部署
+见 `README.md`(宝塔面板手动部署)。要点:后端 `uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4` + `alembic upgrade head`;`web-admin/dist` 上传到 `/www/wwwroot/yinyu-admin`;Nginx 三段 —— `/api/` 反代、`/uploads/` 直连磁盘、`/` 指向前端。

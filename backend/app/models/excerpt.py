@@ -3,7 +3,7 @@
 设计要点:
     - article_id 故意不做外键级联 —— 收藏是用户的笔记本,文章被删收藏仍要保留;
       因此同时冗余 article_title 快照,卡片/列表展示不再回查文章。
-    - content 为纯文本句子(≤500 字),来源是 mp-html 选区或手动输入,存前已剥标签。
+    - content 为纯文本句子(≤500 字),唯一来源是阅读页选中选区,存前已剥标签。
 """
 from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column

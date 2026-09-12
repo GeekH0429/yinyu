@@ -36,5 +36,5 @@ npm run build:mp-weixin
 - **鉴权**:JWT access + refresh。`utils/request.js` 在 401 时自动用 refresh_token 续期并重放,失败则跳登录页。token 存 `uni.storage`。
 - **富文本阅读**:`<mp-html>` 渲染后端返回的 `content_html`(图片/音频/视频均支持),已在 `pages.json` easycom 注册。
 - **资源 URL**:`config/resourceUrl()` 把后端的 `/uploads/xxx` 补成完整地址。
-- **TabBar**:自定义组件 `components/TabBar.vue`(内联 SVG,暖色高亮),通过 `uni.reLaunch` 切换三个主页面。
+- **TabBar**:自定义组件 `components/TabBar.vue`(内联 SVG,暖色高亮),通过 `uni.switchTab` 切换三个主页面(失败 reLaunch 兜底)。
 - **登录守卫**:`App.vue` onLaunch 未登录即 `reLaunch` 到登录页;`mine` 页 onShow 复核。

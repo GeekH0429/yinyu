@@ -4,7 +4,7 @@ import { SNAP, readSnap, writeSnapDebounced as writeSnap } from '../utils/snap'
 /**
  * 「我的」页列表状态(模块级缓存)。
  *
- * 自定义 tabBar + uni.reLaunch 切主页会重挂载页面、销毁组件内 ref,
+ * 底部 tabBar 自定义组件切主页(uni.switchTab,异常 reLaunch 兜底),reLaunch 会重挂载页面、销毁组件内 ref,
  * 导致每次切回「我的」都全量重拉 3 个接口。模块顶层 ref 不随组件销毁,
  * 跨切 tab 缓存;发布/删除/换暗号后置 dirty,下次进页面才刷新(参考 store/feed.js)。
  *

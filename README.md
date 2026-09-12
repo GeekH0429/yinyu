@@ -127,7 +127,7 @@ uvicorn app.main:app --reload --port 8000
 ```bash
 cd web-admin
 npm install
-npm run dev      # 开发:http://localhost:5173 (自动代理 /api、/uploads 到后端 8000)
+npm run dev      # 开发:http://localhost:5173 (自动代理 /api、/uploads 到后端 8010)
 npm run build    # 生产构建到 dist/ (部署时拷到 Nginx 的 /www/wwwroot/yinyu-admin)
 ```
 

@@ -4,7 +4,7 @@ import { SNAP, readSnap, writeSnapDebounced as writeSnap } from '../utils/snap'
 /**
  * 阅读页(图文 feed)列表状态。
  *
- * 为什么放模块级:底部 tabBar 已改用自定义组件 + uni.reLaunch 切换主页,
+ * 为什么放模块级:底部 tabBar 是自定义组件,切主页走 uni.switchTab(异常 reLaunch 兜底),
  * reLaunch 会重新挂载页面、销毁组件内的 ref,导致每次切回「阅读」都全量重载、
  * 丢失已加载内容和滚动位置。模块顶层的 ref 不随组件销毁,用作跨切 tab 的缓存。
  *
