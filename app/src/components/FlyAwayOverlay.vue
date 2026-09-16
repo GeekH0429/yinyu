@@ -81,7 +81,11 @@ onUnmounted(() => clearTimeout(timer))
 </script>
 
 <style scoped>
-/* 覆盖层:盖过发布弹窗(1000)与 TabBar(999) */
+/* 覆盖层:盖过发布弹窗(1000)与 TabBar(999)。
+   光晕垫在不透明深底上(background-color),不能再写单个"半透明→不透明"渐变 ——
+   那样光晕中心会漏出底下成功弹窗的「复制/立即查看」按钮。
+   中心 alpha 0.22 是补偿值:原 0.14 的一半亮度其实来自透出的弹窗底色(#1a1a24,
+   比遮罩深底亮),垫底后提到 0.22 才能还原原来的微光亮度 */
 .fly-overlay {
   position: fixed;
   top: 0;
@@ -90,9 +94,10 @@ onUnmounted(() => clearTimeout(timer))
   bottom: 0;
   z-index: 2000;
   overflow: hidden;
-  background: radial-gradient(
+  background-color: #0d0d12;
+  background-image: radial-gradient(
     ellipse 60% 38% at 50% 82%,
-    rgba(123, 140, 196, 0.14) 0%,
+    rgba(123, 140, 196, 0.22) 0%,
     #0d0d12 72%
   );
   animation: overlayIn 0.25s ease-out both, overlayOut 0.35s 1.7s ease-out both;
