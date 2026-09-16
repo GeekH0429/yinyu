@@ -3,7 +3,10 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
-      <text class="back" @tap="goBack">‹ 返回</text>
+      <view class="back" @tap="goBack">
+        <Icon name="chevron-left" :size="28" class="back-icon" />
+        <text>返回</text>
+      </view>
       <text class="topbar-title serif">收藏</text>
       <view class="topbar-right"></view>
     </view>
@@ -25,7 +28,7 @@
         </view>
         <view class="ex-actions">
           <view class="ex-btn card-btn" @tap="makeCard(e)">
-            <text class="ex-btn-icon">✦</text>
+            <Icon name="sparkle" :size="24" class="ex-btn-icon" />
             <text>做成卡片</text>
           </view>
           <view class="ex-btn del-btn" @tap="delExcerpt(e)">
@@ -67,6 +70,7 @@ import { formatRelative } from '../../utils/format'
 import { makeQuoteCard, CARD_W, CARD_H } from '../../utils/quoteCard'
 import StateView from '../../components/StateView.vue'
 import QuoteCardPreview from '../../components/QuoteCardPreview.vue'
+import Icon from '../../components/Icon.vue'
 
 const inst = getCurrentInstance()
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
@@ -159,7 +163,7 @@ function goBack() {
 <style scoped>
 .excerpts {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
   padding-bottom: 120rpx;
 }
 .status-bar {
@@ -173,12 +177,18 @@ function goBack() {
 }
 .back {
   width: 120rpx;
-  color: #c4a882;
+  display: flex;
+  align-items: center;
+  gap: 2rpx;
+  color: var(--bark-ink);
   font-size: 30rpx;
+}
+.back-icon {
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .topbar-title {
   font-size: 32rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .topbar-right {
@@ -189,7 +199,7 @@ function goBack() {
 }
 .intro-line {
   font-size: 36rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   letter-spacing: 2rpx;
 }
 .list {
@@ -202,7 +212,7 @@ function goBack() {
   display: block;
   font-size: 30rpx;
   line-height: 1.8;
-  color: #4a4a4a;
+  color: var(--text-main);
   word-break: break-word;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -219,7 +229,7 @@ function goBack() {
 }
 .ex-from {
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -247,7 +257,7 @@ function goBack() {
 }
 .card-btn {
   background: rgba(196, 168, 130, 0.14);
-  color: #c4a882;
+  color: var(--wood-bark);
   display: flex;
   align-items: center;
   gap: 8rpx;
@@ -261,7 +271,7 @@ function goBack() {
 }
 .load-text {
   font-size: 24rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 /* 离屏画布:固定在视口外参与渲染,不占布局 */
 .card-canvas {

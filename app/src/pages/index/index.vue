@@ -3,7 +3,11 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="header">
-      <text class="header-title serif">隐语</text>
+      <view class="header-title-row">
+        <text class="header-title serif">隐</text>
+        <view class="brand-dot"></view>
+        <text class="header-title serif">语</text>
+      </view>
       <text class="header-sub">慢慢读,慢慢治愈</text>
     </view>
 
@@ -18,21 +22,21 @@
         class="search-input"
         type="text"
         placeholder="搜索文章或标签"
-        placeholder-style="color: #b8b8b8;"
+        placeholder-style="color: #8f8f88;"
         :value="keyword"
         @input="onSearchInput"
         confirm-type="search"
         @confirm="onSearchConfirm"
       />
       <view v-if="keyword" class="search-clear" @tap="clearSearch">
-        <text class="search-clear-icon">×</text>
+        <Icon name="close" :size="20" class="search-clear-icon" />
       </view>
     </view>
 
     <!-- SWR 离线提示:后台静默刷新失败但本地有旧数据时,告诉用户当前是缓存内容 -->
     <view class="offline-banner" v-if="offlineStale" @tap="dismissOffline">
       <text class="offline-text">网络不太通,显示的是上次的内容 ✦</text>
-      <text class="offline-close">×</text>
+      <Icon name="close" :size="24" class="offline-close" />
     </view>
 
     <view class="list">
@@ -66,7 +70,10 @@
           <text class="desc" v-if="a.summary">{{ a.summary }}</text>
           <view class="meta">
             <text class="meta-left">{{ a.author?.nickname || '佚名' }} · {{ formatDate(a.published_at || a.created_at) }}</text>
-            <text class="meta-right">♡ {{ a.like_count }}</text>
+            <view class="meta-right">
+              <Icon name="heart" :size="22" />
+              <text>{{ a.like_count }}</text>
+            </view>
           </view>
           <view class="tags" v-if="a.tags && a.tags.length">
             <text v-for="t in a.tags" :key="t" class="tag">{{ t }}</text>
@@ -94,7 +101,7 @@
 
     <!-- 写作入口 -->
     <view class="fab" @tap="goWrite">
-      <text class="fab-icon">✎</text>
+      <Icon name="edit" :size="50" class="fab-icon" />
     </view>
 
     <!-- 每日一图:启动后首次 onShow 触发,当天只弹一次 -->
@@ -122,6 +129,7 @@ import {
 } from '../../store/feed'
 import TabBar from '../../components/TabBar.vue'
 import CachedImage from '../../components/CachedImage.vue'
+import Icon from '../../components/Icon.vue'
 import StateView from '../../components/StateView.vue'
 import DailyImageOverlay from '../../components/DailyImageOverlay.vue'
 import { todayImage, todayLoaded } from '../../store/dailyImage'
@@ -305,7 +313,7 @@ function goWrite() {
 <style scoped>
 .home {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
   padding-bottom: 140rpx;
 }
 .status-bar {
@@ -314,15 +322,27 @@ function goWrite() {
 .header {
   padding: 16rpx 48rpx 12rpx;
 }
+.header-title-row {
+  display: flex;
+  align-items: center;
+}
 .header-title {
   font-size: 56rpx;
   font-weight: 700;
-  color: #c4a882;
-  letter-spacing: 4rpx;
+  color: var(--wood-bark);
+}
+/* 品牌字间呼吸墨点:全 App 唯一的品牌排印记忆点 */
+.brand-dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  background: var(--wood-bark);
+  margin: 0 10rpx;
+  animation: yinyu-breath 3.2s var(--ease-soft) infinite;
 }
 .header-sub {
   display: block;
-  color: #b8b8b8;
+  color: var(--text-mute);
   font-size: 24rpx;
   margin-top: 4rpx;
 }
@@ -331,12 +351,12 @@ function goWrite() {
   display: flex;
   align-items: center;
   padding: 14rpx 28rpx;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 48rpx;
   box-shadow: 0 4rpx 16rpx rgba(196, 168, 130, 0.1);
 }
 .search-icon {
-  color: #c4a882;
+  color: var(--wood-bark);
   margin-right: 14rpx;
   display: flex;
   align-items: center;
@@ -345,7 +365,7 @@ function goWrite() {
 .search-input {
   flex: 1;
   font-size: 28rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .search-clear {
   width: 36rpx;
@@ -359,9 +379,7 @@ function goWrite() {
   flex-shrink: 0;
 }
 .search-clear-icon {
-  color: #c4a882;
-  font-size: 26rpx;
-  line-height: 1;
+  color: var(--bark-ink);
 }
 /* SWR 离线提示条 */
 .offline-banner {
@@ -375,22 +393,21 @@ function goWrite() {
 }
 .offline-text {
   font-size: 24rpx;
-  color: #c4a882;
+  color: var(--bark-ink);
 }
 .offline-close {
-  font-size: 32rpx;
-  color: #c4a882;
+  color: var(--bark-ink);
   padding-left: 16rpx;
 }
 .list {
   padding: 0 32rpx;
 }
 .card {
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 48rpx;
   margin-bottom: 32rpx;
   overflow: hidden;
-  box-shadow: 0 8rpx 64rpx rgba(196, 168, 130, 0.15);
+  box-shadow: var(--shadow-soft);
   /* 清掉 App.vue 全局 .card 的 40rpx 内边距:封面要贴边通栏,卡片上半截全是封面图,
      文字区的留白由 .body 自己的 padding 提供 */
   padding: 0;
@@ -431,14 +448,14 @@ function goWrite() {
 .title {
   font-size: 38rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
   line-height: 1.4;
 }
 .desc {
   display: block;
   margin-top: 14rpx;
   font-size: 26rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   line-height: 1.6;
 }
 .meta {
@@ -446,9 +463,12 @@ function goWrite() {
   justify-content: space-between;
   margin-top: 24rpx;
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 .meta-right {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
   color: #e0a8b0;
 }
 .tags {
@@ -461,7 +481,7 @@ function goWrite() {
 .load-text,
 .empty-text {
   font-size: 24rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .fab {
   position: fixed;
@@ -470,7 +490,7 @@ function goWrite() {
   width: 104rpx;
   height: 104rpx;
   border-radius: 52rpx;
-  background: #c4a882;
+  background: var(--wood-bark);
   box-shadow: 0 8rpx 32rpx rgba(196, 168, 130, 0.5);
   display: flex;
   align-items: center;
@@ -485,6 +505,5 @@ function goWrite() {
 }
 .fab-icon {
   color: #fff;
-  font-size: 48rpx;
 }
 </style>

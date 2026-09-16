@@ -4,7 +4,7 @@
 
     <view class="nav">
       <view class="nav-back" @tap="goBack">
-        <text class="nav-back-icon">‹</text>
+        <Icon name="chevron-left" :size="36" class="nav-back-icon" />
       </view>
       <text class="nav-title serif">我的作品</text>
       <view class="nav-placeholder"></view>
@@ -51,7 +51,13 @@
             >
               <text class="mini-title">{{ a.title }}</text>
               <view class="mini-meta">
-                <text>{{ a.status === 'published' ? '已发布' : a.status === 'scheduled' ? '定时中' : '草稿' }} · ♡ {{ a.like_count }}</text>
+                <view class="mw-left">
+                  <text>{{ a.status === 'published' ? '已发布' : a.status === 'scheduled' ? '定时中' : '草稿' }}</text>
+                  <view class="mw-like">
+                    <Icon name="heart" :size="22" />
+                    <text>{{ a.like_count }}</text>
+                  </view>
+                </view>
                 <view class="mini-right">
                   <text class="mini-edit" @tap.stop="goEdit(a)">编辑</text>
                   <text class="mini-time">{{ formatDate(a.created_at) }}</text>
@@ -148,7 +154,7 @@
       <view class="echo-pop" @tap.stop>
         <view class="echo-pop-head">
           <text class="echo-pop-title serif">🌙 收到的回音</text>
-          <text class="echo-pop-close" @tap="echoPop.visible = false">×</text>
+          <Icon name="close" :size="30" class="echo-pop-close" @tap="echoPop.visible = false" />
         </view>
         <view v-if="echoPop.loading" class="echo-pop-state">
           <text class="load-text">加载中…</text>
@@ -179,6 +185,7 @@ import {
 } from '../../store/me'
 import TreeholeEditor from '../../components/TreeholeEditor.vue'
 import StateView from '../../components/StateView.vue'
+import Icon from '../../components/Icon.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 // swiper 高度:视口减去状态栏 + 导航栏 + Tab 头
@@ -379,7 +386,7 @@ function goBack() {
 <style scoped>
 .my-works {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
 }
 .status-bar {
   width: 100%;
@@ -394,13 +401,13 @@ function goBack() {
   padding: 12rpx;
 }
 .nav-back-icon {
-  font-size: 56rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .nav-title {
   font-size: 36rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .nav-placeholder {
   width: 56rpx;
@@ -423,7 +430,7 @@ function goBack() {
   align-items: center;
   padding: 16rpx 40rpx;
   border-radius: 32rpx;
-  background: #fff;
+  background: var(--warm-surface);
   box-shadow: 0 4rpx 16rpx rgba(196, 168, 130, 0.08);
   transition: all 0.3s;
 }
@@ -434,7 +441,7 @@ function goBack() {
 .tab-text {
   font-size: 28rpx;
   font-weight: 600;
-  color: #8d8d8d;
+  color: var(--text-sec);
 }
 .tab-item.active .tab-text {
   color: #fff;
@@ -442,7 +449,7 @@ function goBack() {
 .tab-count {
   margin-top: 6rpx;
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 .tab-item.active .tab-count {
   color: rgba(255, 255, 255, 0.85);
@@ -461,7 +468,7 @@ function goBack() {
 }
 .mini-title {
   font-size: 30rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 500;
 }
 .mini-meta {
@@ -469,11 +476,21 @@ function goBack() {
   justify-content: space-between;
   margin-top: 14rpx;
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
+}
+.mw-left {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+.mw-like {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
 }
 .mini-time {
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
   margin-top: 8rpx;
   display: block;
 }
@@ -484,7 +501,7 @@ function goBack() {
 }
 .mini-edit {
   font-size: 22rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   padding: 4rpx 18rpx;
   background: rgba(196, 168, 130, 0.14);
   border-radius: 16rpx;
@@ -503,13 +520,13 @@ function goBack() {
 }
 .th-status {
   font-size: 22rpx;
-  color: #88a07a;
+  color: var(--moss-green);
   background: rgba(136, 160, 122, 0.15);
   padding: 4rpx 16rpx;
   border-radius: 16rpx;
 }
 .th-status.off {
-  color: #b0b0b0;
+  color: var(--text-mute);
   background: #f0f0f0;
 }
 .th-code-row {
@@ -522,7 +539,7 @@ function goBack() {
   font-size: 44rpx;
   font-weight: 700;
   letter-spacing: 12rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   font-family: 'Menlo', monospace;
 }
 .th-actions {
@@ -531,8 +548,8 @@ function goBack() {
 }
 .th-btn {
   padding: 10rpx 24rpx;
-  background: #f3eee5;
-  color: #8d8d8d;
+  background: var(--warm-surface-2);
+  color: var(--text-sec);
   border-radius: 24rpx;
   font-size: 24rpx;
 }
@@ -560,7 +577,7 @@ function goBack() {
 .echo-pop {
   width: 100%;
   max-height: 64vh;
-  background: #fffdf8;
+  background: var(--warm-surface);
   border-radius: 32rpx;
   padding: 36rpx 40rpx;
   display: flex;
@@ -575,13 +592,11 @@ function goBack() {
 .echo-pop-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .echo-pop-close {
-  font-size: 44rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
   padding: 0 8rpx;
-  line-height: 1;
 }
 .echo-pop-state {
   padding: 40rpx 0;
@@ -599,11 +614,11 @@ function goBack() {
 }
 .echo-item-msg {
   font-size: 28rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .echo-item-time {
   font-size: 22rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
   margin-left: 16rpx;
   flex-shrink: 0;
 }
@@ -612,7 +627,7 @@ function goBack() {
   padding: 40rpx 0;
   text-align: center;
   font-size: 24rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 
 /* 骨架屏(mini 卡片) */

@@ -210,12 +210,12 @@ onMounted(() => load(true))
 }
 .cmt-title {
   font-size: 30rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .cmt-count {
   font-size: 24rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 .cmt-list {
   /* 内边距:左侧 0(顶层与标题对齐),右侧 0 */
@@ -229,7 +229,7 @@ onMounted(() => load(true))
   text-align: center;
   padding: 24rpx 0;
   font-size: 24rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 .load-more .end {
   color: #c8c8c8;

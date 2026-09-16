@@ -181,7 +181,7 @@ onUnmounted(() => {
 .icon-wrapper {
   width: 60rpx;
   height: 60rpx;
-  background: linear-gradient(135deg, #E8C4C4 0%, #C4A882 100%);
+  background: linear-gradient(135deg, var(--sunset-pink) 0%, var(--wood-bark) 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -222,7 +222,7 @@ onUnmounted(() => {
 
 .audio-label {
   font-size: 26rpx;
-  color: #4A4A4A;
+  color: var(--text-main);
   font-weight: 500;
   margin-bottom: 4rpx;
 }
@@ -251,7 +251,7 @@ onUnmounted(() => {
 .play-btn {
   width: 56rpx;
   height: 56rpx;
-  background: #88A07A;
+  background: var(--moss-green);
   border-radius: 50%;
   display: flex;
   align-items: center;

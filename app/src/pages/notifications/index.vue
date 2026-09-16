@@ -3,7 +3,10 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
-      <text class="back" @tap="goBack">‹ 返回</text>
+      <view class="back" @tap="goBack">
+        <Icon name="chevron-left" :size="28" class="back-icon" />
+        <text>返回</text>
+      </view>
       <text class="title">通知</text>
       <text class="action" @tap="markAllRead" v-if="items.length">全部已读</text>
       <text v-else class="action placeholder"></text>
@@ -75,6 +78,7 @@ import { effectiveTheme } from '../../store/theme'
 import { formatRelative } from '../../utils/format'
 import { setUnread, decUnread } from '../../store/notifications'
 import StateView from '../../components/StateView.vue'
+import Icon from '../../components/Icon.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const items = ref([])
@@ -195,7 +199,7 @@ onShow(() => {
 <style scoped>
 .noti {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
   display: flex;
   flex-direction: column;
 }
@@ -210,19 +214,25 @@ onShow(() => {
 }
 .back {
   width: 130rpx;
-  color: #c4a882;
+  display: flex;
+  align-items: center;
+  gap: 2rpx;
+  color: var(--bark-ink);
   font-size: 30rpx;
+}
+.back-icon {
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .title {
   font-size: 32rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .action {
   width: 130rpx;
   text-align: right;
   font-size: 26rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 .action.placeholder {
   visibility: hidden;
@@ -237,7 +247,7 @@ onShow(() => {
   gap: 12rpx;
   padding: 28rpx 24rpx;
   margin-bottom: 16rpx;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 32rpx;
   box-shadow: 0 4rpx 16rpx rgba(196, 168, 130, 0.1);
 }
@@ -272,7 +282,7 @@ onShow(() => {
   border-radius: 32rpx;
 }
 .avatar-placeholder {
-  background: #e8c4c4;
+  background: var(--sunset-pink);
   color: #fff;
   display: flex;
   align-items: center;
@@ -288,12 +298,12 @@ onShow(() => {
 }
 .line {
   font-size: 28rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   line-height: 1.5;
 }
 .snippet {
   font-size: 26rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   background: #f5efe5;
   padding: 8rpx 16rpx;
   border-radius: 12rpx;
@@ -302,7 +312,7 @@ onShow(() => {
 }
 .time {
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
   margin-top: 4rpx;
 }
 .load-more {
@@ -310,7 +320,7 @@ onShow(() => {
   padding: 32rpx 0 64rpx;
 }
 .load-text {
-  color: #b0b0b0;
+  color: var(--text-mute);
   font-size: 24rpx;
 }
 </style>

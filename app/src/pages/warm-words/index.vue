@@ -5,7 +5,10 @@
     <!-- 场景选择视图 -->
     <template v-if="view === 'scenes'">
       <view class="topbar">
-        <text class="back pressable" @tap="goBack">‹ 返回</text>
+        <view class="back pressable" @tap="goBack">
+          <Icon name="chevron-left" :size="28" class="back-icon" />
+          <text>返回</text>
+        </view>
         <text class="topbar-title serif">暖话</text>
         <text class="action pressable" @tap="goFavorites">我的收藏</text>
       </view>
@@ -30,7 +33,10 @@
     <!-- 结果视图 -->
     <template v-else>
       <view class="topbar">
-        <text class="back pressable" @tap="backToScenes">‹ 选场景</text>
+        <view class="back pressable" @tap="backToScenes">
+          <Icon name="chevron-left" :size="28" class="back-icon" />
+          <text>选场景</text>
+        </view>
         <text class="topbar-title serif">{{ currentLabel }}</text>
         <text class="action pressable" @tap="drawAnother">换一条</text>
       </view>
@@ -48,14 +54,19 @@
         <view v-else-if="currentWord" class="card result-card anim-pop">
           <view class="card-header">
             <text class="scene-tag">{{ currentLabel }} · 今日暖话</text>
-            <text
+            <view
               :class="['fav-btn', 'pressable', { active: currentWord.is_favorited }]"
               @tap="toggleFavorite"
-            >{{ currentWord.is_favorited ? '♥' : '♡' }}</text>
+            >
+              <Icon :name="currentWord.is_favorited ? 'heart-filled' : 'heart'" :size="34" />
+            </view>
           </view>
           <text class="warm-text serif">{{ currentWord.text }}</text>
           <view class="actions">
-            <text class="act-btn pressable" @tap="goWrite">✎ 写成图文</text>
+            <view class="act-btn pressable" @tap="goWrite">
+              <Icon name="edit" :size="26" />
+              <text>写成图文</text>
+            </view>
             <text class="act-btn ghost pressable" @tap="drawAnother">换一条</text>
           </view>
         </view>
@@ -70,6 +81,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { isLoggedIn } from '../../store/user'
+import Icon from '../../components/Icon.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 
@@ -176,7 +188,7 @@ onShow(() => {
 <style scoped>
 .warm {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
   display: flex;
   flex-direction: column;
 }
@@ -191,19 +203,25 @@ onShow(() => {
 }
 .back {
   width: 130rpx;
-  color: #c4a882;
+  display: flex;
+  align-items: center;
+  gap: 2rpx;
+  color: var(--bark-ink);
   font-size: 30rpx;
+}
+.back-icon {
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .topbar-title {
   font-size: 32rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .action {
   width: 130rpx;
   text-align: right;
   font-size: 26rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 .action.placeholder {
   visibility: hidden;
@@ -216,7 +234,7 @@ onShow(() => {
 }
 .guide-text {
   font-size: 36rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   line-height: 1.6;
 }
 .scene-grid {
@@ -226,23 +244,23 @@ onShow(() => {
   padding: 16rpx 32rpx;
 }
 .scene-card {
-  background: #ffffff;
+  background: var(--warm-surface);
   border-radius: 32rpx;
   padding: 44rpx 28rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 8rpx 64rpx rgba(196, 168, 130, 0.15);
+  box-shadow: var(--shadow-soft);
 }
 .scene-label {
   font-size: 34rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 500;
 }
 .scene-count {
   margin-top: 12rpx;
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 
 /* 结果视图 */
@@ -263,7 +281,7 @@ onShow(() => {
   width: 16rpx;
   height: 16rpx;
   border-radius: 50%;
-  background: #c4a882;
+  background: var(--wood-bark);
   margin: 6rpx 0;
   opacity: 0.4;
   animation: pulse 1s ease-in-out infinite;
@@ -274,7 +292,7 @@ onShow(() => {
 .loading-text {
   margin-top: 24rpx;
   font-size: 26rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 @keyframes pulse {
   0%, 100% { opacity: 0.3; transform: scale(0.8); }
@@ -294,17 +312,17 @@ onShow(() => {
 }
 .scene-tag {
   font-size: 22rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   letter-spacing: 2rpx;
 }
 .fav-btn {
-  font-size: 44rpx;
-  color: #c4a882;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  color: var(--wood-bark);
   transition: transform var(--t-fast, 0.2s) var(--ease-healing, cubic-bezier(0.34, 1.56, 0.64, 1));
 }
 .fav-btn.active {
-  color: #e8c4c4;
+  color: var(--sunset-pink);
 }
 .fav-btn:active {
   transform: scale(0.86);
@@ -313,7 +331,7 @@ onShow(() => {
   margin-top: 32rpx;
   font-size: 36rpx;
   line-height: 1.8;
-  color: #4a4a4a;
+  color: var(--text-main);
   text-align: left;
 }
 .actions {
@@ -323,15 +341,18 @@ onShow(() => {
 }
 .act-btn {
   flex: 1;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
   padding: 20rpx 0;
   border-radius: 32rpx;
-  background: #c4a882;
+  background: var(--wood-bark);
   color: #fff;
   font-size: 28rpx;
 }
 .act-btn.ghost {
-  background: #f3eee5;
-  color: #88a07a;
+  background: var(--warm-surface-2);
+  color: var(--moss-green);
 }
 </style>

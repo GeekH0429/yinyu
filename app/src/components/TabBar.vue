@@ -73,7 +73,7 @@ function onTap(pagePath) {
   right: 0;
   height: 110rpx;
   display: flex;
-  background: #fdfbf7;
+  background: var(--warm-white);
   border-top: 1rpx solid rgba(196, 168, 130, 0.15);
   padding-bottom: env(safe-area-inset-bottom);
   z-index: 999;
@@ -107,16 +107,16 @@ function onTap(pagePath) {
 }
 .tab-text {
   font-size: 22rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   transition: color 0.25s ease;
 }
 .tab-item.active .svg-icon {
-  color: #c4a882;
+  color: var(--wood-bark);
   /* 选中时图标轻微弹跳,呼应"被选中"的反馈 */
   transform: scale(1.08);
 }
 .tab-item.active .tab-text {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-weight: 600;
 }
 

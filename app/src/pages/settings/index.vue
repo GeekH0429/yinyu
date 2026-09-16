@@ -5,7 +5,7 @@
     <!-- 自定义导航栏 -->
     <view class="nav">
       <view class="nav-back" @tap="goBack">
-        <text class="nav-back-icon">‹</text>
+        <Icon name="chevron-left" :size="36" class="nav-back-icon" />
       </view>
       <text class="nav-title">设置</text>
       <view class="nav-placeholder"></view>
@@ -27,7 +27,7 @@
           <view v-else class="avatar placeholder">
             {{ (user?.nickname || user?.username || '?').slice(0, 1) }}
           </view>
-          <text class="row-arrow">›</text>
+          <Icon name="chevron-right" :size="24" class="row-arrow" />
         </view>
       </view>
       <!-- 昵称 -->
@@ -35,7 +35,7 @@
         <text class="row-label">昵称</text>
         <view class="row-value">
           <text class="row-text">{{ user?.nickname || '未设置' }}</text>
-          <text class="row-arrow">›</text>
+          <Icon name="chevron-right" :size="24" class="row-arrow" />
         </view>
       </view>
       <!-- 简介 -->
@@ -43,7 +43,7 @@
         <text class="row-label">简介</text>
         <view class="row-value">
           <text class="row-text ellipsis">{{ user?.bio || '这个角落还很安静' }}</text>
-          <text class="row-arrow">›</text>
+          <Icon name="chevron-right" :size="24" class="row-arrow" />
         </view>
       </view>
       <!-- 邮箱 -->
@@ -51,7 +51,7 @@
         <text class="row-label">邮箱</text>
         <view class="row-value">
           <text class="row-text">{{ user?.email || '未绑定' }}</text>
-          <text class="row-arrow">›</text>
+          <Icon name="chevron-right" :size="24" class="row-arrow" />
         </view>
       </view>
     </view>
@@ -62,7 +62,7 @@
       <view class="row" @tap="openPwd">
         <text class="row-label">修改密码</text>
         <view class="row-value">
-          <text class="row-arrow">›</text>
+          <Icon name="chevron-right" :size="24" class="row-arrow" />
         </view>
       </view>
     </view>
@@ -106,7 +106,7 @@
         <text class="row-label">主题</text>
         <view class="row-value">
           <text class="row-text">{{ themeLabel }}</text>
-          <text class="row-arrow">›</text>
+          <Icon name="chevron-right" :size="24" class="row-arrow" />
         </view>
       </view>
       <view class="row">
@@ -144,7 +144,7 @@
         <text class="row-label">清除缓存</text>
         <view class="row-value">
           <text class="row-text">{{ cacheSizeText }}</text>
-          <text class="row-arrow">›</text>
+          <Icon name="chevron-right" :size="24" class="row-arrow" />
         </view>
       </view>
     </view>
@@ -204,6 +204,7 @@ import { clearAllResourceCache, getCacheSize } from '../../utils/resourceCache'
 import { clearArticleSnaps } from '../../utils/articleCache'
 import { SNAP, clearSnap } from '../../utils/snap'
 import CachedImage from '../../components/CachedImage.vue'
+import Icon from '../../components/Icon.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const user = ref(getUser())
@@ -458,7 +459,7 @@ function onLogout() {
 <style scoped>
 .settings {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
   padding-bottom: 80rpx;
 }
 .status-bar {
@@ -478,14 +479,13 @@ function onLogout() {
   justify-content: center;
 }
 .nav-back-icon {
-  font-size: 56rpx;
-  color: #c4a882;
-  line-height: 1;
+  color: var(--wood-bark);
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .nav-title {
   font-size: 34rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .nav-placeholder {
   width: 64rpx;
@@ -494,7 +494,7 @@ function onLogout() {
   display: block;
   margin: 36rpx 48rpx 16rpx;
   font-size: 24rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 .group {
   margin: 0 32rpx;
@@ -512,7 +512,7 @@ function onLogout() {
 }
 .row-label {
   font-size: 30rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   flex-shrink: 0;
 }
 .row-value {
@@ -522,7 +522,7 @@ function onLogout() {
 }
 .row-text {
   font-size: 28rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   text-align: right;
 }
 .row-text.ellipsis {
@@ -533,9 +533,7 @@ function onLogout() {
 }
 .row-arrow {
   margin-left: 14rpx;
-  font-size: 40rpx;
   color: #d8d8d8;
-  line-height: 1;
 }
 .row-hint {
   padding: 0 32rpx 22rpx;
@@ -559,7 +557,7 @@ function onLogout() {
   margin-left: 24rpx;
 }
 .rf-letter {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -572,7 +570,7 @@ function onLogout() {
 /* 当前档位名称固定宽度,避免 1 字 ↔ 2 字切换时挤动布局 */
 .rf-label {
   font-size: 26rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   font-weight: 600;
   min-width: 64rpx;
   text-align: center;
@@ -584,7 +582,7 @@ function onLogout() {
   border-radius: 44rpx;
 }
 .avatar.placeholder {
-  background: #e8c4c4;
+  background: var(--sunset-pink);
   color: #fff;
   display: flex;
   align-items: center;
@@ -595,7 +593,7 @@ function onLogout() {
   margin: 64rpx 32rpx 0;
   padding: 30rpx 0;
   text-align: center;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 40rpx;
   color: #e8a0a0;
   font-size: 30rpx;
@@ -617,7 +615,7 @@ function onLogout() {
 }
 .dialog {
   width: 600rpx;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 28rpx;
   padding: 40rpx;
 }
@@ -626,13 +624,13 @@ function onLogout() {
   text-align: center;
   font-size: 32rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
   margin-bottom: 32rpx;
 }
 .dialog-input {
   width: 100%;
   height: 84rpx;
-  background: #f8f5f0;
+  background: var(--warm-surface-2);
   border-radius: 20rpx;
   padding: 0 24rpx;
   margin-bottom: 20rpx;
@@ -651,8 +649,8 @@ function onLogout() {
   font-size: 30rpx;
 }
 .dialog-btn.cancel {
-  color: #8d8d8d;
-  background: #f3eee5;
+  color: var(--text-sec);
+  background: var(--warm-surface-2);
   margin-right: 20rpx;
 }
 .dialog-btn.confirm {

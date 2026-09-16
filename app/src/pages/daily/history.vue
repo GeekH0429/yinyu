@@ -4,7 +4,7 @@
 
     <view class="nav">
       <view class="nav-back" @tap="goBack">
-        <text class="nav-back-icon">‹</text>
+        <Icon name="chevron-left" :size="36" class="nav-back-icon" />
       </view>
       <text class="nav-title serif">每日一图</text>
       <text v-if="items.length" class="nav-counter">{{ currentIdx + 1 }} / {{ items.length }}</text>
@@ -74,6 +74,7 @@ import { api } from '../../api'
 import { resourceUrl } from '../../config'
 import CachedImage from '../../components/CachedImage.vue'
 import StateView from '../../components/StateView.vue'
+import Icon from '../../components/Icon.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 // swiper 高度:视口减去状态栏 + 导航栏
@@ -175,7 +176,7 @@ function goBack() {
 <style scoped>
 .daily-history {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
 }
 .status-bar {
   width: 100%;
@@ -190,17 +191,17 @@ function goBack() {
   padding: 12rpx;
 }
 .nav-back-icon {
-  font-size: 56rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .nav-title {
   font-size: 36rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .nav-counter {
   font-size: 26rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
   letter-spacing: 4rpx;
   min-width: 56rpx;
   text-align: right;

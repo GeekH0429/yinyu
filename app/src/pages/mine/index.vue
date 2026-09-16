@@ -36,7 +36,7 @@
         <text class="entry-title">每日一图 · 回忆</text>
         <text class="entry-sub">看看过去的每一天</text>
       </view>
-      <text class="entry-arrow">›</text>
+      <Icon name="chevron-right" :size="28" class="entry-arrow" />
     </view>
 
     <!-- 我的作品入口(图文与树洞,内含 Tab) -->
@@ -45,7 +45,7 @@
         <text class="entry-title">我的作品</text>
         <text class="entry-sub">图文与树洞</text>
       </view>
-      <text class="entry-arrow">›</text>
+      <Icon name="chevron-right" :size="28" class="entry-arrow" />
     </view>
 
     <!-- 暖话入口 -->
@@ -54,7 +54,7 @@
         <text class="entry-title">暖话</text>
         <text class="entry-sub">一句温柔的话</text>
       </view>
-      <text class="entry-arrow">›</text>
+      <Icon name="chevron-right" :size="28" class="entry-arrow" />
     </view>
 
     <!-- 时光胶囊入口 -->
@@ -63,7 +63,7 @@
         <text class="entry-title">时光胶囊</text>
         <text class="entry-sub">给未来自己的一封信</text>
       </view>
-      <text class="entry-arrow">›</text>
+      <Icon name="chevron-right" :size="28" class="entry-arrow" />
     </view>
 
     <!-- 收藏入口 -->
@@ -72,7 +72,7 @@
         <text class="entry-title">收藏</text>
         <text class="entry-sub">舍不得忘记的句子</text>
       </view>
-      <text class="entry-arrow">›</text>
+      <Icon name="chevron-right" :size="28" class="entry-arrow" />
     </view>
 
     <!-- 人生时光轴入口 -->
@@ -81,7 +81,7 @@
         <text class="entry-title">人生时光轴</text>
         <text class="entry-sub">看看这一生铺开的样子</text>
       </view>
-      <text class="entry-arrow">›</text>
+      <Icon name="chevron-right" :size="28" class="entry-arrow" />
     </view>
 
     <TabBar />
@@ -96,6 +96,7 @@ import { effectiveTheme } from '../../store/theme'
 import { unreadCount, refreshUnread } from '../../store/notifications'
 import TabBar from '../../components/TabBar.vue'
 import CachedImage from '../../components/CachedImage.vue'
+import Icon from '../../components/Icon.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const user = ref(getUser())
@@ -153,7 +154,7 @@ function goLife() {
 <style scoped>
 .mine {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
   padding-bottom: 160rpx;
 }
 .status-bar {
@@ -177,7 +178,7 @@ function goLife() {
 .svg-icon {
   width: 44rpx;
   height: 44rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   display: block;
 }
 .badge-dot {
@@ -188,7 +189,7 @@ function goLife() {
   height: 14rpx;
   border-radius: 50%;
   background: #e74c3c;
-  border: 2rpx solid #fdfbf7;
+  border: 2rpx solid var(--warm-white);
 }
 .profile-card {
   margin: 24rpx 32rpx;
@@ -201,7 +202,7 @@ function goLife() {
   border-radius: 60rpx;
 }
 .avatar.placeholder {
-  background: #e8c4c4;
+  background: var(--sunset-pink);
   color: #fff;
   display: flex;
   align-items: center;
@@ -216,19 +217,19 @@ function goLife() {
 .nickname {
   font-size: 36rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .bio {
   margin-top: 8rpx;
   font-size: 24rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
 }
 .role {
   align-self: flex-start;
   margin-top: 12rpx;
   padding: 4rpx 16rpx;
   background: rgba(196, 168, 130, 0.18);
-  color: #c4a882;
+  color: var(--wood-bark);
   border-radius: 16rpx;
   font-size: 22rpx;
 }
@@ -248,15 +249,14 @@ function goLife() {
 .entry-title {
   font-size: 30rpx;
   font-weight: 500;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .entry-sub {
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .entry-arrow {
-  font-size: 48rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 </style>

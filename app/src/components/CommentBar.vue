@@ -226,7 +226,7 @@ async function onSend() {
   left: 0;
   right: 0;
   bottom: 0;
-  background: #fdfbf7;
+  background: var(--warm-white);
   border-top: 1rpx solid rgba(196, 168, 130, 0.18);
   padding: 16rpx 24rpx calc(env(safe-area-inset-bottom) + 16rpx);
   z-index: 200;
@@ -239,11 +239,11 @@ async function onSend() {
 }
 .reply-text {
   font-size: 24rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
 }
 .cancel {
   font-size: 24rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   padding: 4rpx 12rpx;
 }
 .bar {
@@ -256,10 +256,10 @@ async function onSend() {
   min-height: 64rpx;
   max-height: 200rpx;
   padding: 16rpx 24rpx;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 32rpx;
   font-size: 28rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   line-height: 1.5;
   box-shadow: 0 4rpx 16rpx rgba(196, 168, 130, 0.1);
 }
@@ -267,7 +267,7 @@ async function onSend() {
   flex-shrink: 0;
   height: 64rpx;
   padding: 0 32rpx;
-  background: #c4a882;
+  background: var(--wood-bark);
   color: #fff;
   border-radius: 32rpx;
   display: flex;
@@ -287,7 +287,7 @@ async function onSend() {
   right: 24rpx;
   bottom: 100%;
   margin-bottom: 8rpx;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 16rpx;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.12);
   max-height: 400rpx;
@@ -296,7 +296,7 @@ async function onSend() {
 .mention-hint {
   padding: 16rpx 24rpx;
   font-size: 24rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 .mention-list {
   max-height: 400rpx;
@@ -315,7 +315,7 @@ async function onSend() {
   border-radius: 24rpx;
 }
 .m-avatar.placeholder {
-  background: #e8c4c4;
+  background: var(--sunset-pink);
   color: #fff;
   display: flex;
   align-items: center;
@@ -325,6 +325,6 @@ async function onSend() {
 .m-name {
   margin-left: 16rpx;
   font-size: 26rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 </style>

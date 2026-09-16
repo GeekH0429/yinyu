@@ -3,7 +3,11 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="brand anim-rise">
-      <text class="brand-title serif">隐语</text>
+      <view class="brand-title-row">
+        <text class="brand-title serif">隐</text>
+        <view class="brand-dot"></view>
+        <text class="brand-title serif">语</text>
+      </view>
       <text class="brand-sub">温暖治愈的精神角落</text>
     </view>
 
@@ -23,7 +27,7 @@
           <text class="label">密码</text>
           <input v-model="form.password" class="input" password placeholder="密码" />
         </view>
-        <button class="submit" :loading="loading" @tap="onLogin">登 录</button>
+        <button class="submit" :loading="loading" @tap="onLogin">登录</button>
       </view>
 
       <!-- 注册 -->
@@ -44,7 +48,7 @@
           <text class="label">昵称(可选)</text>
           <input v-model="reg.nickname" class="input" placeholder="留空则用用户名" />
         </view>
-        <button class="submit" :loading="loading" @tap="onRegister">注 册</button>
+        <button class="submit" :loading="loading" @tap="onRegister">注册</button>
       </view>
     </view>
 
@@ -110,8 +114,14 @@ async function onRegister() {
 
 <style scoped>
 .login-page {
+  /* 渐变取自系统色相:暮粉 tint → 暖白 → 苔绿 tint(原 #fdeef4/#eafaf3 是孤立色相,已收敛) */
   min-height: 100vh;
-  background: linear-gradient(160deg, #fdeef4 0%, #fdfbf7 45%, #eafaf3 100%);
+  background: linear-gradient(
+    160deg,
+    rgba(232, 196, 196, 0.32) 0%,
+    var(--warm-white) 45%,
+    rgba(136, 160, 122, 0.2) 100%
+  );
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -124,16 +134,28 @@ async function onRegister() {
   margin-top: 120rpx;
   text-align: center;
 }
+.brand-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .brand-title {
   font-size: 88rpx;
   font-weight: 700;
-  color: #c4a882;
-  letter-spacing: 8rpx;
+  color: var(--wood-bark);
+}
+.brand-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: var(--wood-bark);
+  margin: 0 16rpx;
+  animation: yinyu-breath 3.2s var(--ease-soft) infinite;
 }
 .brand-sub {
   display: block;
   margin-top: 16rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   font-size: 26rpx;
 }
 .form-card {
@@ -151,10 +173,10 @@ async function onRegister() {
   text-align: center;
   padding-bottom: 20rpx;
   font-size: 30rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
 }
 .tab.active {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-weight: 600;
   position: relative;
 }
@@ -166,7 +188,7 @@ async function onRegister() {
   transform: translateX(-50%);
   width: 60rpx;
   height: 4rpx;
-  background: #c4a882;
+  background: var(--wood-bark);
   border-radius: 2rpx;
 }
 .field {
@@ -175,18 +197,18 @@ async function onRegister() {
 .label {
   display: block;
   font-size: 24rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   margin-bottom: 12rpx;
 }
 .input {
   width: 100%;
   height: 88rpx;
-  background: #fdfbf7;
+  background: var(--warm-white);
   border: 1rpx solid rgba(196, 168, 130, 0.25);
   border-radius: 24rpx;
   padding: 0 28rpx;
   font-size: 30rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   box-sizing: border-box;
 }
 .submit {
@@ -194,19 +216,22 @@ async function onRegister() {
   width: 100%;
   height: 92rpx;
   line-height: 92rpx;
-  background: #c4a882;
+  background: var(--wood-bark);
   color: #fff;
   border-radius: 46rpx;
   font-size: 32rpx;
   font-weight: 600;
   border: none;
+  /* 双字按钮的字距呼吸(替代旧的全角空格排印);text-indent 抵消尾字符的 trailing space */
+  letter-spacing: 16rpx;
+  text-indent: 16rpx;
 }
 .submit::after {
   border: none;
 }
 .footer-tip {
   margin-top: 60rpx;
-  color: #c4a882;
+  color: var(--bark-ink);
   font-size: 24rpx;
   opacity: 0.8;
 }

@@ -33,9 +33,14 @@ page {
   --wood-bark: #C4A882;
   --moss-green: #88A07A;
   --sunset-pink: #E8C4C4;
+  /* ink 系:小号文字/图标用(浅底对比度达标);≥40rpx 大字与图形仍用上面的主色 */
+  --bark-ink: #96784e;
+  --moss-ink: #6d8757;
+  --pink-ink: #a87676;
   --text-main: #4A4A4A;
-  --text-sec: #8D8D8D;
-  --text-mute: #b0b0b0;
+  /* 文字阶梯加深(2026-09 对比度修正):sec 白底约 4.1:1,mute 约 3.1:1 */
+  --text-sec: #7d7d78;
+  --text-mute: #8f8f88;
   --border-soft: rgba(196, 168, 130, 0.12);
   --shadow-soft: 0 8rpx 64rpx rgba(196, 168, 130, 0.15);
   --radius-lg: 48rpx;
@@ -57,31 +62,23 @@ page {
   --wood-bark: #C4A882;
   --moss-green: #88A07A;
   --sunset-pink: #E8C4C4;
+  /* 暗色下主色本身对深底就有足够对比,ink 直接取主色 */
+  --bark-ink: #C4A882;
+  --moss-ink: #88A07A;
+  --pink-ink: #B88A8A;
   --text-main: #D8D8E0;
   --text-sec: #9a9ab0;
   --text-mute: #6e6e86;
   --border-soft: rgba(255, 255, 255, 0.08);
   --shadow-soft: 0 8rpx 64rpx rgba(0, 0, 0, 0.4);
 }
-:root[data-theme="dark"] page,
-:root[data-theme="dark"] .home,
-:root[data-theme="dark"] .mine,
-:root[data-theme="dark"] .read,
-:root[data-theme="dark"] .write,
-:root[data-theme="dark"] .settings,
-:root[data-theme="dark"] .login-page,
-:root[data-theme="dark"] .noti,
-:root[data-theme="dark"] .my-works,
-[data-theme="dark"].home,
-[data-theme="dark"].mine,
-[data-theme="dark"].read,
-[data-theme="dark"].write,
-[data-theme="dark"].settings,
-[data-theme="dark"].login-page,
-[data-theme="dark"].noti,
-[data-theme="dark"].my-works {
-  background-color: #14141a !important;
-  color: #D8D8E0 !important;
+/* 各页面根容器已全部使用 var(--warm-white)/var(--text-main),暗色经根 view 上的
+   [data-theme="dark"] 变量重定义自动生效,无需逐类强制。
+   唯一例外是 page 元素自身:它的浅色变量是直接声明,会屏蔽 :root 的继承值,
+   H5 下 overscroll 露出的 page 底色由下面这一条(更高优先级)兜底。 */
+:root[data-theme="dark"] page {
+  background-color: #14141a;
+  color: #D8D8E0;
 }
 
 .status-bar-spacer {
@@ -122,7 +119,7 @@ page {
   display: inline-block;
   padding: 6rpx 18rpx;
   background: rgba(136, 160, 122, 0.15);
-  color: #88A07A;
+  color: var(--moss-ink);
   border-radius: 24rpx;
   font-size: 22rpx;
   margin-right: 12rpx;
@@ -130,7 +127,7 @@ page {
 
 .tag-pink {
   background: rgba(232, 196, 196, 0.25);
-  color: #B88A8A;
+  color: var(--pink-ink);
 }
 
 .serif {
@@ -168,6 +165,12 @@ page {
   0%   { transform: scale(0.9);  opacity: 0; }
   60%  { transform: scale(1.04); opacity: 1; }
   100% { transform: scale(1); }
+}
+/* 品牌字间呼吸墨点(首页/登录的「隐·语」):极轻的环境动画,3.2s 一息;
+   受 .animations-off 统一关闭 */
+@keyframes yinyu-breath {
+  0%, 100% { transform: scale(1);   opacity: 0.4; }
+  50%      { transform: scale(1.3); opacity: 1; }
 }
 
 /* 错峰延迟工具(配合 .anim-rise / .anim-fade 做 staggered 列表进入) */
@@ -237,75 +240,9 @@ textarea {
   user-select: text;
 }
 
-/* 暗色模式穿透覆盖:scoped style 里硬编码的颜色,通过高特异性选择器穿透覆盖。
-   折中:不为每个页面全面 CSS 变量化,而是用 [data-theme="dark"] 前缀穿透 scoped。
-   - H5:<html data-theme="dark"> 是所有页面的祖先,后代选择器命中
-   - App/小程序:页面根 view 带上 data-theme="dark",scoped 的 .card/.ftag 等仍是其后代,同样命中 */
-:root[data-theme="dark"] .card,
-:root[data-theme="dark"] .ftag,
-:root[data-theme="dark"] .like-btn,
-:root[data-theme="dark"] .tab-item,
-:root[data-theme="dark"] .dialog,
-:root[data-theme="dark"] .logout-btn,
-[data-theme="dark"] .card,
-[data-theme="dark"] .ftag,
-[data-theme="dark"] .like-btn,
-[data-theme="dark"] .tab-item,
-[data-theme="dark"] .dialog,
-[data-theme="dark"] .logout-btn {
-  background: #1f1f28 !important;
-  color: #D8D8E0 !important;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.4) !important;
-}
-:root[data-theme="dark"] .title,
-:root[data-theme="dark"] .topbar-title,
-:root[data-theme="dark"] .header-title,
-:root[data-theme="dark"] .nav-title,
-:root[data-theme="dark"] .nickname,
-:root[data-theme="dark"] .row-label,
-:root[data-theme="dark"] .mini-title,
-:root[data-theme="dark"] .dialog-title,
-[data-theme="dark"] .title,
-[data-theme="dark"] .topbar-title,
-[data-theme="dark"] .header-title,
-[data-theme="dark"] .nav-title,
-[data-theme="dark"] .nickname,
-[data-theme="dark"] .row-label,
-[data-theme="dark"] .mini-title,
-[data-theme="dark"] .dialog-title {
-  color: #E8E8F0 !important;
-}
-:root[data-theme="dark"] .desc,
-:root[data-theme="dark"] .meta,
-:root[data-theme="dark"] .bio,
-:root[data-theme="dark"] .header-sub,
-:root[data-theme="dark"] .row-text,
-:root[data-theme="dark"] .author-time,
-:root[data-theme="dark"] .mini-time,
-[data-theme="dark"] .desc,
-[data-theme="dark"] .meta,
-[data-theme="dark"] .bio,
-[data-theme="dark"] .header-sub,
-[data-theme="dark"] .row-text,
-[data-theme="dark"] .author-time,
-[data-theme="dark"] .mini-time {
-  color: #8888A0 !important;
-}
-:root[data-theme="dark"] .row,
-:root[data-theme="dark"] .media-bar,
-[data-theme="dark"] .row,
-[data-theme="dark"] .media-bar {
-  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
-}
-:root[data-theme="dark"] .dialog-input,
-:root[data-theme="dark"] .media-btn,
-:root[data-theme="dark"] .th-btn,
-[data-theme="dark"] .dialog-input,
-[data-theme="dark"] .media-btn,
-[data-theme="dark"] .th-btn {
-  background: #2a2a36 !important;
-  color: #C0C0D0 !important;
-}
+/* 历史说明:这里曾有一整块 [data-theme="dark"] !important 穿透覆盖 scoped 硬编码色。
+   2026-09 全站 <style> 已收敛到 CSS 变量,暗色经根 view 的变量重定义自动生效,该块已删除。
+   新页面请直接用 var(--*),不要再写死色值,否则暗色会破。 */
 
 /* 动画开关:由用户在设置页主动选择(store/theme.js 的 animationsEnabled)。
    - 默认开,不响应系统的 prefers-reduced-motion(那是辅助功能,交给系统级开关;

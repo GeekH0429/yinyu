@@ -3,7 +3,10 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
-      <text class="back" @tap="goBack">‹ 返回</text>
+      <view class="back" @tap="goBack">
+        <Icon name="chevron-left" :size="28" class="back-icon" />
+        <text>返回</text>
+      </view>
       <text class="topbar-title serif">封存一封信</text>
       <view class="topbar-right"></view>
     </view>
@@ -64,6 +67,7 @@ import { ref, computed } from 'vue'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { formatDate, formatTime } from '../../utils/format'
+import Icon from '../../components/Icon.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 
@@ -164,7 +168,7 @@ function goBack() {
 <style scoped>
 .cw {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
 }
 .status-bar {
   width: 100%;
@@ -177,12 +181,18 @@ function goBack() {
 }
 .back {
   width: 120rpx;
-  color: #c4a882;
+  display: flex;
+  align-items: center;
+  gap: 2rpx;
+  color: var(--bark-ink);
   font-size: 30rpx;
+}
+.back-icon {
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .topbar-title {
   font-size: 32rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .topbar-right {
@@ -193,9 +203,9 @@ function goBack() {
 }
 .title-input {
   font-size: 32rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   padding: 24rpx 32rpx;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 32rpx;
   box-shadow: 0 4rpx 24rpx rgba(196, 168, 130, 0.1);
 }
@@ -205,23 +215,23 @@ function goBack() {
   height: 460rpx;
   margin-top: 24rpx;
   padding: 32rpx;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 32rpx;
   box-shadow: 0 4rpx 24rpx rgba(196, 168, 130, 0.1);
   font-size: 30rpx;
   line-height: 1.8;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .date-area {
   margin-top: 32rpx;
   padding: 32rpx;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 32rpx;
   box-shadow: 0 4rpx 24rpx rgba(196, 168, 130, 0.1);
 }
 .date-label {
   font-size: 26rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   font-weight: 500;
 }
 .preset-row {
@@ -233,20 +243,20 @@ function goBack() {
 .preset {
   padding: 14rpx 30rpx;
   border-radius: 40rpx;
-  background: #f3eee5;
-  color: #8d8d8d;
+  background: var(--warm-surface-2);
+  color: var(--text-sec);
   font-size: 26rpx;
 }
 .preset.chosen {
   background: rgba(196, 168, 130, 0.18);
-  color: #c4a882;
+  color: var(--wood-bark);
   font-weight: 600;
 }
 .custom-row {
   margin-top: 20rpx;
   padding: 20rpx 28rpx;
   border-radius: 24rpx;
-  background: #f3eee5;
+  background: var(--warm-surface-2);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -256,27 +266,27 @@ function goBack() {
 }
 .custom-label {
   font-size: 26rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
 }
 .custom-row.chosen .custom-label {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-weight: 600;
 }
 .custom-date {
   font-size: 26rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 .date-hint {
   display: block;
   margin-top: 18rpx;
   font-size: 22rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 .seal-btn {
   margin-top: 48rpx;
   padding: 26rpx 0;
   border-radius: 48rpx;
-  background: #c4a882;
+  background: var(--wood-bark);
   box-shadow: 0 8rpx 32rpx rgba(196, 168, 130, 0.4);
   text-align: center;
 }
@@ -294,6 +304,6 @@ function goBack() {
   text-align: center;
   margin-top: 18rpx;
   font-size: 22rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 </style>

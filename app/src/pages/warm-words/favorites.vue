@@ -3,7 +3,10 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
-      <text class="back pressable" @tap="goBack">‹ 返回</text>
+      <view class="back pressable" @tap="goBack">
+        <Icon name="chevron-left" :size="28" class="back-icon" />
+        <text>返回</text>
+      </view>
       <text class="topbar-title serif">我的收藏</text>
       <text class="action placeholder"></text>
     </view>
@@ -60,6 +63,7 @@ import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { isLoggedIn } from '../../store/user'
 import { formatDate } from '../../utils/format'
+import Icon from '../../components/Icon.vue'
 
 // 场景 key → 中文 label(前端硬编码,后端 scenes 接口也是同源 SCENES dict)
 const SCENE_LABELS = {
@@ -182,7 +186,7 @@ onShow(() => {
 <style scoped>
 .fav {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
   display: flex;
   flex-direction: column;
 }
@@ -197,19 +201,25 @@ onShow(() => {
 }
 .back {
   width: 130rpx;
-  color: #c4a882;
+  display: flex;
+  align-items: center;
+  gap: 2rpx;
+  color: var(--bark-ink);
   font-size: 30rpx;
+}
+.back-icon {
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .topbar-title {
   font-size: 32rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .action {
   width: 130rpx;
   text-align: right;
   font-size: 26rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 .action.placeholder {
   visibility: hidden;
@@ -229,14 +239,14 @@ onShow(() => {
 }
 .scene-tag {
   font-size: 22rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   letter-spacing: 2rpx;
 }
 .warm-text {
   margin-top: 24rpx;
   font-size: 32rpx;
   line-height: 1.8;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .card-foot {
   margin-top: 32rpx;
@@ -246,11 +256,11 @@ onShow(() => {
 }
 .foot-time {
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 .foot-action {
   font-size: 24rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   padding: 8rpx 20rpx;
   border-radius: 24rpx;
   background: rgba(196, 168, 130, 0.1);
@@ -283,19 +293,19 @@ onShow(() => {
 .empty-text {
   display: block;
   font-size: 36rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
 }
 .empty-sub {
   display: block;
   margin-top: 16rpx;
   font-size: 24rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 
 .loading-more {
   text-align: center;
   padding: 32rpx 0;
-  color: #b8b8b8;
+  color: var(--text-mute);
   font-size: 24rpx;
 }
 </style>

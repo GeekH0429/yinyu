@@ -3,7 +3,10 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
-      <text class="back" @tap="goBack">‹ 返回</text>
+      <view class="back" @tap="goBack">
+        <Icon name="chevron-left" :size="28" class="back-icon" />
+        <text>返回</text>
+      </view>
       <text class="topbar-title">阅读</text>
       <view class="topbar-right topbar-aa-wrap">
         <view v-if="showFontSlider" class="font-mask" @tap="closeFontSlider"></view>
@@ -74,7 +77,9 @@
 
       <view class="actions">
         <view :class="['like-btn', { liked }]" @tap="onLike">
-          <text :class="['like-icon', { pop: likePulse }]">{{ liked ? '♥' : '♡' }}</text>
+          <view :class="['like-icon', { pop: likePulse }]">
+            <Icon :name="liked ? 'heart-filled' : 'heart'" :size="34" />
+          </view>
           <text :class="['like-text', { pop: likePulse }]">{{ article.like_count }}</text>
         </view>
       </view>
@@ -89,9 +94,15 @@
         :style="{ left: menu.x + 'px', top: menu.y + 'px' }"
         @tap.stop
       >
-        <text class="sel-btn" @tap="onMenuCard">✦ 卡片</text>
+        <view class="sel-btn" @tap="onMenuCard">
+          <Icon name="sparkle" :size="22" />
+          <text>卡片</text>
+        </view>
         <view class="sel-div"></view>
-        <text class="sel-btn" @tap="onMenuExcerpt">❝ 收藏</text>
+        <view class="sel-btn" @tap="onMenuExcerpt">
+          <Icon name="quote" :size="20" />
+          <text>收藏</text>
+        </view>
       </view>
 
       <!-- 选区观察者(renderjs 在视图层监听 selectionchange,回传逻辑层;clearSignal 供反向清选区) -->
@@ -151,6 +162,7 @@ import { applyCachedImages, extractImgUrls, prefetch } from '../../utils/resourc
 import { makeQuoteCard, CARD_W, CARD_H } from '../../utils/quoteCard'
 import { useSelectionMenu } from '../../composables/useSelectionMenu'
 import AudioPlayer from '../../components/AudioPlayer.vue'
+import Icon from '../../components/Icon.vue'
 import SelectionObserver from '../../components/SelectionObserver.vue'
 import QuoteCardPreview from '../../components/QuoteCardPreview.vue'
 import CachedImage from '../../components/CachedImage.vue'
@@ -340,7 +352,7 @@ const cardPreview = ref({ visible: false, src: '' })
 <style scoped>
 .read {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
 }
 .status-bar {
   width: 100%;
@@ -353,12 +365,18 @@ const cardPreview = ref({ visible: false, src: '' })
 }
 .back {
   width: 120rpx;
-  color: #c4a882;
+  display: flex;
+  align-items: center;
+  gap: 2rpx;
+  color: var(--bark-ink);
   font-size: 30rpx;
+}
+.back-icon {
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .topbar-title {
   font-size: 30rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .topbar-right {
@@ -375,7 +393,7 @@ const cardPreview = ref({ visible: false, src: '' })
   z-index: 100;
 }
 .topbar-aa {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
@@ -410,7 +428,7 @@ const cardPreview = ref({ visible: false, src: '' })
 .title {
   font-size: 48rpx;
   font-weight: 700;
-  color: #4a4a4a;
+  color: var(--text-main);
   line-height: 1.4;
   animation: rise 0.6s ease-out both;
 }
@@ -426,7 +444,7 @@ const cardPreview = ref({ visible: false, src: '' })
   border-radius: 32rpx;
 }
 .avatar.placeholder {
-  background: #e8c4c4;
+  background: var(--sunset-pink);
   color: #fff;
   display: flex;
   align-items: center;
@@ -440,12 +458,12 @@ const cardPreview = ref({ visible: false, src: '' })
 }
 .author-name {
   font-size: 26rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 500;
 }
 .author-time {
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
   margin-top: 4rpx;
 }
 .tags {
@@ -454,7 +472,7 @@ const cardPreview = ref({ visible: false, src: '' })
 }
 .rich-content {
   margin-top: 24rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-size: var(--read-fs, 32rpx);
   line-height: var(--read-lh, 1.85);
   animation: rise 0.8s 0.32s ease-out both;
@@ -467,31 +485,31 @@ const cardPreview = ref({ visible: false, src: '' })
 .rich-content :deep(li) {
   font-size: var(--read-fs, 32rpx) !important;
   line-height: var(--read-lh, 1.85) !important;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .rich-content :deep(h1) {
   font-size: calc(var(--read-fs, 32rpx) + 10rpx) !important;
   line-height: 1.4;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 700;
 }
 .rich-content :deep(h2) {
   font-size: calc(var(--read-fs, 32rpx) + 6rpx) !important;
   line-height: 1.4;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .rich-content :deep(h3) {
   font-size: calc(var(--read-fs, 32rpx) + 3rpx) !important;
   line-height: 1.5;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .rich-content :deep(blockquote) {
   font-size: var(--read-fs, 32rpx) !important;
   line-height: var(--read-lh, 1.85) !important;
   color: #666;
-  border-left: 3px solid #c4a882;
+  border-left: 3px solid var(--wood-bark);
   padding-left: 12px;
 }
 
@@ -511,11 +529,14 @@ const cardPreview = ref({ visible: false, src: '' })
   gap: 4rpx;
   padding: 0 10rpx;
   height: 80rpx;
-  background: #c4a882;
+  background: var(--wood-bark);
   border-radius: 40rpx;
   box-shadow: 0 8rpx 24rpx rgba(196, 168, 130, 0.45);
 }
 .sel-btn {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
   font-size: 24rpx;
   color: #fff;
   padding: 12rpx 18rpx;
@@ -552,7 +573,7 @@ const cardPreview = ref({ visible: false, src: '' })
   align-items: center;
   gap: 18rpx;
   padding: 22rpx 32rpx;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 40rpx;
   box-shadow: 0 12rpx 40rpx rgba(196, 168, 130, 0.28);
   width: 620rpx;
@@ -566,14 +587,14 @@ const cardPreview = ref({ visible: false, src: '' })
   bottom: 100%;
   right: 28rpx;
   border: 12rpx solid transparent;
-  border-bottom-color: #fff;
+  border-bottom-color: var(--warm-surface);
 }
 @keyframes popIn {
   from { opacity: 0; transform: translateY(-8rpx); }
   to { opacity: 1; transform: translateY(0); }
 }
 .fp-letter {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -586,7 +607,7 @@ const cardPreview = ref({ visible: false, src: '' })
 /* 当前档位名称:固定宽度,避免「小/中/大」(1 字)与「较大/特大/超大」(2 字)切换时挤动布局 */
 .fp-label {
   font-size: 26rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   font-weight: 600;
   min-width: 64rpx;
   text-align: center;
@@ -598,17 +619,17 @@ const cardPreview = ref({ visible: false, src: '' })
   align-items: center;
   gap: 12rpx;
   padding: 18rpx 56rpx;
-  background: #fff;
+  background: var(--warm-surface);
   border-radius: 48rpx;
   box-shadow: 0 8rpx 32rpx rgba(196, 168, 130, 0.18);
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 .like-btn.liked {
   color: #e0a8b0;
 }
 .like-icon {
-  font-size: 36rpx;
-  display: inline-block;
+  display: flex;
+  align-items: center;
 }
 .like-icon.pop {
   animation: likePop 0.45s ease;
@@ -639,7 +660,7 @@ const cardPreview = ref({ visible: false, src: '' })
   text-align: center;
 }
 .load-text {
-  color: #b8b8b8;
+  color: var(--text-mute);
   font-size: 26rpx;
   animation: breathe 1.8s ease-in-out infinite;
 }

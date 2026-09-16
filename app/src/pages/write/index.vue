@@ -3,7 +3,10 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
-      <text class="back pressable" @tap="goBack">‹ 取消</text>
+      <view class="back pressable" @tap="goBack">
+        <Icon name="chevron-left" :size="28" class="back-icon" />
+        <text>取消</text>
+      </view>
       <text class="topbar-title serif">{{ isEdit ? '编辑图文' : '写图文' }}</text>
       <text class="publish pressable" @tap="onSubmit">{{ submitting ? '…' : scheduleMode ? '定时' : isEdit ? '保存' : '发布' }}</text>
     </view>
@@ -83,6 +86,7 @@ import { invalidateFeed } from '../../store/feed'
 import { invalidateMe } from '../../store/me'
 import { setArticleSnap } from '../../utils/articleCache'
 import AudioInfoPopup from '../../components/AudioInfoPopup.vue'
+import Icon from '../../components/Icon.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const submitting = ref(false)
@@ -331,7 +335,7 @@ onUnmounted(() => {
 <style scoped>
 .write {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
 }
 .status-bar {
   width: 100%;
@@ -345,18 +349,24 @@ onUnmounted(() => {
 }
 .back {
   width: 120rpx;
-  color: #8d8d8d;
+  display: flex;
+  align-items: center;
+  gap: 2rpx;
+  color: var(--text-sec);
   font-size: 30rpx;
+}
+.back-icon {
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .topbar-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .publish {
   width: 120rpx;
   text-align: right;
-  color: #c4a882;
+  color: var(--wood-bark);
   font-size: 30rpx;
   font-weight: 600;
 }
@@ -367,7 +377,7 @@ onUnmounted(() => {
   width: 100%;
   font-size: 44rpx;
   font-weight: 700;
-  color: #4a4a4a;
+  color: var(--text-main);
   padding: 12rpx 0;
   border-bottom: 2rpx solid transparent;
   transition: border-color var(--t-fast, 0.2s) var(--ease-soft, cubic-bezier(0.25, 0.46, 0.45, 0.94));
@@ -381,7 +391,7 @@ onUnmounted(() => {
   margin-top: 24rpx;
   font-size: 30rpx;
   line-height: 1.8;
-  color: #4a4a4a;
+  color: var(--text-main);
   text-align: left;
 }
 .media-bar {
@@ -395,13 +405,13 @@ onUnmounted(() => {
 }
 .media-btn {
   padding: 12rpx 28rpx;
-  background: #f3eee5;
-  color: #88a07a;
+  background: var(--warm-surface-2);
+  color: var(--moss-green);
   border-radius: 28rpx;
   font-size: 26rpx;
 }
 .media-tip {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-size: 24rpx;
 }
 .article-extra {
@@ -415,13 +425,13 @@ onUnmounted(() => {
 }
 .row-label {
   width: 160rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   font-size: 28rpx;
 }
 .row-input {
   flex: 1;
   font-size: 28rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .cover-thumb {
   width: 160rpx;
@@ -429,7 +439,7 @@ onUnmounted(() => {
   border-radius: 16rpx;
 }
 .cover-add {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-size: 28rpx;
 }
 .schedule-picker {
@@ -437,14 +447,14 @@ onUnmounted(() => {
 }
 .picker-value {
   padding: 8rpx 20rpx;
-  background: #f3eee5;
-  color: #4a4a4a;
+  background: var(--warm-surface-2);
+  color: var(--text-main);
   border-radius: 12rpx;
   font-size: 26rpx;
 }
 .schedule-cancel {
   margin-left: auto;
-  color: #8d8d8d;
+  color: var(--text-sec);
   font-size: 26rpx;
 }
 .loading {
@@ -452,7 +462,7 @@ onUnmounted(() => {
   text-align: center;
 }
 .load-text {
-  color: #b8b8b8;
+  color: var(--text-mute);
   font-size: 26rpx;
 }
 </style>

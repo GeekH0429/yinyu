@@ -104,7 +104,7 @@ function onConfirm() {
 }
 .aip-card {
   width: 600rpx;
-  background: #fdfbf7;
+  background: var(--warm-white);
   border-radius: 32rpx;
   padding: 40rpx 36rpx;
   box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.2);
@@ -118,11 +118,11 @@ function onConfirm() {
 .aip-title {
   font-size: 34rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .aip-close {
   font-size: 36rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
   padding: 0 8rpx;
 }
 .aip-field {
@@ -131,19 +131,19 @@ function onConfirm() {
 .aip-label {
   display: block;
   font-size: 24rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   margin-bottom: 12rpx;
 }
 .aip-input {
   width: 100%;
   height: 76rpx;
   box-sizing: border-box;
-  background: #fff;
+  background: var(--warm-surface);
   border: 2rpx solid #ece3d6;
   border-radius: 16rpx;
   padding: 0 24rpx;
   font-size: 28rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .aip-cover-row {
   display: flex;
@@ -163,8 +163,8 @@ function onConfirm() {
 }
 .aip-cover-add {
   padding: 16rpx 28rpx;
-  background: #f3eee5;
-  color: #88a07a;
+  background: var(--warm-surface-2);
+  color: var(--moss-green);
   border-radius: 28rpx;
   font-size: 26rpx;
 }
@@ -173,7 +173,7 @@ function onConfirm() {
   font-size: 26rpx;
 }
 .aip-tip {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-size: 24rpx;
 }
 .aip-actions {
@@ -192,7 +192,7 @@ function onConfirm() {
   color: #6a6a6a;
 }
 .aip-btn.primary {
-  background: linear-gradient(135deg, #a8c09a 0%, #88a07a 100%);
+  background: linear-gradient(135deg, #a8c09a 0%, var(--moss-green) 100%);
   color: #fff;
 }
 </style>

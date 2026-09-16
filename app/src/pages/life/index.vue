@@ -3,7 +3,10 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
-      <text class="back" @tap="goBack">‹ 返回</text>
+      <view class="back" @tap="goBack">
+        <Icon name="chevron-left" :size="28" class="back-icon" />
+        <text>返回</text>
+      </view>
       <text class="topbar-title serif">人生时光轴</text>
       <view class="topbar-right"></view>
     </view>
@@ -113,9 +116,13 @@
         <!-- 月历视角(仅日粒度):一次一个月,箭头/左右滑动翻页(swiper 三页循环) -->
         <view class="calendar" v-if="unit === 365 && viewMode === 'calendar'">
           <view class="cal-nav">
-            <text :class="['cal-arrow', { dim: !canPrevMonth }]" @tap="prevMonth">‹</text>
+            <view :class="['cal-arrow', { dim: !canPrevMonth }]" @tap="prevMonth">
+              <Icon name="chevron-left" :size="26" />
+            </view>
             <text class="cal-title serif">{{ calYear }} 年 {{ calMonth + 1 }} 月</text>
-            <text :class="['cal-arrow', { dim: !canNextMonth }]" @tap="nextMonth">›</text>
+            <view :class="['cal-arrow', { dim: !canNextMonth }]" @tap="nextMonth">
+              <Icon name="chevron-right" :size="26" />
+            </view>
           </view>
           <swiper class="cal-swiper" :current="swiperCurrent" @change="onSwiperChange">
             <swiper-item v-for="(p, pi) in threePages" :key="pi">
@@ -293,6 +300,7 @@ import { effectiveTheme } from '../../store/theme'
 import { formatDate } from '../../utils/format'
 import StateView from '../../components/StateView.vue'
 import CachedImage from '../../components/CachedImage.vue'
+import Icon from '../../components/Icon.vue'
 import { resourceUrl, thumbUrl } from '../../config'
 import {
   UNITS,
@@ -1026,7 +1034,7 @@ onShow(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #fdfbf7;
+  background: var(--warm-white);
   overflow: hidden;
 }
 .status-bar {
@@ -1042,12 +1050,18 @@ onShow(() => {
 }
 .back {
   width: 120rpx;
-  color: #c4a882;
+  display: flex;
+  align-items: center;
+  gap: 2rpx;
+  color: var(--bark-ink);
   font-size: 30rpx;
+}
+.back-icon {
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .topbar-title {
   font-size: 32rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .topbar-right {
@@ -1064,18 +1078,18 @@ onShow(() => {
 }
 .guide-line {
   font-size: 34rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   letter-spacing: 3rpx;
 }
 .guide-sub {
   margin-top: 20rpx;
   font-size: 26rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .guide-btn {
   margin-top: 64rpx;
   padding: 22rpx 72rpx;
-  background: #c4a882;
+  background: var(--wood-bark);
   color: #fff;
   border-radius: 48rpx;
   font-size: 30rpx;
@@ -1090,7 +1104,7 @@ onShow(() => {
 }
 .load-text {
   font-size: 26rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 
 /* 主体 */
@@ -1111,7 +1125,7 @@ onShow(() => {
 .ov-num {
   font-size: 72rpx;
   font-weight: 700;
-  color: #c4a882;
+  color: var(--wood-bark);
   line-height: 1;
 }
 .ov-pct {
@@ -1121,14 +1135,14 @@ onShow(() => {
   display: block;
   margin-top: 8rpx;
   font-size: 22rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .ov-right {
   text-align: right;
 }
 .ov-days {
   font-size: 44rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 
@@ -1143,7 +1157,7 @@ onShow(() => {
   flex: 1;
 }
 .set-item {
-  background: #fffdf8;
+  background: var(--warm-surface);
   border: 1rpx solid rgba(196, 168, 130, 0.25);
   border-radius: 20rpx;
   padding: 18rpx 28rpx;
@@ -1153,11 +1167,11 @@ onShow(() => {
 }
 .set-label {
   font-size: 24rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .set-value {
   font-size: 26rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 500;
 }
 
@@ -1183,7 +1197,7 @@ onShow(() => {
   display: inline-flex;
   flex-direction: column;
   gap: 6rpx;
-  background: #fffdf8;
+  background: var(--warm-surface);
   border: 1rpx solid rgba(196, 168, 130, 0.3);
   border-radius: 18rpx;
   padding: 14rpx 22rpx;
@@ -1201,15 +1215,15 @@ onShow(() => {
 }
 .chip-label {
   font-size: 26rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 500;
 }
 .chip-dates {
   font-size: 20rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .chip-plus {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-size: 28rpx;
 }
 .chip-add {
@@ -1226,19 +1240,19 @@ onShow(() => {
 }
 .units {
   display: flex;
-  background: #f2ece1;
+  background: var(--warm-surface-2);
   border-radius: 16rpx;
   padding: 4rpx;
 }
 .unit {
   padding: 8rpx 24rpx;
   font-size: 24rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   border-radius: 13rpx;
 }
 .unit.on {
-  background: #fffdf8;
-  color: #c4a882;
+  background: var(--warm-surface);
+  color: var(--wood-bark);
   font-weight: 600;
 }
 .legend {
@@ -1250,14 +1264,14 @@ onShow(() => {
   align-items: center;
   gap: 6rpx;
   font-size: 20rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .lg-dot {
   width: 16rpx;
   height: 16rpx;
   border-radius: 5rpx;
 }
-.lg-dot.today { background: #c4a882; }
+.lg-dot.today { background: var(--wood-bark); }
 .lg-dot.past { background: #ead9c2; }
 .lg-dot.future { background: #fff; border: 1rpx solid rgba(196, 168, 130, 0.5); }
 .lg-dot.cap,
@@ -1278,7 +1292,7 @@ onShow(() => {
   border: 1rpx solid rgba(196, 168, 130, 0.2);
   border-radius: 20rpx;
   overflow: hidden;
-  background: #fffdf8;
+  background: var(--warm-surface);
 }
 .grid-area {
   position: relative;
@@ -1299,19 +1313,19 @@ onShow(() => {
 /* 视角切换 */
 .vswitch {
   display: flex;
-  background: #f2ece1;
+  background: var(--warm-surface-2);
   border-radius: 16rpx;
   padding: 4rpx;
 }
 .vbtn {
   padding: 8rpx 22rpx;
   font-size: 24rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   border-radius: 13rpx;
 }
 .vbtn.on {
-  background: #fffdf8;
-  color: #c4a882;
+  background: var(--warm-surface);
+  color: var(--wood-bark);
   font-weight: 600;
 }
 
@@ -1330,17 +1344,17 @@ onShow(() => {
   padding: 4rpx 8rpx 14rpx;
 }
 .cal-arrow {
-  font-size: 44rpx;
-  color: #c4a882;
+  display: flex;
+  align-items: center;
+  color: var(--wood-bark);
   padding: 0 24rpx;
-  line-height: 1;
 }
 .cal-arrow.dim {
   opacity: 0.22;
 }
 .cal-title {
   font-size: 30rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .cal-swiper {
@@ -1374,7 +1388,7 @@ onShow(() => {
   flex: 1;
   text-align: center;
   font-size: 22rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .cal-grid {
   flex: 1;
@@ -1401,7 +1415,7 @@ onShow(() => {
 }
 .cal-num {
   font-size: 26rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .cal-num.future {
   color: #cfc8bb;
@@ -1411,7 +1425,7 @@ onShow(() => {
   height: 48rpx;
   line-height: 48rpx;
   text-align: center;
-  background: #c4a882;
+  background: var(--wood-bark);
   color: #fff;
   border-radius: 24rpx;
   font-weight: 700;
@@ -1447,8 +1461,8 @@ onShow(() => {
   margin-top: 8rpx;
   padding: 10rpx 40rpx;
   font-size: 22rpx;
-  color: #c4a882;
-  background: #f2ece1;
+  color: var(--wood-bark);
+  background: var(--warm-surface-2);
   border-radius: 30rpx;
 }
 
@@ -1462,7 +1476,7 @@ onShow(() => {
   position: fixed;
   width: 280px;
   max-width: 86vw;
-  background: #fffdf8;
+  background: var(--warm-surface);
   border-radius: 20rpx;
   box-shadow: 0 10rpx 44rpx rgba(0, 0, 0, 0.16);
   padding: 24rpx 28rpx;
@@ -1474,7 +1488,7 @@ onShow(() => {
 .bubble-date {
   font-size: 30rpx;
   font-weight: 700;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .bubble-row {
   display: flex;
@@ -1483,7 +1497,7 @@ onShow(() => {
 }
 .bubble-icon {
   font-size: 24rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 .bubble-text {
   font-size: 24rpx;
@@ -1493,7 +1507,7 @@ onShow(() => {
   white-space: nowrap;
 }
 .bubble-link .bubble-text {
-  color: #c4a882;
+  color: var(--wood-bark);
   text-decoration: underline;
 }
 
@@ -1506,8 +1520,8 @@ onShow(() => {
 }
 .foot-btn {
   padding: 18rpx 64rpx;
-  background: #f2ece1;
-  color: #c4a882;
+  background: var(--warm-surface-2);
+  color: var(--wood-bark);
   border-radius: 44rpx;
   font-size: 26rpx;
 }
@@ -1527,7 +1541,7 @@ onShow(() => {
   width: 100%;
   max-height: 82vh;
   overflow-y: auto;
-  background: #fffdf8;
+  background: var(--warm-surface);
   border-radius: 32rpx;
   padding: 40rpx 40rpx 32rpx;
   display: flex;
@@ -1536,7 +1550,7 @@ onShow(() => {
 .editor-title {
   font-size: 36rpx;
   font-weight: 700;
-  color: #4a4a4a;
+  color: var(--text-main);
   margin-bottom: 28rpx;
 }
 .field {
@@ -1554,18 +1568,18 @@ onShow(() => {
 }
 .field-label {
   font-size: 24rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .field-input {
-  background: #fdfbf7;
+  background: var(--warm-white);
   border: 1rpx solid rgba(196, 168, 130, 0.3);
   border-radius: 16rpx;
   padding: 16rpx 24rpx;
   font-size: 28rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .date-box {
-  background: #fdfbf7;
+  background: var(--warm-white);
   border: 1rpx solid rgba(196, 168, 130, 0.3);
   border-radius: 16rpx;
   padding: 16rpx 24rpx;
@@ -1575,7 +1589,7 @@ onShow(() => {
 }
 .date-value {
   font-size: 26rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .palette {
   display: flex;
@@ -1589,7 +1603,7 @@ onShow(() => {
   border: 4rpx solid transparent;
 }
 .swatch.on {
-  border-color: #4a4a4a;
+  border-color: var(--text-main);
 }
 .imgs {
   display: flex;
@@ -1629,7 +1643,7 @@ onShow(() => {
 }
 .img-plus {
   font-size: 48rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 .editor-actions {
   display: flex;
@@ -1646,11 +1660,11 @@ onShow(() => {
 }
 .act-cancel {
   font-size: 26rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .act-save {
   padding: 16rpx 56rpx;
-  background: #c4a882;
+  background: var(--wood-bark);
   color: #fff;
   border-radius: 40rpx;
   font-size: 28rpx;
@@ -1687,11 +1701,11 @@ onShow(() => {
   padding: 16rpx 64rpx;
   border-radius: 40rpx;
   background: rgba(255, 253, 248, 0.9);
-  color: #4a4a4a;
+  color: var(--text-main);
   font-size: 28rpx;
 }
 .card-btn.primary {
-  background: #c4a882;
+  background: var(--wood-bark);
   color: #fff;
 }
 

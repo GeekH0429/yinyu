@@ -114,6 +114,8 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 
 **App 客户端(uni-app)**
 - 后端地址在 `app/src/config/index.js` 的 `SERVER_ORIGIN`(H5=127.0.0.1:8010;真机/小程序必须改局域网 IP 且同网段;生产改域名)。换环境只改这一处。
+- **页面/组件 `<style>` 一律用 CSS 变量取色**(`App.vue` `page{}` 上的 `--warm-white/--warm-surface/--wood-bark/--text-main/--text-sec/--text-mute` 及 `--bark-ink` 等小字墨色),**不要写死色值**——暗色模式靠根 view 的 `[data-theme="dark"]` 变量重定义生效,历史上那块 `!important` 穿透覆盖已于 2026-09 删除,硬编码色会破暗色。原生组件属性(slider `active-color`、`placeholder-style`)不吃 CSS 变量,只能写字面量;canvas 绘制同理(见 `utils/quoteCard.js`)。
+- **功能性图标统一用 `components/Icon.vue` + `utils/icons.js`**(线性 SVG、currentColor 跟随文字色),不要新增 unicode 字形当功能图标(✎ ✦ ❝ ‹ › × ♥♡ 跨平台字形粗细不一)。有意保留的例外:文案/toast 里的 ✦ 语气点缀、🔒/🔓 状态 emoji、life 页与 canvas 绘制联动的 ✎/✉ 图例。
 - 富文本阅读用 `<mp-html>`(`pages.json` easycom 已注册),渲染 `content_html` 里的图/音/视频。
 - 正文选中用**原生选区**(`user-select: text`,长按出手柄可自由拖拽;系统复制/分享工具栏是 WebView 外的系统 UI,网页层无法隐藏)。`components/SelectionObserver.vue` 的 renderjs 监听 `selectionchange` 回传逻辑层,浮动菜单状态在 `composables/useSelectionMenu.js`,定位**选区下方**与系统工具栏(在上方)错开。微信式"原生手柄 + 自定义工具栏"需要 uni 原生插件(Android 替换 ActionMode / iOS UIEditMenuInteraction),未做。
 - **App 端逻辑层没有 `document`/`window`**(页面 JS 跑在独立引擎,DOM 在视图层 WebView)——任何 DOM API(selectionchange、getSelection 等)必须放 **renderjs**(`SelectionObserver.vue` 是范例:视图层监听 → `owner.callMethod` 回传逻辑层);逻辑层直接调会 `TypeError: Cannot read property of undefined`。

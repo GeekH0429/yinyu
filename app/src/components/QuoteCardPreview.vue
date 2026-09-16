@@ -77,7 +77,7 @@ function onSave() {
 }
 .qc-pop {
   width: 100%;
-  background: #fffdf8;
+  background: var(--warm-surface);
   border-radius: 32rpx;
   padding: 36rpx 36rpx 28rpx;
   display: flex;
@@ -92,7 +92,7 @@ function onSave() {
 .qc-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #c4a882;
+  color: var(--wood-bark);
   margin-bottom: 24rpx;
 }
 .qc-img {
@@ -116,7 +116,7 @@ function onSave() {
   transform: scale(0.96);
 }
 .qc-share {
-  background: #c4a882;
+  background: var(--wood-bark);
   box-shadow: 0 6rpx 24rpx rgba(196, 168, 130, 0.4);
 }
 .qc-share .qc-btn-text {
@@ -131,12 +131,12 @@ function onSave() {
   opacity: 0.6;
 }
 .qc-save .qc-btn-text {
-  color: #c4a882;
+  color: var(--wood-bark);
   font-size: 28rpx;
 }
 .qc-hint {
   margin-top: 20rpx;
   font-size: 22rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 </style>

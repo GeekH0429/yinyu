@@ -41,7 +41,7 @@ const icon = computed(() => (props.type === 'error' ? '🍂' : '🌿'))
 }
 .sv-text {
   font-size: 26rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
   text-align: center;
   line-height: 1.6;
 }
@@ -49,7 +49,7 @@ const icon = computed(() => (props.type === 'error' ? '🍂' : '🌿'))
   margin-top: 28rpx;
   padding: 14rpx 44rpx;
   background: rgba(196, 168, 130, 0.14);
-  color: #c4a882;
+  color: var(--wood-bark);
   border-radius: 32rpx;
   font-size: 26rpx;
 }

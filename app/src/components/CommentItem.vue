@@ -26,7 +26,9 @@
     <view class="footer">
       <text class="action reply" @tap="onReply">回复</text>
       <view :class="['action', 'like', { liked: comment.liked_by_me }]" @tap="onLike">
-        <text :class="['heart', { pop: pulse }]">{{ comment.liked_by_me ? '♥' : '♡' }}</text>
+        <view :class="['heart', { pop: pulse }]">
+          <Icon :name="comment.liked_by_me ? 'heart-filled' : 'heart'" :size="26" />
+        </view>
         <text class="like-num">{{ comment.like_count || '' }}</text>
       </view>
     </view>
@@ -38,6 +40,7 @@ import { ref, nextTick, computed } from 'vue'
 import { api } from '../api'
 import { formatRelative } from '../utils/format'
 import CachedImage from './CachedImage.vue'
+import Icon from './Icon.vue'
 
 const props = defineProps({
   comment: { type: Object, required: true },
@@ -115,7 +118,7 @@ async function onDelete() {
   flex-shrink: 0;
 }
 .avatar.placeholder {
-  background: #e8c4c4;
+  background: var(--sunset-pink);
   color: #fff;
   display: flex;
   align-items: center;
@@ -135,37 +138,37 @@ async function onDelete() {
 }
 .name {
   font-size: 26rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 500;
 }
 .author-chip {
   font-size: 20rpx;
-  color: #c4a882;
-  border: 1rpx solid #c4a882;
+  color: var(--wood-bark);
+  border: 1rpx solid var(--wood-bark);
   border-radius: 6rpx;
   padding: 0 8rpx;
   line-height: 1.5;
 }
 .reply-prefix {
   font-size: 24rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
 }
 .time {
   display: block;
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
   margin-top: 4rpx;
 }
 .del {
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
   padding: 4rpx 8rpx;
 }
 .content {
   display: block;
   margin-top: 12rpx;
   font-size: 28rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   line-height: 1.6;
   word-break: break-word;
 }
@@ -176,7 +179,7 @@ async function onDelete() {
 }
 .action {
   font-size: 24rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   display: flex;
   align-items: center;
   gap: 6rpx;
@@ -188,8 +191,8 @@ async function onDelete() {
   color: #e0a8b0;
 }
 .heart {
-  font-size: 28rpx;
-  display: inline-block;
+  display: flex;
+  align-items: center;
 }
 .heart.pop {
   animation: heartPop 0.45s ease;

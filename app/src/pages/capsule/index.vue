@@ -3,7 +3,10 @@
     <view class="status-bar" :style="{ height: statusBarHeight + 'px' }"></view>
 
     <view class="topbar">
-      <text class="back" @tap="goBack">‹ 返回</text>
+      <view class="back" @tap="goBack">
+        <Icon name="chevron-left" :size="28" class="back-icon" />
+        <text>返回</text>
+      </view>
       <text class="topbar-title serif">时光胶囊</text>
       <view class="topbar-right"></view>
     </view>
@@ -44,7 +47,7 @@
 
     <!-- 封存一封 -->
     <view class="fab" @tap="goWrite">
-      <text class="fab-icon">✎</text>
+      <Icon name="edit" :size="50" class="fab-icon" />
     </view>
 
     <!-- 已开启的信:信纸阅读浮层 -->
@@ -52,7 +55,7 @@
       <view class="letter" @tap.stop>
         <view class="letter-head">
           <text class="letter-title serif">{{ letter.title || '一封没有名字的信' }}</text>
-          <text class="letter-close" @tap="closeLetter">×</text>
+          <Icon name="close" :size="30" class="letter-close" @tap="closeLetter" />
         </view>
         <text class="letter-meta">
           写于 {{ fmtDate(letter.createdAt) }} · {{ fmtDate(letter.unlockAt) }} 开启
@@ -75,6 +78,7 @@ import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { formatDate } from '../../utils/format'
 import StateView from '../../components/StateView.vue'
+import Icon from '../../components/Icon.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
 const items = ref([])
@@ -218,7 +222,7 @@ function goBack() {
 <style scoped>
 .capsule {
   min-height: 100vh;
-  background: #fdfbf7;
+  background: var(--warm-white);
   padding-bottom: 160rpx;
 }
 .status-bar {
@@ -232,12 +236,18 @@ function goBack() {
 }
 .back {
   width: 120rpx;
-  color: #c4a882;
+  display: flex;
+  align-items: center;
+  gap: 2rpx;
+  color: var(--bark-ink);
   font-size: 30rpx;
+}
+.back-icon {
+  margin-left: -6rpx; /* 视觉对齐:chevron 左侧留白收掉 */
 }
 .topbar-title {
   font-size: 32rpx;
-  color: #4a4a4a;
+  color: var(--text-main);
   font-weight: 600;
 }
 .topbar-right {
@@ -249,14 +259,14 @@ function goBack() {
 .intro-line {
   display: block;
   font-size: 40rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   letter-spacing: 2rpx;
 }
 .intro-sub {
   display: block;
   margin-top: 10rpx;
   font-size: 24rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .list {
   padding: 0 32rpx;
@@ -272,23 +282,23 @@ function goBack() {
 .cap-title {
   font-size: 32rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .cap-state {
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 .cap-state.open {
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 .cap-date {
   display: block;
   margin-top: 14rpx;
   font-size: 24rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 .cap-countdown {
-  color: #c4a882;
+  color: var(--wood-bark);
 }
 .load-area {
   padding: 30rpx 0 60rpx;
@@ -296,7 +306,7 @@ function goBack() {
 }
 .load-text {
   font-size: 24rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
 }
 .fab {
   position: fixed;
@@ -305,7 +315,7 @@ function goBack() {
   width: 104rpx;
   height: 104rpx;
   border-radius: 52rpx;
-  background: #c4a882;
+  background: var(--wood-bark);
   box-shadow: 0 8rpx 32rpx rgba(196, 168, 130, 0.5);
   display: flex;
   align-items: center;
@@ -317,7 +327,6 @@ function goBack() {
 }
 .fab-icon {
   color: #fff;
-  font-size: 48rpx;
 }
 /* 信纸浮层 */
 .letter-mask {
@@ -333,7 +342,7 @@ function goBack() {
 .letter {
   width: 100%;
   max-height: 78vh;
-  background: #fffdf8;
+  background: var(--warm-surface);
   border-radius: 32rpx;
   padding: 40rpx 44rpx;
   display: flex;
@@ -353,17 +362,16 @@ function goBack() {
 .letter-title {
   font-size: 36rpx;
   font-weight: 700;
-  color: #4a4a4a;
+  color: var(--text-main);
 }
 .letter-close {
-  font-size: 44rpx;
-  color: #b8b8b8;
+  color: var(--text-mute);
   padding: 0 8rpx;
 }
 .letter-meta {
   margin-top: 10rpx;
   font-size: 22rpx;
-  color: #b0b0b0;
+  color: var(--text-mute);
 }
 .letter-body {
   flex: 1;
@@ -373,7 +381,7 @@ function goBack() {
 .letter-content {
   font-size: 30rpx;
   line-height: 1.9;
-  color: #4a4a4a;
+  color: var(--text-main);
   white-space: pre-wrap;
   word-break: break-word;
 }

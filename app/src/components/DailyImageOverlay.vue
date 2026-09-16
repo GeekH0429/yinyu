@@ -92,7 +92,7 @@ function preview() {
     ellipse 80% 60% at 50% 50%,
     rgba(196, 168, 130, 0.18) 0%,
     rgba(253, 251, 247, 0.96) 60%,
-    #fdfbf7 100%
+    var(--warm-white) 100%
   );
   z-index: -1;
 }
@@ -153,14 +153,14 @@ function preview() {
   margin-top: 36rpx;
   font-size: 44rpx;
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--text-main);
   text-align: center;
   letter-spacing: 2rpx;
 }
 .daily-desc {
   margin-top: 18rpx;
   font-size: 28rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
   line-height: 1.7;
   text-align: center;
   padding: 0 24rpx;
@@ -168,7 +168,7 @@ function preview() {
 .daily-date {
   margin-top: 24rpx;
   font-size: 24rpx;
-  color: #c4a882;
+  color: var(--wood-bark);
   letter-spacing: 4rpx;
 }
 
@@ -185,6 +185,6 @@ function preview() {
 }
 .daily-close-icon {
   font-size: 36rpx;
-  color: #8d8d8d;
+  color: var(--text-sec);
 }
 </style>

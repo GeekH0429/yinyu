@@ -191,9 +191,9 @@ onUnmounted(() => clearTimeout(timer))
   opacity: 0;
 }
 .fly-dot-1 { animation: dot1 1.3s 0.3s ease-out both; }
-.fly-dot-2 { animation: dot2 1.5s 0.35s ease-out both; background: #e8c4c4; }
+.fly-dot-2 { animation: dot2 1.5s 0.35s ease-out both; background: var(--sunset-pink); }
 .fly-dot-3 { animation: dot3 1.4s 0.28s ease-out both; }
-.fly-dot-4 { animation: dot4 1.6s 0.4s ease-out both; background: #e8c4c4; }
+.fly-dot-4 { animation: dot4 1.6s 0.4s ease-out both; background: var(--sunset-pink); }
 .fly-dot-5 { animation: dot5 1.3s 0.32s ease-out both; }
 .fly-dot-6 { animation: dot6 1.5s 0.38s ease-out both; }
 @keyframes dot1 {
