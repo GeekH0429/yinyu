@@ -30,58 +30,50 @@
       </view>
     </view>
 
-    <!-- 每日一图·回忆入口 -->
-    <view class="card entry-card pressable anim-rise delay-1" @tap="goDailyHistory">
-      <view class="entry-left">
-        <text class="entry-title">每日一图 · 回忆</text>
-        <text class="entry-sub">看看过去的每一天</text>
+    <!-- 入口清单:一张卡收拢六个小角落,行间发丝线分隔(与设置页同一排版语汇) -->
+    <view class="card entry-list anim-rise delay-1">
+      <view class="entry-row" @tap="goDailyHistory">
+        <view class="entry-left">
+          <text class="entry-title">每日一图 · 回忆</text>
+          <text class="entry-sub">看看过去的每一天</text>
+        </view>
+        <Icon name="chevron-right" :size="28" class="entry-arrow" />
       </view>
-      <Icon name="chevron-right" :size="28" class="entry-arrow" />
-    </view>
-
-    <!-- 我的作品入口(图文与树洞,内含 Tab) -->
-    <view class="card entry-card pressable anim-rise delay-2" @tap="goMyWorks">
-      <view class="entry-left">
-        <text class="entry-title">我的作品</text>
-        <text class="entry-sub">图文与树洞</text>
+      <view class="entry-row" @tap="goMyWorks">
+        <view class="entry-left">
+          <text class="entry-title">我的作品</text>
+          <text class="entry-sub">图文与树洞</text>
+        </view>
+        <Icon name="chevron-right" :size="28" class="entry-arrow" />
       </view>
-      <Icon name="chevron-right" :size="28" class="entry-arrow" />
-    </view>
-
-    <!-- 暖话入口 -->
-    <view class="card entry-card pressable anim-rise delay-3" @tap="goWarmWords">
-      <view class="entry-left">
-        <text class="entry-title">暖话</text>
-        <text class="entry-sub">一句温柔的话</text>
+      <view class="entry-row" @tap="goWarmWords">
+        <view class="entry-left">
+          <text class="entry-title">暖话</text>
+          <text class="entry-sub">一句温柔的话</text>
+        </view>
+        <Icon name="chevron-right" :size="28" class="entry-arrow" />
       </view>
-      <Icon name="chevron-right" :size="28" class="entry-arrow" />
-    </view>
-
-    <!-- 时光胶囊入口 -->
-    <view class="card entry-card pressable anim-rise delay-4" @tap="goCapsules">
-      <view class="entry-left">
-        <text class="entry-title">时光胶囊</text>
-        <text class="entry-sub">给未来自己的一封信</text>
+      <view class="entry-row" @tap="goCapsules">
+        <view class="entry-left">
+          <text class="entry-title">时光胶囊</text>
+          <text class="entry-sub">给未来自己的一封信</text>
+        </view>
+        <Icon name="chevron-right" :size="28" class="entry-arrow" />
       </view>
-      <Icon name="chevron-right" :size="28" class="entry-arrow" />
-    </view>
-
-    <!-- 收藏入口 -->
-    <view class="card entry-card pressable anim-rise delay-5" @tap="goExcerpts">
-      <view class="entry-left">
-        <text class="entry-title">收藏</text>
-        <text class="entry-sub">舍不得忘记的句子</text>
+      <view class="entry-row" @tap="goExcerpts">
+        <view class="entry-left">
+          <text class="entry-title">收藏</text>
+          <text class="entry-sub">舍不得忘记的句子</text>
+        </view>
+        <Icon name="chevron-right" :size="28" class="entry-arrow" />
       </view>
-      <Icon name="chevron-right" :size="28" class="entry-arrow" />
-    </view>
-
-    <!-- 人生时光轴入口 -->
-    <view class="card entry-card pressable anim-rise delay-6" @tap="goLife">
-      <view class="entry-left">
-        <text class="entry-title">人生时光轴</text>
-        <text class="entry-sub">看看这一生铺开的样子</text>
+      <view class="entry-row" @tap="goLife">
+        <view class="entry-left">
+          <text class="entry-title">人生时光轴</text>
+          <text class="entry-sub">看看这一生铺开的样子</text>
+        </view>
+        <Icon name="chevron-right" :size="28" class="entry-arrow" />
       </view>
-      <Icon name="chevron-right" :size="28" class="entry-arrow" />
     </view>
 
     <TabBar />
@@ -234,13 +226,24 @@ function goLife() {
   font-size: 22rpx;
 }
 
-/* 通用入口卡片(每日一图/我的图文/我的树洞共用) */
-.entry-card {
-  margin: 0 32rpx 24rpx;
-  padding: 32rpx 36rpx;
+/* 入口清单:一张卡收拢六个入口。行间发丝线用 + 选择器(首行无线);
+   按压反馈用背景微染而非缩放 —— 整行缩放会在卡片内边缘露缝 */
+.entry-list {
+  margin: 0 32rpx;
+  padding: 10rpx 0;
+}
+.entry-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 26rpx 40rpx; /* 40rpx 与资料卡内边距对齐同一左缘 */
+  transition: background-color var(--t-fast, 0.2s);
+}
+.entry-row + .entry-row {
+  border-top: 1rpx solid var(--border-soft);
+}
+.entry-row:active {
+  background: rgba(196, 168, 130, 0.06);
 }
 .entry-left {
   display: flex;
@@ -252,11 +255,12 @@ function goLife() {
   color: var(--text-main);
 }
 .entry-sub {
-  margin-top: 8rpx;
+  margin-top: 6rpx;
   font-size: 22rpx;
-  color: var(--text-mute);
+  color: var(--text-sec);
 }
 .entry-arrow {
+  margin-left: 16rpx;
   color: var(--wood-bark);
 }
 </style>
