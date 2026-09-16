@@ -156,6 +156,10 @@ app = FastAPI(
     version="0.1.0",
     description="治愈系图文 App 后端(图文阅读 / 树洞 / 我的 / 管理后台)",
     lifespan=lifespan,
+    # Swagger 只在 dev 暴露:接口路径本就不构成安全边界,但不必给生产递侦察目录
+    docs_url="/docs" if settings.is_dev else None,
+    redoc_url="/redoc" if settings.is_dev else None,
+    openapi_url="/openapi.json" if settings.is_dev else None,
 )
 
 # CORS
@@ -220,4 +224,7 @@ async def health_ready(db: AsyncSession = Depends(get_db)):
 
 @app.get("/", tags=["运维"])
 async def root():
-    return {"app": settings.app_name, "docs": "/docs", "health": "/health"}
+    payload = {"app": settings.app_name, "health": "/health"}
+    if settings.is_dev:
+        payload["docs"] = "/docs"
+    return payload

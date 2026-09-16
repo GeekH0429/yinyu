@@ -123,6 +123,7 @@ npm run build:h5     # 编译验证;产物 dist/build/h5
 
 ## dev 与生产差异
 - 开发期 `main.py` 在 `APP_ENV=dev` 时挂 `/uploads` 静态(`StaticFiles`),前端能直接预览上传文件;**生产由 Nginx 直接 alias `/data/uploads/`**,不走 Python。`.env` 的 `UPLOAD_DIR` 在 Windows dev 下用相对路径(如 `./_uploads`)避开 `/data/uploads` 在 Windows 的路径问题。
+- **Swagger/openapi 仅 dev 暴露**(`APP_ENV != dev` 时 `docs_url/redoc_url/openapi_url=None`,2026-09 加);生产探活走 `/health` 系列,Nginx 只放行 `/health`。
 
 ## 部署
-见 `README.md`(宝塔面板手动部署)。要点:后端 `uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4` + `alembic upgrade head`;`web-admin/dist` 上传到 `/www/wwwroot/yinyu-admin`;Nginx 三段 —— `/api/` 反代、`/uploads/` 直连磁盘、`/` 指向前端。
+见 `README.md`(宝塔面板手动部署)。要点:后端 `uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4` + `alembic upgrade head`;`web-admin/dist` 上传到 `/www/wwwroot/yinyu-admin`;Nginx 三段 —— `/api/` 反代、`/uploads/` 直连磁盘、`/` 指向前端。**生产必须 HTTPS;`nginx/yinyu.conf` 带 per-IP 限速区**(`/api/` 30r/s burst 60、`/uploads/` 20r/s burst 60 + 单 IP 并发 ≤10 + 单连接 2MB/s,超限 429),zone 是 http 层指令、全机只能定义一次。

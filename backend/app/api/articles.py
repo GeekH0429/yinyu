@@ -1,5 +1,6 @@
 """图文阅读路由(多用户共创:登录后均可发布)。"""
 import asyncio
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -92,13 +93,26 @@ async def list_published(
     return Page[ArticleBrief](items=items, total=total or 0, page=page, page_size=page_size)
 
 
+# 标签聚合缓存:公开接口 + 全表 unnest 聚合,读多写少 → Redis 缓存 60s,
+# 既防匿名刷接口打疼 DB,也省正常流量;标签增删最多延迟 1 分钟可见,可接受
+TAGS_CACHE_KEY = "cache:article_tags"
+TAGS_CACHE_TTL = 60
+
+
 @router.get("/tags", response_model=TagsOut)
-async def list_tags(db: AsyncSession = Depends(get_db)):
-    """聚合所有已发布文章的标签(数据库内 unnest + 去重)。"""
+async def list_tags(
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+):
+    """聚合所有已发布文章的标签(数据库内 unnest + 去重,Redis 缓存 60s)。"""
+    cached = await redis.get(TAGS_CACHE_KEY)
+    if cached is not None:
+        return TagsOut(tags=json.loads(cached))
     rows = await db.execute(
         select(func.unnest(Article.tags)).distinct().where(Article.status == STATUS_PUBLISHED)
     )
     tags = sorted({r[0] for r in rows.all()})
+    await redis.setex(TAGS_CACHE_KEY, TAGS_CACHE_TTL, json.dumps(tags, ensure_ascii=False))
     return TagsOut(tags=tags)
 
 
