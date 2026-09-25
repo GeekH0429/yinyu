@@ -190,10 +190,14 @@ const trendData = ref({
 const topArticles = ref([])
 const activeUsers = ref([])
 
-// 暖色主题色(与 CSS 变量保持一致,echarts canvas 不读 CSS 故硬编码)
-const COLOR_PRIMARY = '#b8825a'   // 暖棕焦糖
-const COLOR_SUCCESS = '#7fa86b'   // 雾绿
-const COLOR_WARNING = '#d99557'   // 暖橙
+// 系列色(echarts canvas 不读 CSS 变量,故硬编码)。
+// 双系列按类别色规则选:文章=苔绿深阶、树洞=深夜蓝(App 里树洞世界的颜色,暖昼/深夜的隐喻)。
+// 两色经 dataviz palette validator 验证:CVD 分离 ΔE≥19、正常视力 ΔE≥20、白底对比≥3:1、彩度达标。
+// 旧的「雾绿 #7fa86b × 暖橙 #d99557」正常视力 ΔE 仅 13.3、protan 下 2.4 几乎同色,
+// 且绿/橙是功能色(success/warning)挪用为类别色,已弃 —— 别改回去。
+const COLOR_PRIMARY = '#b8825a'    // 暖棕焦糖:单系列(浏览趋势)线色
+const COLOR_ARTICLE = '#6a9a52'    // 苔绿深阶:文章系列
+const COLOR_TREEHOLE = '#5d7ec2'   // 深夜蓝:树洞系列
 
 // 浏览趋势配置(文章浏览按日计数,数据来自 Redis view:daily:article:*)
 const viewTrendOption = computed(() => ({
@@ -266,16 +270,16 @@ const contentTrendOption = computed(() => {
         type: 'line',
         data: dates.map(d => am.get(d) ?? 0),
         smooth: true,
-        lineStyle: { color: COLOR_SUCCESS, width: 2 },
-        itemStyle: { color: COLOR_SUCCESS }
+        lineStyle: { color: COLOR_ARTICLE, width: 2 },
+        itemStyle: { color: COLOR_ARTICLE }
       },
       {
         name: '树洞',
         type: 'line',
         data: dates.map(d => tm.get(d) ?? 0),
         smooth: true,
-        lineStyle: { color: COLOR_WARNING, width: 2 },
-        itemStyle: { color: COLOR_WARNING }
+        lineStyle: { color: COLOR_TREEHOLE, width: 2 },
+        itemStyle: { color: COLOR_TREEHOLE }
       }
     ]
   }

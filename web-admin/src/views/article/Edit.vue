@@ -79,7 +79,8 @@
       </el-form-item>
 
       <el-form-item label="正文">
-        <RichEditor ref="richRef" v-model="form.content_html" style="width: 100%" />
+        <!-- 限宽:长文写作行长约 80 字符(全宽 1100px+ 会读丢行),表单其余字段不受影响 -->
+        <RichEditor ref="richRef" v-model="form.content_html" style="width: 100%; max-width: 860px" />
       </el-form-item>
 
       <el-form-item label="状态">

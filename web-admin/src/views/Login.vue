@@ -45,7 +45,7 @@
           class="login-btn"
           @click="onSubmit"
         >
-          登 录
+          登录
         </el-button>
       </el-form>
 
@@ -194,7 +194,6 @@ async function onSubmit() {
   color: var(--text-tertiary);
   margin: 8px 0 30px;
   font-size: 13px;
-  font-style: italic;
   letter-spacing: 1px;
 }
 
