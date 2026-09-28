@@ -12,7 +12,6 @@
       </view>
     </view>
 
-    <!-- 资料 -->
     <view class="card profile-card anim-rise">
       <CachedImage
         v-if="user && user.avatar_url"
@@ -161,7 +160,6 @@ function goLife() {
 .header-action {
   position: relative;
   padding: 12rpx;
-  /* 按下反馈 */
   transition: transform var(--t-fast, 0.2s) var(--ease-healing, cubic-bezier(0.34, 1.56, 0.64, 1));
 }
 .header-action:active {
@@ -180,7 +178,7 @@ function goLife() {
   width: 14rpx;
   height: 14rpx;
   border-radius: 50%;
-  background: #e74c3c;
+  background: var(--alert-red);
   border: 2rpx solid var(--warm-white);
 }
 .profile-card {

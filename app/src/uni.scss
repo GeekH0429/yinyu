@@ -9,7 +9,7 @@
  */
 $uni-color-primary: #c4a882; // 木褐色:主按钮、激活态
 $uni-color-success: #88a07a; // 苔藓绿:成功/正向
-$uni-color-warning: #e0a8b0; // 暖粉:警示(柔化)
+$uni-color-warning: #e0a8b0; // 暖粉:警示(柔化);与 App.vue 的 --affection-pink / utils/colors.js 同值,改时三处同步
 $uni-color-error: #d97a7a;
 
 $uni-text-color: #4a4a4a;

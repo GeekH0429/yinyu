@@ -252,7 +252,7 @@ onShow(() => {
   box-shadow: 0 4rpx 16rpx rgba(196, 168, 130, 0.1);
 }
 .noti-item.unread {
-  background: #fdf6ec;
+  background: var(--warm-surface-2);
 }
 .dot-wrap {
   width: 16rpx;
@@ -263,7 +263,7 @@ onShow(() => {
   width: 16rpx;
   height: 16rpx;
   border-radius: 50%;
-  background: #e0a8b0;
+  background: var(--affection-pink);
 }
 .body {
   flex: 1;

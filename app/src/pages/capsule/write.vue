@@ -67,6 +67,7 @@ import { ref, computed } from 'vue'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { formatDate, formatTime } from '../../utils/format'
+import { AFFECTION_PINK } from '../../utils/colors'
 import Icon from '../../components/Icon.vue'
 
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight || 0)
@@ -154,7 +155,7 @@ function goBack() {
       title: '还没封存',
       content: '退出后这封信不会被保存,确定离开吗?',
       confirmText: '离开',
-      confirmColor: '#e0a8b0',
+      confirmColor: AFFECTION_PINK,
       success: (r) => {
         if (r.confirm) uni.navigateBack()
       }

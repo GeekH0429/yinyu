@@ -77,6 +77,7 @@ import { onLoad, onShow, onReachBottom } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { formatDate } from '../../utils/format'
+import { AFFECTION_PINK } from '../../utils/colors'
 import StateView from '../../components/StateView.vue'
 import Icon from '../../components/Icon.vue'
 
@@ -170,7 +171,7 @@ function onLongPress(c) {
     title: '删除胶囊',
     content: '封存中的信删除后将永远无法开启,确定删除吗?',
     confirmText: '删除',
-    confirmColor: '#e0a8b0',
+    confirmColor: AFFECTION_PINK,
     success: async (r) => {
       if (!r.confirm) return
       try {
@@ -190,7 +191,7 @@ function delFromLetter() {
     title: '删除胶囊',
     content: '确定删除这封已经开启的信吗?',
     confirmText: '删除',
-    confirmColor: '#e0a8b0',
+    confirmColor: AFFECTION_PINK,
     success: async (r) => {
       if (!r.confirm) return
       try {
@@ -393,6 +394,6 @@ function goBack() {
 }
 .letter-del {
   font-size: 24rpx;
-  color: #e0a8b0;
+  color: var(--affection-pink);
 }
 </style>

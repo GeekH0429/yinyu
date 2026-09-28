@@ -508,7 +508,7 @@ const cardPreview = ref({ visible: false, src: '' })
 .rich-content :deep(blockquote) {
   font-size: var(--read-fs, 32rpx) !important;
   line-height: var(--read-lh, 1.85) !important;
-  color: #666;
+  color: var(--text-sec);
   border-left: 3px solid var(--wood-bark);
   padding-left: 12px;
 }
@@ -625,7 +625,7 @@ const cardPreview = ref({ visible: false, src: '' })
   color: var(--text-mute);
 }
 .like-btn.liked {
-  color: #e0a8b0;
+  color: var(--affection-pink);
 }
 .like-icon {
   display: flex;

@@ -67,6 +67,7 @@ import { onShow, onReachBottom } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { formatRelative } from '../../utils/format'
+import { AFFECTION_PINK } from '../../utils/colors'
 import { makeQuoteCard, CARD_W, CARD_H } from '../../utils/quoteCard'
 import StateView from '../../components/StateView.vue'
 import QuoteCardPreview from '../../components/QuoteCardPreview.vue'
@@ -120,7 +121,7 @@ function delExcerpt(e) {
     title: '删除收藏',
     content: '确定不再收藏这句话了吗?',
     confirmText: '删除',
-    confirmColor: '#e0a8b0',
+    confirmColor: AFFECTION_PINK,
     success: async (r) => {
       if (!r.confirm) return
       try {

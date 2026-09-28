@@ -39,6 +39,7 @@
 import { ref, nextTick, computed } from 'vue'
 import { api } from '../api'
 import { formatRelative } from '../utils/format'
+import { AFFECTION_PINK } from '../utils/colors'
 import CachedImage from './CachedImage.vue'
 import Icon from './Icon.vue'
 
@@ -87,7 +88,7 @@ async function onDelete() {
   uni.showModal({
     title: '删除评论',
     content: '确定要删除这条评论吗?',
-    confirmColor: '#e0a8b0',
+    confirmColor: AFFECTION_PINK,
     success: async (r) => {
       if (!r.confirm) return
       try {
@@ -188,7 +189,7 @@ async function onDelete() {
   padding: 4rpx 0;
 }
 .action.like.liked {
-  color: #e0a8b0;
+  color: var(--affection-pink);
 }
 .heart {
   display: flex;

@@ -37,6 +37,10 @@ page {
   --bark-ink: #96784e;
   --moss-ink: #6d8757;
   --pink-ink: #a87676;
+  /* 喜爱/暖确认(点赞、删除确认);浅底低对比,勿用于正文。JS 镜像见 utils/colors.js */
+  --affection-pink: #e0a8b0;
+  /* 未读徽标等警示红 */
+  --alert-red: #d97a7a;
   --text-main: #4A4A4A;
   /* 文字阶梯加深(2026-09 对比度修正):sec 白底约 4.1:1,mute 约 3.1:1 */
   --text-sec: #7d7d78;
@@ -66,6 +70,9 @@ page {
   --bark-ink: #C4A882;
   --moss-ink: #88A07A;
   --pink-ink: #B88A8A;
+  /* 与浅色块同值(深底对比足够),改值两处同步 */
+  --affection-pink: #e0a8b0;
+  --alert-red: #d97a7a;
   --text-main: #D8D8E0;
   --text-sec: #9a9ab0;
   --text-mute: #6e6e86;

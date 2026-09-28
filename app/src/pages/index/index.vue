@@ -99,12 +99,10 @@
       </view>
     </view>
 
-    <!-- 写作入口 -->
     <view class="fab" @tap="goWrite">
       <Icon name="edit" :size="50" class="fab-icon" />
     </view>
 
-    <!-- 每日一图:启动后首次 onShow 触发,当天只弹一次 -->
     <DailyImageOverlay
       :visible="dailyOverlayVisible"
       :image="todayImage"
@@ -469,7 +467,7 @@ function goWrite() {
   display: flex;
   align-items: center;
   gap: 6rpx;
-  color: #e0a8b0;
+  color: var(--affection-pink);
 }
 .tags {
   margin-top: 18rpx;

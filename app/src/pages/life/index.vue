@@ -298,6 +298,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { api } from '../../api'
 import { effectiveTheme } from '../../store/theme'
 import { formatDate } from '../../utils/format'
+import { AFFECTION_PINK } from '../../utils/colors'
 import StateView from '../../components/StateView.vue'
 import CachedImage from '../../components/CachedImage.vue'
 import Icon from '../../components/Icon.vue'
@@ -918,7 +919,7 @@ function removeMilestone() {
     title: '删除节点',
     content: '删除后这段日子的着色与相册都会消失,确定吗?',
     confirmText: '删除',
-    confirmColor: '#e0a8b0',
+    confirmColor: AFFECTION_PINK,
     success: async (r) => {
       if (!r.confirm) return
       try {
@@ -1656,7 +1657,7 @@ onShow(() => {
 }
 .act-del {
   font-size: 26rpx;
-  color: #e0a8b0;
+  color: var(--affection-pink);
 }
 .act-cancel {
   font-size: 26rpx;
